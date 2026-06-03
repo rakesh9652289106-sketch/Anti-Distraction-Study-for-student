@@ -5,7 +5,23 @@ import { useApp } from '@/context/AppContext';
 
 export default function AttentionCamera() {
   const { settings } = useApp();
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [stream, setStreamState] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const activeDeviceIdRef = useRef<string>('');
+
+  const setStream = (newStream: MediaStream | null) => {
+    streamRef.current = newStream;
+    setStreamState(newStream);
+  };
+
+  const stopActiveStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setStream(null);
+  };
+
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   
@@ -22,6 +38,10 @@ export default function AttentionCamera() {
   const [secondsLookingAway, setSecondsLookingAway] = useState<number>(0);
   const [hasAlertedForLookAway, setHasAlertedForLookAway] = useState<boolean>(false);
   const [forceLookAwaySim, setForceLookAwaySim] = useState<boolean>(false);
+
+  // Video input devices lists
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -114,8 +134,64 @@ export default function AttentionCamera() {
     }
   };
 
+  // Enumerate connected cameras and pick the built-in laptop webcam if present
+  const updateDevicesList = async (deviceIdToSet?: string) => {
+    try {
+      const allDevices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = allDevices.filter(device => device.kind === 'videoinput');
+      setDevices(videoDevices);
+      
+      if (videoDevices.length > 0) {
+        if (deviceIdToSet) {
+          const exists = videoDevices.some(d => d.deviceId === deviceIdToSet);
+          if (exists) {
+            setSelectedDeviceId(deviceIdToSet);
+            return deviceIdToSet;
+          }
+        }
+        
+        // Prioritise built-in laptop cameras and filter out mobile virtual links (droidcam, continuity, etc.)
+        const laptopCam = videoDevices.find(d => {
+          const label = d.label.toLowerCase();
+          const isBuiltIn = label.includes('integrated') || 
+                            label.includes('built-in') || 
+                            label.includes('hd') || 
+                            label.includes('webcam') || 
+                            label.includes('internal') || 
+                            label.includes('facetime') ||
+                            label.includes('camera');
+          const isMobileOrVirtual = label.includes('droid') || 
+                                    label.includes('iriun') || 
+                                    label.includes('epoc') || 
+                                    label.includes('continuity') || 
+                                    label.includes('virtual') || 
+                                    label.includes('phone') || 
+                                    label.includes('mobile');
+          return isBuiltIn && !isMobileOrVirtual;
+        });
+
+        if (laptopCam) {
+          setSelectedDeviceId(laptopCam.deviceId);
+          return laptopCam.deviceId;
+        } else {
+          // Fallback to first non-mobile/non-virtual camera
+          const nonMobileCam = videoDevices.find(d => {
+            const label = d.label.toLowerCase();
+            return !label.includes('droid') && !label.includes('iriun') && !label.includes('virtual') && !label.includes('phone') && !label.includes('mobile');
+          });
+          const targetId = nonMobileCam ? nonMobileCam.deviceId : videoDevices[0].deviceId;
+          setSelectedDeviceId(targetId);
+          return targetId;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to list video devices:', e);
+    }
+    return '';
+  };
+
   // Start Camera
-  const startCamera = async () => {
+  const startCamera = async (deviceIdToUse?: string) => {
     setCameraError(null);
     
     // Laptop/PC webcam enforcement - block mobile browsers
@@ -126,15 +202,30 @@ export default function AttentionCamera() {
       return;
     }
 
+    // Stop any existing stream
+    stopActiveStream();
+
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 320, height: 240, facingMode: 'user' }
-      });
+      // First request basic camera access so device labels populate in security model
+      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      tempStream.getTracks().forEach(track => track.stop());
+
+      // Update devices list and select standard laptop webcam
+      const resolvedId = await updateDevicesList(deviceIdToUse || selectedDeviceId);
+
+      const constraints: MediaStreamConstraints = {
+        video: resolvedId 
+          ? { deviceId: { exact: resolvedId }, width: 320, height: 240 } 
+          : { width: 320, height: 240, facingMode: 'user' }
+      };
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
       setIsCameraActive(true);
+      activeDeviceIdRef.current = resolvedId || '';
       setLastBlinkTime(Date.now());
       setHasAlertedForCurrentStare(false);
       setSecondsLookingAway(0);
@@ -149,10 +240,7 @@ export default function AttentionCamera() {
 
   // Stop Camera
   const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-    setStream(null);
+    stopActiveStream();
     setIsCameraActive(false);
     prevLuminanceLeft.current = -1;
     prevLuminanceRight.current = -1;
@@ -171,6 +259,35 @@ export default function AttentionCamera() {
     }
     return () => stopCamera();
   }, [settings.studyMode]);
+
+  // Restart camera when device changes
+  useEffect(() => {
+    if (isCameraActive && selectedDeviceId) {
+      // Check if selectedDeviceId matches the active stream's device ID
+      if (activeDeviceIdRef.current === selectedDeviceId) {
+        return;
+      }
+      
+      const restart = async () => {
+        stopActiveStream();
+        try {
+          const constraints = {
+            video: { deviceId: { exact: selectedDeviceId }, width: 320, height: 240 }
+          };
+          const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+          setStream(mediaStream);
+          if (videoRef.current) {
+            videoRef.current.srcObject = mediaStream;
+          }
+          activeDeviceIdRef.current = selectedDeviceId;
+          baselineFaceLuminance.current = -1;
+        } catch (e) {
+          console.error('Failed to switch camera device:', e);
+        }
+      };
+      restart();
+    }
+  }, [selectedDeviceId, isCameraActive]);
 
   // Handle blink register (either real or simulated)
   const registerBlink = () => {
@@ -374,7 +491,7 @@ export default function AttentionCamera() {
           <span className="material-symbols-outlined text-red-500 text-xl font-bold">error</span>
           <p className="text-[9px] text-red-600 font-bold mt-1">{cameraError}</p>
           <button 
-            onClick={startCamera} 
+            onClick={() => startCamera()} 
             className="mt-2 px-2 py-0.5 bg-primary text-white text-[9px] font-bold rounded cursor-pointer"
           >
             Retry
@@ -470,6 +587,29 @@ export default function AttentionCamera() {
           </div>
         </div>
 
+        {/* Camera Selector Dropdown */}
+        {devices.length > 0 && (
+          <div className="space-y-xs">
+            <div className="flex items-center justify-between text-[9px] font-semibold text-on-surface-variant">
+              <span className="flex items-center gap-xs">
+                <span className="material-symbols-outlined text-[12px]">photo_camera</span>
+                Webcam Input Source:
+              </span>
+            </div>
+            <select
+              value={selectedDeviceId}
+              onChange={(e) => setSelectedDeviceId(e.target.value)}
+              className="w-full text-[10px] bg-slate-50 dark:bg-slate-900 border border-outline-variant/30 rounded px-2 py-1.5 text-on-surface-variant font-medium focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-colors"
+            >
+              {devices.map((device) => (
+                <option key={device.deviceId} value={device.deviceId} className="bg-white dark:bg-slate-900">
+                  {device.label || `Camera ${device.deviceId.slice(0, 5)}...`}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Live Debug Metrics */}
         <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold font-mono">
           <span>EYE DELTA: {calibrationDiff}</span>
@@ -508,7 +648,7 @@ export default function AttentionCamera() {
           
           {!isCameraActive && (
             <button
-              onClick={startCamera}
+              onClick={() => startCamera()}
               className="w-full py-1 bg-primary text-white rounded text-[9px] font-bold cursor-pointer"
             >
               Start Camera

@@ -183,6 +183,132 @@
   ],
   "alerts": [
     {
+      "id": "alert-bkktgqt",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:54 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-bbh4c8y",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:54 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-plkkx29",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:54 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-hp4xmw3",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:54 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-x8mwi3r",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:53 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-0fq6x85",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:53 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-c2ule36",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:52 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-zg4ad3h",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:52 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-dufwgur",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:51 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-i74s3pc",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:51 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-jn9lyg2",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:50 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-erc517y",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:50 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-hjxb4tb",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:47 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-roapi6p",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds.",
+      "time": "04:47 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
       "id": "alert-mdrsg4o",
       "title": "Eye-Blink Attention Alert",
       "text": "Focus warning: Student has not blinked for over 2.0 seconds. Possible eye fatigue.",
