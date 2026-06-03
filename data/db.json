@@ -1,0 +1,294 @@
+{
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Review Chapter 4",
+      "completed": false,
+      "subject": "Biology",
+      "estimatedPomodoros": 2,
+      "actualPomodoros": 2
+    },
+    {
+      "id": "2",
+      "title": "Biology - Cell Structure Notes",
+      "completed": false,
+      "subject": "Biology",
+      "estimatedPomodoros": 3,
+      "actualPomodoros": 1
+    },
+    {
+      "id": "3",
+      "title": "Math Problem Set 3",
+      "completed": false,
+      "subject": "Mathematics",
+      "estimatedPomodoros": 4,
+      "actualPomodoros": 0
+    }
+  ],
+  "sessions": [
+    {
+      "id": "s1",
+      "startTime": "2026-06-02T10:31:30.522Z",
+      "durationMinutes": 25,
+      "taskTitle": "Review Chapter 4",
+      "distractionsBlocked": 3,
+      "focusScore": 94
+    },
+    {
+      "id": "s2",
+      "startTime": "2026-06-03T10:31:30.522Z",
+      "durationMinutes": 15,
+      "taskTitle": "Biology - Cell Structure Notes",
+      "distractionsBlocked": 1,
+      "focusScore": 92
+    }
+  ],
+  "analytics": [
+    {
+      "date": "2026-06-01",
+      "focusMinutes": 120,
+      "distractionsBlocked": 12,
+      "focusScore": 89
+    },
+    {
+      "date": "2026-06-02",
+      "focusMinutes": 165,
+      "distractionsBlocked": 8,
+      "focusScore": 94
+    },
+    {
+      "date": "2026-06-03",
+      "focusMinutes": 40,
+      "distractionsBlocked": 4,
+      "focusScore": 92
+    }
+  ],
+  "rewards": [
+    {
+      "id": "r1",
+      "title": "Forest Theme",
+      "description": "Unlock a calming green styling for your workspace.",
+      "cost": 50,
+      "icon": "forest",
+      "purchased": false
+    },
+    {
+      "id": "r2",
+      "title": "Deep Space Soundscape",
+      "description": "Calming cosmic synth sounds for absolute concentration.",
+      "cost": 100,
+      "icon": "blur_on",
+      "purchased": true
+    },
+    {
+      "id": "r3",
+      "title": "Double Streak Card",
+      "description": "Protects your streak for one day if you miss a session.",
+      "cost": 150,
+      "icon": "star",
+      "purchased": false
+    },
+    {
+      "id": "r4",
+      "title": "Cyberpunk Theme",
+      "description": "Neon overlays and futuristic dashboard alerts.",
+      "cost": 200,
+      "icon": "bolt",
+      "purchased": false
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room-1",
+      "name": "Silent Library",
+      "activeUsers": 14,
+      "tags": [
+        "No Chat",
+        "Silent",
+        "Intense"
+      ],
+      "ambientSound": "Soft Rain",
+      "messages": [
+        {
+          "id": "m1",
+          "user": "Alex",
+          "text": "Stretching for 5 mins, then back to math!",
+          "timestamp": "2026-06-03T10:31:30.522Z"
+        }
+      ]
+    },
+    {
+      "id": "room-2",
+      "name": "AI Study Guild",
+      "activeUsers": 8,
+      "tags": [
+        "Coding",
+        "Discussion",
+        "Lofi"
+      ],
+      "ambientSound": "Lofi Beats",
+      "messages": [
+        {
+          "id": "m2",
+          "user": "Sara",
+          "text": "Working on a new Next.js dashboard",
+          "timestamp": "2026-06-03T10:31:30.522Z"
+        }
+      ]
+    },
+    {
+      "id": "room-3",
+      "name": "STEM Prep Hall",
+      "activeUsers": 5,
+      "tags": [
+        "Science",
+        "Calculus",
+        "Exam prep"
+      ],
+      "ambientSound": "Library Ambient",
+      "messages": []
+    }
+  ],
+  "settings": {
+    "studyMode": true,
+    "distractionShield": true,
+    "blockedWebsites": [
+      "instagram.com",
+      "facebook.com",
+      "youtube.com",
+      "twitter.com",
+      "tiktok.com"
+    ],
+    "focusScore": 92,
+    "pomodoroWorkTime": 45,
+    "pomodoroBreakTime": 5,
+    "currentStreak": 5,
+    "focusCoins": 120
+  },
+  "tickets": [
+    {
+      "id": "t1",
+      "subject": "Distraction shield not blocking Chrome extensions",
+      "message": "I notice my extension is still letting youtube pages load even when focus lock is active.",
+      "status": "Open",
+      "timestamp": "2026-06-03T10:31:30.522Z",
+      "replies": [
+        {
+          "user": "Support Bot",
+          "text": "Hello! Please make sure you have granted file access permissions to the Study Shield extension.",
+          "timestamp": "2026-06-03T10:31:30.522Z"
+        }
+      ]
+    }
+  ],
+  "alerts": [
+    {
+      "id": "alert-mdrsg4o",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. Possible eye fatigue.",
+      "time": "04:28 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-nxa1dkc",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. High risk of distraction or fatigue.",
+      "time": "04:25 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-2f3li37",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. High risk of distraction or fatigue.",
+      "time": "04:25 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-mrqbixc",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. High risk of distraction or fatigue.",
+      "time": "04:25 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-dctil1u",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. High risk of distraction or fatigue.",
+      "time": "04:25 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-huo0d8t",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. High risk of distraction or fatigue.",
+      "time": "04:25 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-wpbbixy",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. High risk of distraction or fatigue.",
+      "time": "04:24 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-a1bx595",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. High risk of distraction or fatigue.",
+      "time": "04:24 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-mkerba8",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. High risk of distraction or fatigue.",
+      "time": "04:24 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-0p5i83x",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. High risk of distraction or fatigue.",
+      "time": "04:24 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-bccwu95",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. High risk of distraction or fatigue.",
+      "time": "04:24 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-4an15g5",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 2.0 seconds. High risk of distraction or fatigue.",
+      "time": "04:24 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    }
+  ]
+}
