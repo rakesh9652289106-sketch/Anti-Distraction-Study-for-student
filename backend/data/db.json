@@ -1,0 +1,708 @@
+{
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Review Chapter 4",
+      "completed": true,
+      "subject": "Biology",
+      "estimatedPomodoros": 2,
+      "actualPomodoros": 2
+    },
+    {
+      "id": "2",
+      "title": "Biology - Cell Structure Notes",
+      "completed": true,
+      "subject": "Biology",
+      "estimatedPomodoros": 3,
+      "actualPomodoros": 1
+    },
+    {
+      "id": "3",
+      "title": "Math Problem Set 3",
+      "completed": false,
+      "subject": "Mathematics",
+      "estimatedPomodoros": 4,
+      "actualPomodoros": 0
+    }
+  ],
+  "sessions": [
+    {
+      "id": "s1",
+      "startTime": "2026-06-02T10:31:30.522Z",
+      "durationMinutes": 25,
+      "taskTitle": "Review Chapter 4",
+      "distractionsBlocked": 3,
+      "focusScore": 94
+    },
+    {
+      "id": "s2",
+      "startTime": "2026-06-03T10:31:30.522Z",
+      "durationMinutes": 15,
+      "taskTitle": "Biology - Cell Structure Notes",
+      "distractionsBlocked": 1,
+      "focusScore": 92
+    }
+  ],
+  "analytics": [
+    {
+      "date": "2026-06-01",
+      "focusMinutes": 120,
+      "distractionsBlocked": 12,
+      "focusScore": 89
+    },
+    {
+      "date": "2026-06-02",
+      "focusMinutes": 165,
+      "distractionsBlocked": 8,
+      "focusScore": 94
+    },
+    {
+      "date": "2026-06-03",
+      "focusMinutes": 40,
+      "distractionsBlocked": 4,
+      "focusScore": 92
+    }
+  ],
+  "rewards": [
+    {
+      "id": "r1",
+      "title": "Forest Theme",
+      "description": "Unlock a calming green styling for your workspace.",
+      "cost": 50,
+      "icon": "forest",
+      "purchased": false
+    },
+    {
+      "id": "r2",
+      "title": "Deep Space Soundscape",
+      "description": "Calming cosmic synth sounds for absolute concentration.",
+      "cost": 100,
+      "icon": "blur_on",
+      "purchased": true
+    },
+    {
+      "id": "r3",
+      "title": "Double Streak Card",
+      "description": "Protects your streak for one day if you miss a session.",
+      "cost": 150,
+      "icon": "star",
+      "purchased": false
+    },
+    {
+      "id": "r4",
+      "title": "Cyberpunk Theme",
+      "description": "Neon overlays and futuristic dashboard alerts.",
+      "cost": 200,
+      "icon": "bolt",
+      "purchased": false
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room-1",
+      "name": "Silent Library",
+      "activeUsers": 16,
+      "tags": [
+        "No Chat",
+        "Silent",
+        "Intense"
+      ],
+      "ambientSound": "Soft Rain",
+      "messages": [
+        {
+          "id": "m1",
+          "user": "Alex",
+          "text": "Stretching for 5 mins, then back to math!",
+          "timestamp": "2026-06-03T10:31:30.522Z"
+        }
+      ]
+    },
+    {
+      "id": "room-3",
+      "name": "STEM Prep Hall",
+      "activeUsers": 7,
+      "tags": [
+        "Science",
+        "Calculus",
+        "Exam prep"
+      ],
+      "ambientSound": "Library Ambient",
+      "messages": []
+    },
+    {
+      "id": "room-8o85rzw",
+      "name": "digit",
+      "activeUsers": 0,
+      "tags": [
+        "web development"
+      ],
+      "ambientSound": "Soft Rain",
+      "messages": []
+    }
+  ],
+  "settings": {
+    "studyMode": false,
+    "distractionShield": true,
+    "blockedWebsites": [
+      "instagram.com",
+      "facebook.com",
+      "youtube.com",
+      "twitter.com"
+    ],
+    "focusScore": 92,
+    "pomodoroWorkTime": 40,
+    "pomodoroBreakTime": 15,
+    "currentStreak": 5,
+    "focusCoins": 120,
+    "uiConfig": {
+      "theme": "slate",
+      "density": "comfort",
+      "brandingName": "FocusFlow"
+    },
+    "groupConfig": {
+      "maxUsersPerGroup": 8,
+      "allowScreenShare": true,
+      "videoStreamRequired": false,
+      "chatModerationFilter": true,
+      "censorWords": [
+        "spam",
+        "cheat",
+        "abuse",
+        "slack",
+        "tiktok"
+      ],
+      "idleTimeoutMinutes": 15
+    },
+    "aiConfig": {
+      "personality": "academic",
+      "temperature": 0.7,
+      "systemPrompt": "You are FocusFlow AI Tutor. Provide structured explanations and advice. Maintain a supportive educational tone. Encourage the student to avoid distraction and use Pomodoro blocks.",
+      "attentionGuardSensitivity": "high"
+    }
+  },
+  "tickets": [
+    {
+      "id": "t1",
+      "subject": "Distraction shield not blocking Chrome extensions",
+      "message": "I notice my extension is still letting youtube pages load even when focus lock is active.",
+      "status": "Open",
+      "timestamp": "2026-06-03T10:31:30.522Z",
+      "replies": [
+        {
+          "user": "Support Bot",
+          "text": "Hello! Please make sure you have granted file access permissions to the Study Shield extension.",
+          "timestamp": "2026-06-03T10:31:30.522Z"
+        }
+      ]
+    }
+  ],
+  "alerts": [
+    {
+      "id": "alert-gwzs9p0",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "04:54 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-19ffvcb",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "04:53 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-47gn4uw",
+      "title": "Side-Viewing Attention Alert",
+      "text": "Focus warning: Student has been looking to the side for over 10.0 seconds. The person should see the screen.",
+      "time": "04:52 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-96fga4b",
+      "title": "Side-Viewing Attention Alert",
+      "text": "Focus warning: Student has been looking to the side for over 10.0 seconds. The person should see the screen.",
+      "time": "04:51 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-4urt7rw",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student in study room \"AI Study Guild\" has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "10:29 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor (AI Study Guild)"
+    },
+    {
+      "id": "alert-w3yj8ga",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "07:30 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-thnzs2b",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "07:29 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-lvlb6ba",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "07:29 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-rnefft8",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "07:24 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-pjg2c5n",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "07:14 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-f1w51h5",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "07:14 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-35jl0u0",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "07:10 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-s9kjfl3",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "07:05 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-lxto1k7",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "07:05 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-mi3hvyl",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "07:04 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-nl79nqu",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "07:02 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-53n21s5",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "06:48 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-gzznvzx",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:47 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-xdcgdq0",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:46 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-1ew5m0c",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:45 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-c0yzsto",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:43 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-a0mp03w",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:42 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-icf1wvd",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "06:42 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-k26h5iz",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:41 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-rczuxy4",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:38 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-tf5ocyl",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:37 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-np9n5aa",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:37 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-d5rdvgp",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "06:36 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-j9omqmh",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:35 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-99jxgqm",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "06:31 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-fuygfgf",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "06:30 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-oy0u2cu",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "06:30 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-yvycvka",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "06:29 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-pminnm7",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:29 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-d8uh61j",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:28 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-0nf2xmi",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:27 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-wketu7z",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "06:24 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-6h5aimb",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:19 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-d7i3dnx",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:18 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-x1obnwt",
+      "title": "Look-Away Attention Alert",
+      "text": "Focus warning: Student has been looking away from the screen for over 10.0 seconds. The person should see the screen.",
+      "time": "06:15 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Look-Away Monitor"
+    },
+    {
+      "id": "alert-5udtywf",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "06:15 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-o2g318h",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "05:59 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-qes6hto",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "05:55 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-k7lzt46",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "05:52 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-qvidvv9",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "05:52 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-mhyip69",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "05:50 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-jx4aq5k",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "05:49 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-v9pslo6",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "05:48 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-58lghbj",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "05:46 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    },
+    {
+      "id": "alert-3bqdjkn",
+      "title": "Eye-Blink Attention Alert",
+      "text": "Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.",
+      "time": "05:45 pm",
+      "type": "warning",
+      "region": "Desktop Client",
+      "source": "AI Eye-Blink Monitor"
+    }
+  ],
+  "users": [
+    {
+      "id": "u1",
+      "name": "Alex Rivera",
+      "email": "alex@student.edu",
+      "focusScore": 94,
+      "focusCoins": 150,
+      "currentStreak": 6,
+      "status": "active",
+      "lastActive": "10 mins ago",
+      "chatMuted": false
+    },
+    {
+      "id": "u2",
+      "name": "Sara Chen",
+      "email": "sara@student.edu",
+      "focusScore": 98,
+      "focusCoins": 310,
+      "currentStreak": 12,
+      "status": "active",
+      "lastActive": "Just now",
+      "chatMuted": false
+    },
+    {
+      "id": "u3",
+      "name": "Michael K.",
+      "email": "michael@student.edu",
+      "focusScore": 82,
+      "focusCoins": 45,
+      "currentStreak": 2,
+      "status": "offline",
+      "lastActive": "2 hours ago",
+      "chatMuted": false
+    },
+    {
+      "id": "u4",
+      "name": "Jessica Vance",
+      "email": "jessica@student.edu",
+      "focusScore": 91,
+      "focusCoins": 120,
+      "currentStreak": 5,
+      "status": "active",
+      "lastActive": "15 mins ago",
+      "chatMuted": false
+    },
+    {
+      "id": "u5",
+      "name": "Emily Watson",
+      "email": "emily@student.edu",
+      "focusScore": 45,
+      "focusCoins": 10,
+      "currentStreak": 0,
+      "status": "suspended",
+      "lastActive": "1 day ago",
+      "chatMuted": true
+    }
+  ]
+}
