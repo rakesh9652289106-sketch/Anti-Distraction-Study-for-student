@@ -8,6 +8,18 @@ export default function AdminPulsePage() {
   const { sessions } = useApp();
   const [timeUtc, setTimeUtc] = useState('');
   const [alerts, setAlerts] = useState<AdminAlert[]>([]);
+  const [settings, setSettings] = useState<any>({
+    studyMode: false,
+    distractionShield: true,
+    blockedWebsites: [],
+    focusScore: 92,
+    pomodoroWorkTime: 25,
+    pomodoroBreakTime: 5,
+    currentStreak: 5,
+    focusCoins: 120
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [newBlockedSite, setNewBlockedSite] = useState('');
 
   const fetchAlerts = async () => {
     try {
@@ -21,6 +33,37 @@ export default function AdminPulsePage() {
     }
   };
 
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch settings:', err);
+    }
+  };
+
+  const handleUpdateSetting = async (updates: any) => {
+    setIsUpdating(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(data);
+      }
+    } catch (err) {
+      console.error('Failed to update settings:', err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   useEffect(() => {
     const updateTime = () => {
       setTimeUtc(new Date().toISOString().substring(11, 19) + ' UTC');
@@ -30,6 +73,8 @@ export default function AdminPulsePage() {
     
     fetchAlerts();
     const alertsInterval = setInterval(fetchAlerts, 3000);
+
+    fetchSettings();
     
     return () => {
       clearInterval(timeInterval);
@@ -362,6 +407,238 @@ export default function AdminPulsePage() {
                 No active system alerts.
               </div>
             )}
+          </div>
+        </div>
+
+        {/* User Panel Management & Configuration (12 columns) */}
+        <div className="col-span-12 glass-panel rounded-xl p-md border-l-4 border-l-secondary relative overflow-hidden group">
+          <div className="absolute right-0 top-0 w-32 h-32 bg-secondary/5 rounded-full blur-xl pointer-events-none"></div>
+          
+          <div className="flex justify-between items-center mb-md border-b border-outline-variant/20 pb-sm">
+            <div>
+              <h3 className="font-bold text-headline-md text-primary flex items-center gap-xs">
+                <span className="material-symbols-outlined font-bold text-secondary">tune</span>
+                User Panel Management &amp; Configuration
+              </h3>
+              <p className="text-label-sm text-on-surface-variant font-medium">
+                Centrally administer student panel behaviors, blocklists, economies, and session rules.
+              </p>
+            </div>
+            
+            {isUpdating && (
+              <span className="text-[10px] bg-secondary/15 text-secondary font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <div className="w-2.5 h-2.5 border border-secondary border-t-transparent rounded-full animate-spin"></div>
+                Saving State...
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-md text-slate-700">
+            
+            {/* Section 1: Study Block Timers */}
+            <div className="bg-surface-bright rounded-lg border border-outline-variant/30 p-sm space-y-md shadow-sm">
+              <h4 className="font-bold text-label-md text-primary flex items-center gap-xs border-b border-outline-variant/10 pb-xs">
+                <span className="material-symbols-outlined text-[16px] font-bold">timer</span>
+                Study Timer Presets
+              </h4>
+
+              {/* Work Interval */}
+              <div className="space-y-sm">
+                <div className="flex justify-between text-xs font-bold text-slate-700">
+                  <span>Default Work Interval</span>
+                  <span className="text-secondary">{settings.pomodoroWorkTime} mins</span>
+                </div>
+                <div className="flex gap-sm items-center">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateSetting({ pomodoroWorkTime: Math.max(5, settings.pomodoroWorkTime - 5) })}
+                    className="w-7 h-7 bg-white border border-outline-variant/30 text-primary font-bold text-xs rounded flex items-center justify-center hover:bg-slate-100 cursor-pointer active:scale-90"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="range"
+                    min="5"
+                    max="120"
+                    step="5"
+                    value={settings.pomodoroWorkTime}
+                    onChange={e => handleUpdateSetting({ pomodoroWorkTime: parseInt(e.target.value) })}
+                    className="flex-1 accent-secondary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateSetting({ pomodoroWorkTime: Math.min(120, settings.pomodoroWorkTime + 5) })}
+                    className="w-7 h-7 bg-white border border-outline-variant/30 text-primary font-bold text-xs rounded flex items-center justify-center hover:bg-slate-100 cursor-pointer active:scale-90"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Break Interval */}
+              <div className="space-y-sm">
+                <div className="flex justify-between text-xs font-bold text-slate-700">
+                  <span>Default Break Interval</span>
+                  <span className="text-sky-600">{settings.pomodoroBreakTime} mins</span>
+                </div>
+                <div className="flex gap-sm items-center">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateSetting({ pomodoroBreakTime: Math.max(1, settings.pomodoroBreakTime - 1) })}
+                    className="w-7 h-7 bg-white border border-outline-variant/30 text-primary font-bold text-xs rounded flex items-center justify-center hover:bg-slate-100 cursor-pointer active:scale-90"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="range"
+                    min="1"
+                    max="30"
+                    step="1"
+                    value={settings.pomodoroBreakTime}
+                    onChange={e => handleUpdateSetting({ pomodoroBreakTime: parseInt(e.target.value) })}
+                    className="flex-1 accent-sky-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateSetting({ pomodoroBreakTime: Math.min(30, settings.pomodoroBreakTime + 1) })}
+                    className="w-7 h-7 bg-white border border-outline-variant/30 text-primary font-bold text-xs rounded flex items-center justify-center hover:bg-slate-100 cursor-pointer active:scale-90"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Distraction Shield Management */}
+            <div className="bg-surface-bright rounded-lg border border-outline-variant/30 p-sm space-y-md shadow-sm">
+              <div className="flex justify-between items-center border-b border-outline-variant/10 pb-xs">
+                <h4 className="font-bold text-label-md text-primary flex items-center gap-xs">
+                  <span className="material-symbols-outlined text-[16px] font-bold">security</span>
+                  Global Blocklist Controls
+                </h4>
+                
+                {/* Shield Toggle Switch */}
+                <label className="relative inline-flex items-center cursor-pointer scale-90">
+                  <input
+                    type="checkbox"
+                    checked={settings.distractionShield}
+                    onChange={e => handleUpdateSetting({ distractionShield: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-secondary"></div>
+                </label>
+              </div>
+
+              {/* Blocked Websites Tag list */}
+              <div className="space-y-sm">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  Active Blocked Websites Registry
+                </label>
+                <div className="flex flex-wrap gap-xs max-h-24 overflow-y-auto border border-outline-variant/20 p-xs rounded bg-surface/50">
+                  {settings.blockedWebsites.map((site: string) => (
+                    <span key={site} className="inline-flex items-center gap-xs px-2 py-0.5 bg-slate-150 text-slate-700 text-[10px] font-bold rounded-full border border-slate-200">
+                      {site}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = settings.blockedWebsites.filter((s: string) => s !== site);
+                          handleUpdateSetting({ blockedWebsites: updated });
+                        }}
+                        className="text-slate-400 hover:text-slate-600 cursor-pointer font-bold ml-1"
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  ))}
+                  {settings.blockedWebsites.length === 0 && (
+                    <span className="text-[10px] text-slate-400 italic font-semibold p-xs">No websites blocked</span>
+                  )}
+                </div>
+
+                {/* Add blocked site form */}
+                <form
+                  onSubmit={e => {
+                    e.preventDefault();
+                    if (!newBlockedSite.trim()) return;
+                    const site = newBlockedSite.toLowerCase().trim().replace(/^(https?:\/\/)?(www\.)?/, '');
+                    if (!settings.blockedWebsites.includes(site)) {
+                      const updated = [...settings.blockedWebsites, site];
+                      handleUpdateSetting({ blockedWebsites: updated });
+                    }
+                    setNewBlockedSite('');
+                  }}
+                  className="flex gap-xs"
+                >
+                  <input
+                    type="text"
+                    value={newBlockedSite}
+                    onChange={e => setNewBlockedSite(e.target.value)}
+                    placeholder="e.g. reddit.com"
+                    className="flex-1 bg-white border border-outline-variant/35 rounded-lg py-1 px-sm text-xs outline-none focus:border-secondary font-semibold text-slate-700"
+                  />
+                  <button
+                    type="submit"
+                    className="px-sm py-1 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 cursor-pointer"
+                  >
+                    Add
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Section 3: Economics & Streaks Adjuster */}
+            <div className="bg-surface-bright rounded-lg border border-outline-variant/30 p-sm space-y-md shadow-sm">
+              <h4 className="font-bold text-label-md text-primary flex items-center gap-xs border-b border-outline-variant/10 pb-xs">
+                <span className="material-symbols-outlined text-[16px] font-bold">military_tech</span>
+                Economics &amp; Stats Adjustment
+              </h4>
+
+              <div className="grid grid-cols-2 gap-sm">
+                {/* Focus Coins Adjustment */}
+                <div className="space-y-sm">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    Focus Coins Wallet
+                  </label>
+                  <input
+                    type="number"
+                    value={settings.focusCoins}
+                    onChange={e => handleUpdateSetting({ focusCoins: parseInt(e.target.value) || 0 })}
+                    className="w-full bg-white border border-outline-variant/35 rounded-lg py-1 px-sm text-xs outline-none focus:border-secondary font-semibold text-slate-705"
+                  />
+                </div>
+
+                {/* Current Streak Adjustment */}
+                <div className="space-y-sm">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    Current Streak (Days)
+                  </label>
+                  <input
+                    type="number"
+                    value={settings.currentStreak}
+                    onChange={e => handleUpdateSetting({ currentStreak: parseInt(e.target.value) || 0 })}
+                    className="w-full bg-white border border-[#c5c6cd] rounded-lg py-1 px-sm text-xs outline-none focus:border-secondary font-semibold text-slate-705"
+                  />
+                </div>
+              </div>
+
+              {/* Focus score multiplier */}
+              <div className="space-y-sm">
+                <div className="flex justify-between text-xs font-bold text-slate-700">
+                  <span>User Focus Rating Score</span>
+                  <span className="text-secondary">{settings.focusScore}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={settings.focusScore}
+                  onChange={e => handleUpdateSetting({ focusScore: parseInt(e.target.value) })}
+                  className="w-full accent-secondary"
+                />
+              </div>
+            </div>
+
           </div>
         </div>
 

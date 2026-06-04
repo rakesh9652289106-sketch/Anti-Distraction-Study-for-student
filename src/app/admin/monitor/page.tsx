@@ -6,6 +6,12 @@ import { AdminAlert } from '@/lib/db';
 export default function AdminMonitorPage() {
   const [timeUtc, setTimeUtc] = useState('');
   const [activeAlerts, setActiveAlerts] = useState<AdminAlert[]>([]);
+  const [streamLogs, setStreamLogs] = useState([
+    { id: '1', type: 'start', title: 'Session Started', text: 'User usr_8x92 initiated 60m Deep Work phase.', time: 'Just now' },
+    { id: '2', type: 'block', title: 'Distraction Blocked', text: 'AI intercepted access attempt to instagram.com for usr_2m41.', time: '12s ago' },
+    { id: '3', type: 'ai', title: 'AI Intervention', text: 'Emotional engine detected frustration. Sent subtle encouragement prompt to usr_9p77.', time: '45s ago' },
+    { id: '4', type: 'complete', title: 'Session Completed', text: 'User usr_1k22 successfully finished 120m study block.', time: '2m ago' }
+  ]);
 
   const fetchAlerts = async () => {
     try {
@@ -13,6 +19,19 @@ export default function AdminMonitorPage() {
       if (res.ok) {
         const data = await res.json();
         setActiveAlerts(data);
+        
+        // Merge real database alerts into the Live Activity Stream logs
+        setStreamLogs(prev => {
+          const nonAlertLogs = prev.filter(log => !log.id.startsWith('alert-'));
+          const alertLogs = data.map((alert: AdminAlert) => ({
+            id: alert.id,
+            type: 'warning',
+            title: alert.title,
+            text: alert.text,
+            time: alert.time || 'Just now'
+          }));
+          return [...alertLogs, ...nonAlertLogs].slice(0, 15);
+        });
       }
     } catch {
       console.error('Failed to fetch alerts');
@@ -24,13 +43,6 @@ export default function AdminMonitorPage() {
     const interval = setInterval(fetchAlerts, 3000);
     return () => clearInterval(interval);
   }, []);
-
-  const [streamLogs, setStreamLogs] = useState([
-    { id: '1', type: 'start', title: 'Session Started', text: 'User usr_8x92 initiated 60m Deep Work phase.', time: 'Just now' },
-    { id: '2', type: 'block', title: 'Distraction Blocked', text: 'AI intercepted access attempt to instagram.com for usr_2m41.', time: '12s ago' },
-    { id: '3', type: 'ai', title: 'AI Intervention', text: 'Emotional engine detected frustration. Sent subtle encouragement prompt to usr_9p77.', time: '45s ago' },
-    { id: '4', type: 'complete', title: 'Session Completed', text: 'User usr_1k22 successfully finished 120m study block.', time: '2m ago' }
-  ]);
 
   useEffect(() => {
     const updateTime = () => {
@@ -243,10 +255,18 @@ export default function AdminMonitorPage() {
                       ? 'bg-emerald-100 text-emerald-600'
                       : log.type === 'block'
                       ? 'bg-red-100 text-red-600'
+                      : log.type === 'warning'
+                      ? 'bg-amber-100 text-amber-600 border border-amber-200'
                       : 'bg-indigo-100 text-indigo-600'
                   }`}>
                     <span className="material-symbols-outlined text-[16px] font-bold">
-                      {log.type === 'start' ? 'play_arrow' : log.type === 'block' ? 'block' : 'psychology'}
+                      {log.type === 'start' 
+                        ? 'play_arrow' 
+                        : log.type === 'block' 
+                        ? 'block' 
+                        : log.type === 'warning' 
+                        ? 'warning' 
+                        : 'psychology'}
                     </span>
                   </div>
                   

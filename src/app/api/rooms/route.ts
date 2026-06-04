@@ -48,3 +48,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const roomId = searchParams.get('roomId');
+    if (!roomId) {
+      return NextResponse.json({ error: 'Room ID is required' }, { status: 400 });
+    }
+
+    const db = readDb();
+    const index = db.rooms.findIndex(r => r.id === roomId);
+    if (index === -1) {
+      return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+    }
+
+    db.rooms.splice(index, 1);
+    writeDb(db);
+    return NextResponse.json({ success: true, message: 'Room deleted successfully' });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+

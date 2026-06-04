@@ -7,7 +7,7 @@ import { useApp } from '@/context/AppContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { startTimer, isTimerRunning, pauseTimer } = useApp();
+  const { settings, startTimer, isTimerRunning, pauseTimer } = useApp();
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: 'dashboard' },
@@ -35,7 +35,9 @@ export default function Sidebar() {
           </span>
         </div>
         <div>
-          <h1 className="font-bold text-headline-md text-primary leading-tight">FocusFlow</h1>
+          <h1 className="font-bold text-headline-md text-primary leading-tight">
+            {settings?.uiConfig?.brandingName || 'FocusFlow'}
+          </h1>
           <p className="text-label-sm text-on-surface-variant font-medium">Productivity Engine</p>
         </div>
       </div>

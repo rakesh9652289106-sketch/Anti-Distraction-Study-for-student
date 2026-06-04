@@ -100,3 +100,74 @@ body {
 .glow-primary {
   box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
 }
+
+/* Dynamic UI Presets */
+.theme-cyberpunk {
+  --color-background: #0f051d;
+  --color-on-background: #f5edff;
+  --color-surface: #1b0c30;
+  --color-on-surface: #f5edff;
+  --color-primary: #ec4899;      /* Pink neon */
+  --color-on-primary: #ffffff;
+  --color-secondary: #06b6d4;    /* Cyan neon */
+  --color-on-secondary: #0c0f14;
+  --color-primary-container: #3b0764;
+  --color-on-primary-container: #d8b4fe;
+  --color-surface-container: #271242;
+  --color-surface-container-low: #1e0935;
+  --color-surface-container-lowest: #0d041a;
+  --color-surface-container-high: #311850;
+  --color-surface-container-highest: #3b1d60;
+  --color-outline-variant: #5c3580;
+  --color-on-surface-variant: #a78bfa;
+}
+
+.theme-forest {
+  --color-background: #f3f6f4;
+  --color-on-background: #14221b;
+  --color-surface: #e5ede7;
+  --color-on-surface: #14221b;
+  --color-primary: #15803d;      /* Deep Forest Green */
+  --color-on-primary: #ffffff;
+  --color-secondary: #a16207;    /* Warm Amber */
+  --color-on-secondary: #ffffff;
+  --color-primary-container: #dcfce7;
+  --color-on-primary-container: #166534;
+  --color-surface-container: #d4e2d7;
+  --color-surface-container-low: #dce7df;
+  --color-surface-container-lowest: #edf3ee;
+  --color-surface-container-high: #ccdcd0;
+  --color-surface-container-highest: #c4d7c8;
+  --color-outline-variant: #a9c6b1;
+  --color-on-surface-variant: #1e3a27;
+}
+
+.theme-slate {
+  /* Slate uses defaults defined in @theme */
+}
+
+/* Page Spacing Density */
+.density-comfort {
+  --spacing-xs: 6px;
+  --spacing-sm: 16px;
+  --spacing-md: 32px;
+  --spacing-lg: 56px;
+  --spacing-xl: 96px;
+}
+
+.density-cozy {
+  --spacing-xs: 4px;
+  --spacing-sm: 12px;
+  --spacing-md: 24px;
+  --spacing-lg: 48px;
+  --spacing-xl: 80px;
+}
+
+.density-compact {
+  --spacing-xs: 2px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 32px;
+  --spacing-xl: 56px;
+}
+

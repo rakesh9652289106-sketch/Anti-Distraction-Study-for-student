@@ -3,13 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import AttentionCamera from './AttentionCamera';
+import { generateAiResponse } from '@/lib/educationalAi';
 
-export default function AssistantSidebar() {
+interface AssistantSidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function AssistantSidebar({ isOpen, onClose }: AssistantSidebarProps) {
   const {
     settings,
-    updateSettings,
     isTimerRunning,
-    distractionsBlockedThisSession
+    distractionsBlockedThisSession,
+    adjustTimerMinutes
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'ai' | 'notes'>('ai');
@@ -35,12 +41,17 @@ export default function AssistantSidebar() {
   };
 
   const extendSession = () => {
-    // Modify settings.pomodoroWorkTime to extend current running session or add 10 minutes to state
-    // For convenience we can set study timer minutes direct to +10 mins
-    alert('Extended current focus session by +10 minutes!');
-    // Ideally we can update a state in context, but since timerMinutes is a state, we can write a simple workaround
-    // Let's increment work time by 10 mins or just add 10 to current timer minutes
-    updateSettings({ pomodoroWorkTime: settings.pomodoroWorkTime + 10 });
+    adjustTimerMinutes(10);
+    alert('Extended focus session by +10 minutes!');
+  };
+
+  const reduceSession = () => {
+    if (settings.pomodoroWorkTime <= 10) {
+      alert('Cannot reduce session below 10 minutes!');
+      return;
+    }
+    adjustTimerMinutes(-10);
+    alert('Reduced focus session by -10 minutes!');
   };
 
   const sendChatMessage = async (e: React.FormEvent) => {
@@ -53,40 +64,37 @@ export default function AssistantSidebar() {
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setChatLog(prev => [...prev, { sender: 'user', text: userMsg, time: timestamp }]);
 
-    // Simple educational AI response matching study & focus topics
     setTimeout(() => {
-      let aiText = '';
-      const query = userMsg.toLowerCase();
-      
-      if (query.includes('focus') || query.includes('distract')) {
-        aiText = "To maximize focus, I recommend the 25/5 Pomodoro method. I've activated your Distraction Shield to block social media. Take deep breaths if you feel restless!";
-      } else if (query.includes('biology') || query.includes('cell')) {
-        aiText = "Cells are the basic building blocks of life! Animal cells have a cell membrane, nucleus, and mitochondria. Plant cells also have a cell wall and chloroplasts.";
-      } else if (query.includes('math') || query.includes('calculus')) {
-        aiText = "For math problem sets, try breaking them into small steps. Write out formulas first. I can keep time while you solve the next derivative!";
-      } else if (query.includes('hello') || query.includes('hi')) {
-        aiText = "Hello! Ready for a deep work session? Let me know how I can help you prepare today.";
-      } else {
-        aiText = "That sounds like a great topic! Let's keep concentrating on our active task. If you need any specific facts or study strategies, just ask.";
-      }
-
+      const aiText = generateAiResponse(userMsg, settings?.aiConfig);
       setChatLog(prev => [...prev, { sender: 'ai', text: aiText, time: timestamp }]);
-    }, 1000);
+    }, 600);
   };
 
   return (
-    <nav className="fixed right-0 top-0 h-screen w-80 flex flex-col bg-surface-container-low/90 backdrop-blur-lg border-l border-outline-variant/30 shadow-lg py-md px-sm z-50 overflow-y-auto">
+    <nav className={`fixed right-0 top-0 h-screen w-80 flex flex-col bg-surface-container-low/95 backdrop-blur-lg border-l border-outline-variant/30 shadow-lg py-md px-sm z-50 overflow-y-auto transition-transform duration-300 ${
+      isOpen ? 'translate-x-0' : 'translate-x-full'
+    }`}>
       {/* Assistant Logo Area */}
-      <div className="flex items-center gap-sm mb-lg px-sm">
-        <div className="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
-          <span className="material-symbols-outlined font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>
-            smart_toy
-          </span>
+      <div className="flex items-center justify-between mb-lg px-sm">
+        <div className="flex items-center gap-sm">
+          <div className="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
+            <span className="material-symbols-outlined font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>
+              smart_toy
+            </span>
+          </div>
+          <div>
+            <h2 className="font-bold text-label-md text-tertiary-container">Smart Assistant</h2>
+            <p className="text-label-sm text-on-surface-variant font-medium">AI-Powered Support</p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-bold text-label-md text-tertiary-container">Smart Assistant</h2>
-          <p className="text-label-sm text-on-surface-variant font-medium">AI-Powered Support</p>
-        </div>
+        <button
+          onClick={onClose}
+          type="button"
+          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-outline-variant/20 text-on-surface-variant cursor-pointer transition-colors"
+          title="Close AI Assistant"
+        >
+          <span className="material-symbols-outlined text-[20px]">close</span>
+        </button>
       </div>
 
       {/* Assistant Status Card */}
@@ -102,12 +110,24 @@ export default function AssistantSidebar() {
             ? `Distraction level: Low. We have blocked ${distractionsBlockedThisSession} attempts during this study block.`
             : 'Get ready for your session. Turn on Study Mode to shield yourself from internet distractions.'}
         </p>
-        <button
-          onClick={extendSession}
-          className="w-full py-2 border border-outline-variant/50 hover:border-outline-variant rounded-lg font-semibold text-label-md text-primary hover:bg-surface-variant transition-all cursor-pointer active:scale-98"
-        >
-          Extend Session (+10m)
-        </button>
+        <div className="flex gap-2 w-full">
+          <button
+            onClick={reduceSession}
+            type="button"
+            className="flex-1 py-2 border border-outline-variant/50 hover:border-outline-variant rounded-lg font-semibold text-label-sm text-primary hover:bg-surface-variant transition-all cursor-pointer active:scale-98 text-center"
+            title="Reduce focus session by 10 minutes"
+          >
+            Reduce (-10m)
+          </button>
+          <button
+            onClick={extendSession}
+            type="button"
+            className="flex-1 py-2 border border-outline-variant/50 hover:border-outline-variant rounded-lg font-semibold text-label-sm text-primary hover:bg-surface-variant transition-all cursor-pointer active:scale-98 text-center"
+            title="Extend focus session by 10 minutes"
+          >
+            Extend (+10m)
+          </button>
+        </div>
       </div>
 
       {/* Attention Monitor Camera */}

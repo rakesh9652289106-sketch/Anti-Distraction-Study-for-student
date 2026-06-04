@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
-import AssistantSidebar from "@/components/AssistantSidebar";
+import MainLayoutWrapper from "@/components/MainLayoutWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,21 +40,7 @@ export default function RootLayout({
             <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-secondary/5 blur-[120px]"></div>
           </div>
 
-          <div className="flex min-h-screen">
-            {/* Sidebar Navigation */}
-            <Sidebar />
-
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-h-screen pl-64 pr-80">
-              <Header />
-              <main className="flex-1 p-md relative z-10 max-w-container-max w-full mx-auto mt-16">
-                {children}
-              </main>
-            </div>
-
-            {/* Assistant Panel */}
-            <AssistantSidebar />
-          </div>
+          <MainLayoutWrapper>{children}</MainLayoutWrapper>
         </AppProvider>
       </body>
     </html>

@@ -21,6 +21,10 @@ interface AppContextType {
   activeTaskTitle: string;
   distractionsBlockedThisSession: number;
 
+  // Assistant Sidebar State
+  isAssistantOpen: boolean;
+  setIsAssistantOpen: (open: boolean) => void;
+
   // Actions
   fetchData: () => Promise<void>;
   addTask: (title: string, subject: string, estimatedPomodoros?: number) => Promise<void>;
@@ -31,6 +35,7 @@ interface AppContextType {
   startTimer: () => void;
   pauseTimer: () => void;
   resetTimer: () => void;
+  adjustTimerMinutes: (delta: number) => void;
   incrementDistractionShield: () => void;
   buyRewardItem: (itemId: string) => Promise<{ success: boolean; message: string }>;
   joinStudyRoom: (roomId: string) => Promise<void>;
@@ -65,6 +70,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [timerMode, setTimerMode] = useState<'work' | 'break'>('work');
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [distractionsBlockedThisSession, setDistractionsBlockedThisSession] = useState(0);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(true);
 
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -160,6 +166,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       fetchData();
     }, 5000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRoom?.id]);
 
   // Handle work/break time changes in settings
@@ -168,6 +175,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTimerMinutes(timerMode === 'work' ? settings.pomodoroWorkTime : settings.pomodoroBreakTime);
       setTimerSeconds(0);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.pomodoroWorkTime, settings.pomodoroBreakTime, timerMode]);
 
   // Timer tick effect
@@ -202,6 +210,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         clearInterval(timerIntervalRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTimerRunning, timerMinutes, timerMode, activeTaskId]);
 
   const startTimer = () => {
@@ -219,6 +228,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTimerSeconds(0);
     setDistractionsBlockedThisSession(0);
     updateSettings({ studyMode: false });
+  };
+
+  const adjustTimerMinutes = (delta: number) => {
+    setTimerMinutes(prev => {
+      const next = prev + delta;
+      return next < 1 ? 1 : next;
+    });
+    const nextWorkTime = settings.pomodoroWorkTime + delta;
+    updateSettings({ pomodoroWorkTime: nextWorkTime < 1 ? 1 : nextWorkTime });
   };
 
   const incrementDistractionShield = () => {
@@ -402,6 +420,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setActiveTaskId,
         activeTaskTitle,
         distractionsBlockedThisSession,
+        isAssistantOpen,
+        setIsAssistantOpen,
         fetchData,
         addTask,
         toggleTaskCompleted,
@@ -411,6 +431,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         startTimer,
         pauseTimer,
         resetTimer,
+        adjustTimerMinutes,
         incrementDistractionShield,
         buyRewardItem,
         joinStudyRoom,

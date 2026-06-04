@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readDb, writeDb, AdminAlert } from '@/lib/db';
 
-export async function GET() {
+function isAuthenticated(req: NextRequest): boolean {
+  const token = req.cookies.get('focusflow_admin_auth')?.value;
+  return token === 'authenticated';
+}
+
+export async function GET(req: NextRequest) {
+  if (!isAuthenticated(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   const db = readDb();
   return NextResponse.json(db.alerts || []);
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAuthenticated(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body = await req.json();
     if (!body.title || !body.text) {
@@ -48,3 +59,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error }, { status: 500 });
   }
 }
+

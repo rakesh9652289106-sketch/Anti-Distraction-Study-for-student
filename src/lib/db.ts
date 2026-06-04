@@ -59,6 +59,25 @@ export interface GlobalSettings {
   pomodoroBreakTime: number; // in minutes
   currentStreak: number;
   focusCoins: number;
+  uiConfig?: {
+    theme: string;
+    density: string;
+    brandingName: string;
+  };
+  aiConfig?: {
+    personality: string;
+    temperature: number;
+    systemPrompt: string;
+    attentionGuardSensitivity: string;
+  };
+  groupConfig?: {
+    maxUsersPerGroup: number;
+    allowScreenShare: boolean;
+    videoStreamRequired: boolean;
+    chatModerationFilter: boolean;
+    censorWords: string[];
+    idleTimeoutMinutes: number;
+  };
 }
 
 export interface SupportTicket {
@@ -84,6 +103,18 @@ export interface AdminAlert {
   type: 'error' | 'warning' | 'info';
 }
 
+export interface StudentUser {
+  id: string;
+  name: string;
+  email: string;
+  focusScore: number;
+  focusCoins: number;
+  currentStreak: number;
+  status: 'active' | 'suspended' | 'offline';
+  lastActive: string;
+  chatMuted: boolean;
+}
+
 export interface DbSchema {
   tasks: Task[];
   sessions: StudySession[];
@@ -93,6 +124,7 @@ export interface DbSchema {
   settings: GlobalSettings;
   tickets: SupportTicket[];
   alerts: AdminAlert[];
+  users: StudentUser[];
 }
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -159,7 +191,15 @@ function getInitialData(): DbSchema {
       pomodoroWorkTime: 25,
       pomodoroBreakTime: 5,
       currentStreak: 5,
-      focusCoins: 120
+      focusCoins: 120,
+      groupConfig: {
+        maxUsersPerGroup: 8,
+        allowScreenShare: true,
+        videoStreamRequired: false,
+        chatModerationFilter: true,
+        censorWords: ['spam', 'cheat', 'abuse', 'slack', 'tiktok'],
+        idleTimeoutMinutes: 15
+      }
     },
     tickets: [
       {
@@ -177,6 +217,13 @@ function getInitialData(): DbSchema {
       { id: '1', title: 'Node AP-East-2 Offline', text: 'Failing health checks for 5 minutes. Traffic re-routed automatically to AP-East-1.', time: '10:42 AM', region: 'AP-EAST', source: 'SYSTEM_AUTO', type: 'error' },
       { id: '2', title: 'High Token Consumption', text: 'Emotional analysis engine usage spiked 40% above baseline in EU-Central.', time: '09:15 AM', region: 'EU-CENTRAL', source: 'AI_ENGINE', type: 'warning' },
       { id: '3', title: 'Maintenance Scheduled', text: 'Routine DB index optimization scheduled for off-peak hours (02:00 UTC).', time: '08:00 AM', region: 'GLOBAL', source: 'ADMIN_SCHED', type: 'info' }
+    ],
+    users: [
+      { id: 'u1', name: 'Alex Rivera', email: 'alex@student.edu', focusScore: 94, focusCoins: 150, currentStreak: 6, status: 'active', lastActive: '10 mins ago', chatMuted: false },
+      { id: 'u2', name: 'Sara Chen', email: 'sara@student.edu', focusScore: 98, focusCoins: 310, currentStreak: 12, status: 'active', lastActive: 'Just now', chatMuted: false },
+      { id: 'u3', name: 'Michael K.', email: 'michael@student.edu', focusScore: 82, focusCoins: 45, currentStreak: 2, status: 'offline', lastActive: '2 hours ago', chatMuted: false },
+      { id: 'u4', name: 'Jessica Vance', email: 'jessica@student.edu', focusScore: 91, focusCoins: 120, currentStreak: 5, status: 'active', lastActive: '15 mins ago', chatMuted: false },
+      { id: 'u5', name: 'Emily Watson', email: 'emily@student.edu', focusScore: 45, focusCoins: 10, currentStreak: 0, status: 'suspended', lastActive: '1 day ago', chatMuted: true }
     ]
   };
 }
@@ -198,6 +245,12 @@ export function readDb(): DbSchema {
     const parsed = JSON.parse(raw);
     if (!parsed.alerts) {
       parsed.alerts = [];
+    }
+    if (!parsed.users) {
+      parsed.users = getInitialData().users;
+    }
+    if (parsed.settings && !parsed.settings.groupConfig) {
+      parsed.settings.groupConfig = getInitialData().settings.groupConfig;
     }
     return parsed;
   } catch (err) {
