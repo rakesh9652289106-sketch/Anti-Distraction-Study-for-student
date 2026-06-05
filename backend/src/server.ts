@@ -35,6 +35,9 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+// Serve static uploads folder
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Helper for admin authorization
 function isAuthenticated(req: Request): boolean {
   const token = req.cookies?.focusflow_admin_auth;
