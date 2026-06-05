@@ -1,0 +1,32 @@
+[
+  {
+    "id": "g-physics-s2",
+    "name": "Advanced Physics",
+    "teacherId": "t-aris-thorne",
+    "room": "Room 402",
+    "studentCount": 24,
+    "active": true,
+    "students": ["u1", "u2", "u4"],
+    "activeSessionId": "sess-402"
+  },
+  {
+    "id": "g-writing",
+    "name": "Creative Writing",
+    "teacherId": "t-aris-thorne",
+    "room": "Room 101",
+    "studentCount": 12,
+    "active": false,
+    "students": ["u3", "u5"],
+    "activeSessionId": null
+  },
+  {
+    "id": "g-quantum",
+    "name": "Quantum Mechanics",
+    "teacherId": "t-aris-thorne",
+    "room": "Room 402",
+    "studentCount": 18,
+    "active": false,
+    "students": ["u1", "u2", "u3"],
+    "activeSessionId": null
+  }
+]

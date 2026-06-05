@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import Link from 'next/link';
 
 export default function VirtualRoomsPage() {
   const {
@@ -9,345 +10,335 @@ export default function VirtualRoomsPage() {
     activeRoom,
     joinStudyRoom,
     leaveStudyRoom,
-    sendChatMessage,
-    timerMinutes,
-    timerSeconds,
-    isTimerRunning
+    settings
   } = useApp();
 
-  const [chatInput, setChatInput] = useState('');
+  const [roomCode, setRoomCode] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTopic, setSelectedTopic] = useState('All Topics');
+  const [flowGoalPercent, setFlowGoalPercent] = useState(75);
 
+  // Fetch current flow goal metrics
+  useEffect(() => {
+    fetch('/api/student/flow-goal')
+      .then(res => {
+        if (res.ok) return res.json();
+        return null;
+      })
+      .then(data => {
+        if (data && data.percentage !== undefined) {
+          setFlowGoalPercent(data.percentage);
+        }
+      })
+      .catch(err => console.error('Error fetching flow goal:', err));
+  }, []);
 
-
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleJoinByCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
-    sendChatMessage(chatInput);
-    setChatInput('');
+    if (!roomCode.trim()) return;
+
+    // Find if we have a room matching name or id, otherwise default to first room
+    const cleanedCode = roomCode.trim().toLowerCase();
+    const matched = rooms.find(r => 
+      r.id.toLowerCase() === cleanedCode || 
+      r.name.toLowerCase().includes(cleanedCode)
+    );
+
+    const targetId = matched ? matched.id : (rooms[0]?.id || 'room-1');
+    await joinStudyRoom(targetId);
+    alert(`Joined Study Hall: ${matched ? matched.name : (rooms[0]?.name || 'Silent Library')}`);
+    setRoomCode('');
   };
 
-  const formattedTime = `${timerMinutes.toString().padStart(2, '0')}:${timerSeconds.toString().padStart(2, '0')}`;
+  // Filter logic
+  const filteredRooms = rooms.filter(room => {
+    const matchesSearch = room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      room.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (room.hostName || '').toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesTopic = selectedTopic === 'All Topics' || 
+      room.tags.some(tag => tag.toLowerCase() === selectedTopic.toLowerCase());
+    
+    return matchesSearch && matchesTopic;
+  });
 
   return (
-    <div className="space-y-lg">
-      {/* Hero Header */}
-      <section className="flex flex-col md:flex-row md:items-end justify-between gap-md pt-sm">
-        <div>
-          <h2 className="font-bold text-headline-xl text-primary tracking-tight mb-xs">Collaborative Flow</h2>
-          <p className="text-body-lg text-on-surface-variant max-w-2xl font-medium">
-            Join virtual rooms, share accountability, and sustain peak cognitive performance together.
+    <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] font-sans pb-xl pt-4">
+      {/* Hero Section */}
+      <section className="relative pt-8 pb-8 overflow-hidden">
+        <div className="max-w-[1200px] mx-auto px-6 relative z-10 text-center">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-[#091426] tracking-tight mb-4">
+            Your Focus Sanctuary Awaits.
+          </h1>
+          <p className="text-base md:text-lg text-[#45474c] mb-8 max-w-[600px] mx-auto">
+            Join a collaborative study session or discover public rooms to maintain your deep work momentum.
           </p>
-        </div>
-        <div className="flex gap-2">
-          {activeRoom && (
-            <button
-              onClick={leaveStudyRoom}
-              className="px-md py-sm rounded-lg border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-semibold text-label-md cursor-pointer transition-all duration-200 active:scale-95 flex items-center gap-xs"
+          
+          <form onSubmit={handleJoinByCode} className="max-w-[480px] mx-auto bg-white/80 backdrop-blur-md border border-slate-200/50 p-2 rounded-xl shadow-lg flex flex-col sm:flex-row gap-2">
+            <div className="flex-1 relative flex items-center">
+              <span className="material-symbols-outlined absolute left-3 text-slate-400">key</span>
+              <input 
+                type="text" 
+                value={roomCode}
+                onChange={e => setRoomCode(e.target.value)}
+                maxLength={20}
+                placeholder="Enter room code (e.g. FOCUS-2024)"
+                className="w-full pl-10 pr-4 py-2.5 bg-transparent border-none focus:ring-0 rounded-lg text-sm outline-none placeholder-slate-400"
+              />
+            </div>
+            <button 
+              type="submit"
+              className="bg-[#091426] hover:bg-slate-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-md active:scale-[0.98] cursor-pointer"
             >
-              <span className="material-symbols-outlined text-sm font-bold">logout</span>
-              Leave Active Room
+              Join Room
             </button>
-          )}
+          </form>
         </div>
       </section>
 
-      {/* Active Room Detail (When joined) */}
-      {activeRoom ? (
-        <section className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-lg ambient-shadow flex flex-col md:flex-row items-center justify-between gap-lg relative overflow-hidden">
-          <div className="absolute right-0 top-0 w-64 h-64 bg-secondary/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
-          
-          <div className="flex-1 w-full z-10">
-            <div className="flex justify-between items-end mb-sm">
-              <div>
-                <span className="text-label-sm text-secondary uppercase tracking-widest font-bold flex items-center gap-xs mb-xs">
-                  <span className="material-symbols-outlined text-[14px]">flag</span>
-                  Active Room: {activeRoom.name}
+      {/* Active Room Sticky Card (If joined) */}
+      {activeRoom && (
+        <div className="max-w-[1200px] mx-auto px-6 mb-8">
+          <div className="bg-[#091426] text-white border border-[#16233c] rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+            <div className="absolute right-0 top-0 w-64 h-64 bg-[#006c49]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+            
+            <div className="flex-1 w-full z-10">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#006c49] text-white flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[12px] font-bold">check_circle</span>
+                  Joined
                 </span>
-                <h3 className="font-bold text-headline-md text-primary">Marathon Goal Progress</h3>
+                <span className="text-xs text-slate-350">| Ambient Sound: {activeRoom.ambientSound}</span>
               </div>
-              <span className="text-label-md text-on-surface-variant font-semibold">320 / 500 Mins</span>
+              <h3 className="text-xl font-bold text-white mb-2">{activeRoom.name}</h3>
+              <p className="text-xs text-slate-300 flex items-center gap-1.5 font-medium">
+                <span className="w-2 h-2 rounded-full bg-[#4edea3] animate-pulse"></span>
+                {activeRoom.activeUsers} scholars study-synced
+              </p>
             </div>
-            <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
-              <div className="h-full bg-secondary rounded-full" style={{ width: '64%' }}></div>
-            </div>
-            <p className="text-label-sm text-on-surface-variant mt-sm flex items-center gap-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
-              {activeRoom.activeUsers} members study-synced
-            </p>
-          </div>
 
-          <div className="hidden md:block w-[1px] h-24 bg-outline-variant/30 z-10"></div>
-
-          <div className="flex flex-col items-center justify-center min-w-[200px] z-10">
-            <span className="text-label-sm font-semibold text-on-surface-variant mb-xs">Room Timer Sync</span>
-            <div className="font-bold text-[64px] leading-none text-primary tracking-tighter tabular-nums mb-sm">
-              {formattedTime}
+            <div className="flex items-center gap-4 z-10">
+              <Link 
+                href={`/rooms/preview?id=${activeRoom.id}`}
+                className="px-5 py-2.5 bg-[#006c49] hover:bg-[#005236] text-white font-semibold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">visibility</span>
+                Enter Workspace
+              </Link>
+              <button
+                onClick={leaveStudyRoom}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-white font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">logout</span>
+                Leave Room
+              </button>
             </div>
-            <span className="text-xs font-semibold text-on-surface-variant flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full inline-block ${
-                isTimerRunning ? 'bg-secondary animate-pulse' : 'bg-slate-400'
-              }`}></span>
-              {isTimerRunning ? 'Work Block Active' : 'Room Paused'}
-            </span>
           </div>
-        </section>
-      ) : (
-        <section className="bg-slate-100 dark:bg-slate-900 border border-dashed border-outline-variant/30 rounded-xl p-lg text-center">
-          <span className="material-symbols-outlined text-4xl text-slate-400 mb-sm">groups</span>
-          <h3 className="font-bold text-headline-md text-primary mb-xs">Not Joined in a Study Room</h3>
-          <p className="text-label-sm text-on-surface-variant font-semibold mb-md">
-            Join one of the community study rooms below to share logs and study with peers.
-          </p>
-        </section>
+        </div>
       )}
 
-      {/* Bento Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+      {/* Main layout */}
+      <div className="max-w-[1200px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* Left Column (Wide) - Spans 8 cols */}
-        <div className="lg:col-span-8 space-y-gutter">
-          {/* Virtual Study Rooms */}
-          <section className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-sm">
-            <h3 className="font-bold text-headline-md text-primary mb-md">Discover Rooms</h3>
+        {/* Discover and recommended rooms list */}
+        <div className="lg:col-span-8 space-y-8">
+          
+          {/* Filters and search bar */}
+          <section className="space-y-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <h2 className="text-2xl font-bold text-[#091426]">Discover Public Rooms</h2>
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64 bg-slate-200/50 border border-slate-300/40 rounded-full px-3 py-1.5 flex items-center">
+                  <span className="material-symbols-outlined text-slate-400 text-[18px] mr-2">search</span>
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search topics or hosts..." 
+                    className="w-full bg-transparent border-none outline-none text-xs focus:ring-0 text-slate-800 placeholder-slate-450"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Topics horizontal pills */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {['All Topics', 'Physics', 'Design', 'Coding', 'Medicine', 'Architecture'].map(topic => (
+                <button
+                  key={topic}
+                  onClick={() => setSelectedTopic(topic)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                    selectedTopic === topic 
+                      ? 'bg-[#091426] text-white shadow-sm' 
+                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {topic}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Recommended Rooms Grid */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-450 uppercase tracking-widest">Recommended for You</h3>
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-sm">
-              {rooms.map(room => {
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {filteredRooms.map(room => {
                 const isJoined = activeRoom?.id === room.id;
                 return (
-                  <div
-                    key={room.id}
-                    className={`border border-outline-variant/30 rounded-lg p-sm hover:border-primary/50 transition-all group bg-surface-bright relative overflow-hidden ${
-                      isJoined ? 'border-2 border-secondary' : ''
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-sm">
-                      <div>
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-surface-container-highest text-on-surface-variant mb-xs">
-                          {room.tags[0] || 'Study'}
-                        </span>
-                        <h4 className="font-bold text-body-lg text-primary">{room.name}</h4>
+                  <div key={room.id} className="bg-white/80 border border-slate-200/60 rounded-2xl p-5 flex flex-col justify-between hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md transition-all">
+                    <div>
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h4 className="text-lg font-bold text-[#091426] line-clamp-1">{room.name}</h4>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5">Host: {room.hostName || 'Prof. Alex Rivera'}</p>
+                        </div>
+                        <div className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1.5 ${
+                          room.activeUsers > 0 
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                            : 'bg-slate-50 text-slate-500 border border-slate-100'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${room.activeUsers > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                          {room.activeUsers > 0 ? 'Active' : 'Empty'}
+                        </div>
                       </div>
-                      <span className={`flex items-center gap-xs font-bold text-xs px-2 py-0.5 rounded ${
-                        isJoined
-                          ? 'bg-secondary/15 text-secondary'
-                          : 'bg-surface-container-highest text-on-surface-variant'
-                      }`}>
-                        <span className="material-symbols-outlined text-[13px] font-bold">
-                          {isJoined ? 'check_circle' : 'groups'}
-                        </span>
-                        {isJoined ? 'Joined' : `${room.activeUsers} online`}
-                      </span>
+
+                      {/* Participant Count */}
+                      <div className="mb-4 flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">Participants</span>
+                          <span className="font-bold text-[#091426]">{room.activeUsers} / {room.maxCapacity || 20} students</span>
+                        </div>
+                        <div className="flex -space-x-1.5">
+                          <div className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[9px] font-bold text-slate-500">A</div>
+                          <div className="w-6 h-6 rounded-full bg-slate-300 border-2 border-white flex items-center justify-center text-[9px] font-bold text-slate-600">S</div>
+                          <div className="w-6 h-6 rounded-full bg-slate-400 border-2 border-white flex items-center justify-center text-[9px] font-bold text-slate-700">J</div>
+                        </div>
+                      </div>
+
+                      {/* Allowed Apps */}
+                      <div className="flex items-center gap-2 mb-5">
+                        <span className="text-[10px] text-slate-455 font-bold uppercase tracking-wider">Ecosystem:</span>
+                        <div className="flex gap-1.5">
+                          {(room.allowedApps || ['notion', 'gdocs']).map((app, idx) => (
+                            <span 
+                              key={idx} 
+                              className="bg-slate-100 border border-slate-200/60 text-[10px] px-2 py-0.5 rounded text-slate-650 font-bold capitalize"
+                            >
+                              {app}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
-                    <p className="text-label-sm text-on-surface-variant mb-md font-semibold line-clamp-2">
-                      Ambient soundscape active: <strong>{room.ambientSound}</strong>. Tags: {room.tags.join(', ')}.
-                    </p>
-
-                    <div className="flex justify-between items-center mt-auto">
-                      <div className="flex -space-x-1.5">
-                        <div className="w-5 h-5 rounded-full bg-slate-200 border border-white flex items-center justify-center text-[9px] font-bold text-slate-500">
-                          {room.name[0]}
-                        </div>
-                        <div className="w-5 h-5 rounded-full bg-slate-300 border border-white flex items-center justify-center text-[9px] font-bold text-slate-600">
-                          {room.name[1]}
-                        </div>
-                      </div>
-                      {!isJoined && (
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/rooms/preview?id=${room.id}`}
+                        className="flex-1 py-2 border border-slate-200 hover:border-slate-300 text-[#091426] text-center font-bold text-xs rounded-xl hover:bg-slate-50 transition-colors"
+                      >
+                        Inspect Rules
+                      </Link>
+                      
+                      {!isJoined ? (
                         <button
                           onClick={() => joinStudyRoom(room.id)}
-                          className="font-bold text-xs text-primary hover:underline flex items-center gap-xs cursor-pointer"
+                          className="flex-1 py-2 bg-[#091426] hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
                         >
-                          Join Room
-                          <span className="material-symbols-outlined text-[12px] font-bold">arrow_forward</span>
+                          Join Study Hall
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="flex-1 py-2 bg-emerald-50 border border-emerald-100 text-emerald-650 font-bold text-xs rounded-xl flex items-center justify-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-sm">check_circle</span>
+                          In Session
                         </button>
                       )}
                     </div>
                   </div>
                 );
               })}
-            </div>
-          </section>
 
-          {/* Live Focus Competition */}
-          <section className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-sm">
-            <div className="flex justify-between items-center mb-md">
-              <h3 className="font-bold text-headline-md text-primary flex items-center gap-sm">
-                <span className="material-symbols-outlined text-primary font-bold">leaderboard</span>
-                Live Leaderboard
-              </h3>
-            </div>
-            
-            <div className="space-y-sm">
-              <div className="flex items-center gap-sm p-sm rounded-lg bg-surface-bright border border-outline-variant/30 relative overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
-                <div className="w-6 text-center font-bold text-label-md text-primary">1</div>
-                <div className="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-xs">
-                  YOU
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-label-md font-bold text-primary">You</h4>
-                  <div className="w-full h-1 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                    <div className="h-full bg-secondary" style={{ width: '85%' }}></div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-headline-md text-primary">850</span>
-                  <p className="text-[10px] text-on-surface-variant font-medium">points</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-sm p-sm rounded-lg hover:bg-slate-50 transition-colors">
-                <div className="w-6 text-center font-bold text-label-md text-on-surface-variant">2</div>
-                <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs">
-                  SJ
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-label-md font-bold text-primary">Sarah J.</h4>
-                  <div className="w-full h-1 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                    <div className="h-full bg-slate-300" style={{ width: '72%' }}></div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-body-md text-primary">720</span>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        {/* Right Column (Narrow) - Spans 4 cols */}
-        <div className="lg:col-span-4 flex flex-col gap-gutter">
-          {/* Online Co-workers */}
-          <section className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-sm">
-            <div className="flex justify-between items-center mb-sm">
-              <h3 className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider">
-                Online Study Buddies
-              </h3>
-              <span className="w-2.5 h-2.5 rounded-full bg-secondary"></span>
-            </div>
-            
-            <div className="flex gap-sm overflow-x-auto pb-xs pt-xs">
-              <div className="relative flex-shrink-0 cursor-pointer">
-                <div className="w-10 h-10 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center font-bold text-xs text-slate-500">
-                  A
-                </div>
-                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-secondary border-2 border-white rounded-full"></div>
-              </div>
-              
-              <div className="relative flex-shrink-0 cursor-pointer">
-                <div className="w-10 h-10 rounded-full bg-slate-300 border-2 border-white flex items-center justify-center font-bold text-xs text-slate-600">
-                  M
-                </div>
-                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-secondary border-2 border-white rounded-full"></div>
-              </div>
-            </div>
-          </section>
-
-          {/* Study Accountability Chat / Log */}
-          <section className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-sm flex flex-col h-[400px]">
-            <div className="p-md border-b border-outline-variant/20 flex justify-between items-center bg-slate-50 rounded-t-xl">
-              <h3 className="text-label-md font-bold text-primary flex items-center gap-sm">
-                <span className="material-symbols-outlined text-on-surface-variant text-[20px]">forum</span>
-                Accountability Log
-              </h3>
-            </div>
-
-            {/* Chat Messages Log */}
-            <div className="flex-1 p-md overflow-y-auto space-y-md bg-slate-50/30">
-              <div className="flex justify-center">
-                <span className="bg-surface-container-highest px-3 py-1 rounded-full text-[10px] font-bold text-on-surface-variant">
-                  {activeRoom ? `Joined: ${activeRoom.name}` : 'Join a study room to view chat log'}
-                </span>
-              </div>
-
-              {activeRoom?.messages.map(msg => {
-                const isSelf = msg.user === 'Student';
-                const isAI = msg.user === 'AI Tutor';
-                return (
-                  <div key={msg.id} className={`flex gap-sm ${isSelf ? 'flex-row-reverse' : ''}`}>
-                    {isAI ? (
-                      <div className="w-8 h-8 rounded-full bg-tertiary/15 text-tertiary flex items-center justify-center shrink-0 border border-tertiary/20 shadow-sm">
-                        <span className="material-symbols-outlined text-[15px] font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>
-                          smart_toy
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-slate-200 border border-outline-variant/20 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
-                        {msg.user[0]}
-                      </div>
-                    )}
-                    <div className="max-w-[75%]">
-                      <div className={`flex items-baseline gap-xs mb-0.5 ${isSelf ? 'justify-end' : ''}`}>
-                        {isAI ? (
-                          <span className="text-xs font-bold text-tertiary flex items-center gap-1">
-                            AI Tutor
-                            <span className="bg-tertiary/10 text-tertiary text-[9px] font-extrabold px-1.5 py-0.2 rounded scale-90">BOT</span>
-                          </span>
-                        ) : (
-                          <span className="text-xs font-bold text-primary">{msg.user}</span>
-                        )}
-                        <span className="text-[9px] text-slate-400">
-                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <div className={`border rounded-2xl p-sm text-label-sm inline-block shadow-sm leading-relaxed whitespace-pre-wrap ${
-                        isSelf
-                          ? 'bg-primary border-primary text-white rounded-tr-none'
-                          : isAI
-                          ? 'bg-gradient-to-br from-tertiary/10 to-tertiary/5 border-tertiary/20 text-on-surface rounded-tl-none font-medium'
-                          : 'bg-white border-outline-variant/30 text-on-surface rounded-tl-none'
-                      }`}>
-                        {msg.text}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Input area */}
-            <div className="p-sm border-t border-outline-variant/20 bg-white rounded-b-xl flex flex-col gap-xs">
-              {activeRoom && (
-                <div className="flex gap-2 items-center px-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!chatInput.trim().startsWith('@ai')) {
-                        setChatInput(prev => '@ai ' + prev.trim());
-                      }
-                    }}
-                    className="px-2 py-0.5 border border-tertiary/20 bg-tertiary/5 hover:bg-tertiary/10 text-tertiary rounded-full text-[10px] font-bold cursor-pointer flex items-center gap-0.5 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
-                    Tag @ai
-                  </button>
-                  <span className="text-[9px] text-slate-400 font-semibold">Type @ai to ask AI Tutor</span>
+              {filteredRooms.length === 0 && (
+                <div className="col-span-2 text-center py-12 bg-white/50 border border-dashed border-slate-300/60 rounded-2xl text-slate-500 font-semibold italic text-sm">
+                  No public study spaces match your query.
                 </div>
               )}
-              <form onSubmit={handleSendMessage} className="flex gap-xs w-full">
-                <input
-                  disabled={!activeRoom}
-                  type="text"
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  placeholder={activeRoom ? 'Share your study goal...' : 'Join a room first...'}
-                  className="w-full bg-surface-bright border border-outline-variant/50 rounded-full py-1.5 px-sm text-label-sm outline-none bg-surface/30 focus:border-primary"
-                />
-                <button
-                  disabled={!activeRoom}
-                  type="submit"
-                  className="w-8 h-8 rounded-full bg-primary hover:bg-primary/95 disabled:bg-slate-300 text-on-primary flex items-center justify-center cursor-pointer transition-colors shrink-0"
-                >
-                  <span className="material-symbols-outlined text-[16px] font-bold">send</span>
-                </button>
-              </form>
             </div>
           </section>
+
         </div>
 
+        {/* Sidebar: Recent Rooms & Goal meters */}
+        <aside className="lg:col-span-4 space-y-8">
+          
+          {/* Recent Rooms list */}
+          <section className="bg-white/85 border border-slate-200/60 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="material-symbols-outlined text-[#091426] font-bold">history</span>
+              <h3 className="text-md font-bold text-[#091426]">Recent Rooms</h3>
+            </div>
+            
+            <div className="space-y-2">
+              {[
+                { name: 'Quantum Mechanics Study', when: 'Joined 2h ago', icon: 'science' },
+                { name: 'UI/UX Figma Jam', when: 'Joined yesterday', icon: 'palette' },
+                { name: 'Silent Library', when: 'Joined 3 days ago', icon: 'menu_book' }
+              ].map((rr, idx) => (
+                <div 
+                  key={idx} 
+                  className="flex items-center gap-3 p-2 rounded-xl border border-transparent hover:border-slate-200/40 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-[#091426]">
+                    <span className="material-symbols-outlined">{rr.icon}</span>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <p className="text-xs font-bold text-[#091426] truncate">{rr.name}</p>
+                    <p className="text-[10px] text-slate-450 font-medium">{rr.when}</p>
+                  </div>
+                  <span className="material-symbols-outlined text-slate-400 text-sm">chevron_right</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Current Flow Goal widget */}
+          <section className="bg-white/85 border border-slate-200/60 rounded-2xl p-5 shadow-sm relative overflow-hidden">
+            <div className="relative z-10">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Current Flow Goal</h3>
+              <div className="flex items-end justify-between mb-2">
+                <span className="text-2xl font-bold text-[#091426]">120 <span className="text-xs font-normal text-slate-400">mins/day</span></span>
+                <span className="text-xs font-bold text-[#006c49]">{flowGoalPercent}% Complete</span>
+              </div>
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div className="bg-[#4edea3] h-full rounded-full transition-all duration-1000" style={{ width: `${flowGoalPercent}%` }}></div>
+              </div>
+            </div>
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-[#006c49]/5 rounded-full blur-2xl"></div>
+          </section>
+
+          {/* Aesthetic visual illustration panel */}
+          <div className="rounded-2xl overflow-hidden h-48 relative border border-slate-200 shadow-sm">
+            <img 
+              className="w-full h-full object-cover" 
+              alt="Digital study space illustration" 
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdmz4xX2p3FOE4sfapASnMR36kK4VOoUTdnPmDye-eLeqwNRB5IHfdWgOfVg_m_BTpDYlmh77jSz2yMlkHogc5Kk6FePp4FoRMWAerZDHWZApQHjhknkqUHts_H8GHet2kSsAKLQoP6AFB3re293dQPRljLqmcakmm4mZjO18qQP1UnsSs_Sa0Pt5JDtND8ZFYAy5XKpzvecG2Xnw6-8jOUHx69YPudti6_RrD5u1GCzcBaEQ10YmTFTezSPVgclV1O7PbEzmkvENN"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#091426]/75 to-transparent flex flex-col justify-end p-4">
+              <p className="text-white font-bold text-xs">Aesthetic focus sanctuary</p>
+              <p className="text-slate-300 text-[10px] font-medium">Cognitive sustainability &amp; peer accountability</p>
+            </div>
+          </div>
+
+        </aside>
+
       </div>
-
-
     </div>
   );
 }
+

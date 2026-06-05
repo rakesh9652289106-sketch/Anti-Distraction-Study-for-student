@@ -46,6 +46,25 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+async function fetchJsonSafely<T>(url: string): Promise<T | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`Fetch to ${url} returned status ${res.status}`);
+      return null;
+    }
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.warn(`Fetch to ${url} did not return JSON. Content-Type: ${contentType}`);
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn(`Error fetching JSON from ${url}:`, err);
+    return null;
+  }
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [settings, setSettings] = useState<GlobalSettings>({
@@ -78,37 +97,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const fetchData = async () => {
     try {
-      const [tasksRes, settingsRes, sessionsRes, roomsRes, ticketsRes] = await Promise.all([
-        fetch('/api/tasks'),
-        fetch('/api/settings'),
-        fetch('/api/sessions'),
-        fetch('/api/rooms'),
-        fetch('/api/support')
-      ]);
-
       const [tasksData, settingsData, sessionsData, roomsData, ticketsData] = await Promise.all([
-        tasksRes.json(),
-        settingsRes.json(),
-        sessionsRes.json(),
-        roomsRes.json(),
-        ticketsRes.json()
+        fetchJsonSafely<Task[]>('/api/tasks'),
+        fetchJsonSafely<GlobalSettings>('/api/settings'),
+        fetchJsonSafely<StudySession[]>('/api/sessions'),
+        fetchJsonSafely<StudyRoom[]>('/api/rooms'),
+        fetchJsonSafely<SupportTicket[]>('/api/support')
       ]);
 
-      setTasks(tasksData);
-      setSettings(settingsData);
-      setSessions(sessionsData);
-      setRooms(roomsData);
-      setTickets(ticketsData);
+      if (tasksData !== null) setTasks(tasksData);
+      if (settingsData !== null) setSettings(settingsData);
+      if (sessionsData !== null) setSessions(sessionsData);
+      if (roomsData !== null) setRooms(roomsData);
+      if (ticketsData !== null) setTickets(ticketsData);
       
       // Update room in context if active
-      if (activeRoom) {
+      if (activeRoom && roomsData !== null) {
         const freshRoom = roomsData.find((r: StudyRoom) => r.id === activeRoom.id);
         if (freshRoom) {
           setActiveRoom(freshRoom);
         }
       }
     } catch (err) {
-      console.error('Error fetching data from API:', err);
+      console.warn('Error inside fetchData:', err);
     }
   };
 
@@ -325,12 +336,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemId })
       });
-      const data = await response.json();
-      if (response.ok) {
-        await fetchData();
-        return { success: true, message: data.message };
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        if (response.ok) {
+          await fetchData();
+          return { success: true, message: data.message };
+        } else {
+          return { success: false, message: data.error || 'Purchase failed' };
+        }
       } else {
-        return { success: false, message: data.error };
+        const text = await response.text();
+        return { success: false, message: text || `Server returned error status ${response.status}` };
       }
     } catch (err) {
       const error = err as Error;

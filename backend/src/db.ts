@@ -18,6 +18,7 @@ export interface StudySession {
   taskTitle: string;
   distractionsBlocked: number;
   focusScore: number;
+  timeline?: Array<{ minute: number; score: number }>;
 }
 
 export interface AnalyticsSummary {
@@ -48,6 +49,16 @@ export interface StudyRoom {
     text: string;
     timestamp: string;
   }>;
+  hostName?: string;
+  isVerified?: boolean;
+  maxCapacity?: number;
+  allowedApps?: string[];
+  focusMode?: string;
+  sessionDurationFormat?: string;
+  allowScreenShare?: boolean;
+  videoStreamRequired?: boolean;
+  chatModerationFilter?: boolean;
+  censorWords?: string[];
 }
 
 export interface GlobalSettings {
@@ -115,6 +126,38 @@ export interface StudentUser {
   chatMuted: boolean;
 }
 
+// Stitch New Resource & Group Types
+export interface SharedResource {
+  id: string;
+  title: string;
+  fileType: 'pdf' | 'video' | 'note' | 'paper' | 'link';
+  url: string;
+  size?: string;
+  ownerId: string;
+  relevanceScore: number;
+  aiSummarySnippet: string;
+  suggestedTags: string[];
+  sharedWithGroups: Array<{
+    groupId: string;
+    permissions: { viewOnly: boolean; canDownload: boolean; allowAiSummarization: boolean };
+  }>;
+  stats: { views: number; downloads: number };
+  createdAt: string;
+  starred: boolean;
+  archived: boolean;
+}
+
+export interface ClassroomGroup {
+  id: string;
+  name: string;
+  teacherId: string;
+  room: string;
+  studentCount: number;
+  active: boolean;
+  students: string[];
+  activeSessionId?: string | null;
+}
+
 export interface DbSchema {
   tasks: Task[];
   sessions: StudySession[];
@@ -129,6 +172,8 @@ export interface DbSchema {
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
+const RESOURCES_FILE = path.join(DATA_DIR, 'resources.json');
+const GROUPS_FILE = path.join(DATA_DIR, 'groups.json');
 
 // Helper to initialize database with default data
 function getInitialData(): DbSchema {
@@ -162,7 +207,13 @@ function getInitialData(): DbSchema {
         ambientSound: 'Soft Rain',
         messages: [
           { id: 'm1', user: 'Alex', text: 'Stretching for 5 mins, then back to math!', timestamp: new Date().toISOString() }
-        ]
+        ],
+        hostName: 'Admin Library',
+        isVerified: true,
+        maxCapacity: 50,
+        allowedApps: ['notion', 'gdocs'],
+        focusMode: 'Standard Lock',
+        sessionDurationFormat: '50m Focus / 10m Break'
       },
       {
         id: 'room-2',
@@ -172,7 +223,13 @@ function getInitialData(): DbSchema {
         ambientSound: 'Lofi Beats',
         messages: [
           { id: 'm2', user: 'Sara', text: 'Working on a new Next.js dashboard', timestamp: new Date().toISOString() }
-        ]
+        ],
+        hostName: 'Tutor Bot',
+        isVerified: true,
+        maxCapacity: 30,
+        allowedApps: ['notion', 'terminal'],
+        focusMode: 'AI Active Nudge',
+        sessionDurationFormat: '25m Focus / 5m Discussion'
       },
       {
         id: 'room-3',
@@ -180,7 +237,13 @@ function getInitialData(): DbSchema {
         activeUsers: 5,
         tags: ['Science', 'Calculus', 'Exam prep'],
         ambientSound: 'Library Ambient',
-        messages: []
+        messages: [],
+        hostName: 'Prof. Alex Rivera',
+        isVerified: true,
+        maxCapacity: 20,
+        allowedApps: ['gdocs', 'youtube'],
+        focusMode: 'Hard Lock',
+        sessionDurationFormat: '90m Focus / 15m Insight Exchange'
       }
     ],
     settings: {
@@ -199,6 +262,12 @@ function getInitialData(): DbSchema {
         chatModerationFilter: true,
         censorWords: ['spam', 'cheat', 'abuse', 'slack', 'tiktok'],
         idleTimeoutMinutes: 15
+      },
+      aiConfig: {
+        personality: 'academic',
+        temperature: 0.7,
+        systemPrompt: 'You are FocusFlow AI Tutor. Provide structured explanations and advice. Maintain a supportive educational tone. Encourage the student to avoid distraction and use Pomodoro blocks.',
+        attentionGuardSensitivity: 'medium'
       }
     },
     tickets: [
@@ -252,6 +321,22 @@ export function readDb(): DbSchema {
     if (parsed.settings && !parsed.settings.groupConfig) {
       parsed.settings.groupConfig = getInitialData().settings.groupConfig;
     }
+    if (parsed.settings && !parsed.settings.aiConfig) {
+      parsed.settings.aiConfig = getInitialData().settings.aiConfig;
+    }
+    // Defensive check to ensure Stitch properties are added to loaded rooms
+    if (parsed.rooms) {
+      const defaults = getInitialData().rooms;
+      parsed.rooms.forEach((r: any, idx: number) => {
+        const d = defaults.find(item => item.id === r.id) || defaults[0];
+        if (r.hostName === undefined) r.hostName = d.hostName;
+        if (r.isVerified === undefined) r.isVerified = d.isVerified;
+        if (r.maxCapacity === undefined) r.maxCapacity = d.maxCapacity;
+        if (r.allowedApps === undefined) r.allowedApps = d.allowedApps;
+        if (r.focusMode === undefined) r.focusMode = d.focusMode;
+        if (r.sessionDurationFormat === undefined) r.sessionDurationFormat = d.sessionDurationFormat;
+      });
+    }
     return parsed;
   } catch (err) {
     console.error('Error reading DB, returning defaults', err);
@@ -265,4 +350,56 @@ export function writeDb(data: DbSchema) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+
+// -------------------------------------------------------------
+// Separate Database Helpers for resources.json & groups.json
+// -------------------------------------------------------------
+
+export function readResourcesDb(): SharedResource[] {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(RESOURCES_FILE)) {
+    fs.writeFileSync(RESOURCES_FILE, JSON.stringify([], null, 2), 'utf8');
+    return [];
+  }
+  try {
+    const raw = fs.readFileSync(RESOURCES_FILE, 'utf8');
+    return JSON.parse(raw) as SharedResource[];
+  } catch (err) {
+    console.error('Error reading resources DB', err);
+    return [];
+  }
+}
+
+export function writeResourcesDb(data: SharedResource[]) {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  fs.writeFileSync(RESOURCES_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+
+export function readGroupsDb(): ClassroomGroup[] {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(GROUPS_FILE)) {
+    fs.writeFileSync(GROUPS_FILE, JSON.stringify([], null, 2), 'utf8');
+    return [];
+  }
+  try {
+    const raw = fs.readFileSync(GROUPS_FILE, 'utf8');
+    return JSON.parse(raw) as ClassroomGroup[];
+  } catch (err) {
+    console.error('Error reading groups DB', err);
+    return [];
+  }
+}
+
+export function writeGroupsDb(data: ClassroomGroup[]) {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  fs.writeFileSync(GROUPS_FILE, JSON.stringify(data, null, 2), 'utf8');
 }

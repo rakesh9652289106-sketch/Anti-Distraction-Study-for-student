@@ -10,11 +10,11 @@ import AssistantSidebar from '@/components/AssistantSidebar';
 export default function MainLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { settings, isAssistantOpen, setIsAssistantOpen } = useApp();
   const pathname = usePathname();
-  const isAdminRoute = pathname?.startsWith('/admin');
+  const isBypassShell = pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/teacher');
 
-  if (isAdminRoute) {
+  if (isBypassShell) {
     return (
-      <main className="w-full min-h-screen bg-[#070D19] relative z-10">
+      <main className="w-full min-h-screen relative z-10">
         {children}
       </main>
     );

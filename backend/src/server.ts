@@ -6,6 +6,10 @@ import path from 'path';
 import {
   readDb,
   writeDb,
+  readResourcesDb,
+  writeResourcesDb,
+  readGroupsDb,
+  writeGroupsDb,
   Task,
   StudySession,
   AnalyticsSummary,
@@ -13,14 +17,16 @@ import {
   StudyRoom,
   SupportTicket,
   AdminAlert,
-  StudentUser
+  StudentUser,
+  SharedResource,
+  ClassroomGroup
 } from './db';
 import { generateAiResponse } from './educationalAi';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS for client requests (though rewrites proxy will bypass standard CORS limitations)
+// Enable CORS for client requests
 app.use(cors({
   origin: 'http://localhost:3000',
   credentials: true
@@ -39,14 +45,12 @@ function isAuthenticated(req: Request): boolean {
 // Admin Auth API Endpoints
 // -------------------------------------------------------------
 
-// GET /api/admin/check-auth
 app.get('/api/admin/check-auth', (req: Request, res: Response) => {
   const token = req.cookies?.focusflow_admin_auth;
   const authenticated = token === 'authenticated';
   res.json({ authenticated });
 });
 
-// POST /api/admin/login
 app.post('/api/admin/login', (req: Request, res: Response) => {
   try {
     const { password } = req.body;
@@ -68,14 +72,13 @@ app.post('/api/admin/login', (req: Request, res: Response) => {
   }
 });
 
-// POST /api/admin/logout
 app.post('/api/admin/logout', (req: Request, res: Response) => {
   res.cookie('focusflow_admin_auth', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     path: '/',
-    maxAge: 0 // Expire immediately
+    maxAge: 0
   });
   res.json({ success: true, message: 'Logged out successfully' });
 });
@@ -84,7 +87,6 @@ app.post('/api/admin/logout', (req: Request, res: Response) => {
 // Admin Alerts API Endpoints
 // -------------------------------------------------------------
 
-// GET /api/admin/alerts
 app.get('/api/admin/alerts', (req: Request, res: Response) => {
   if (!isAuthenticated(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -93,7 +95,6 @@ app.get('/api/admin/alerts', (req: Request, res: Response) => {
   res.json(db.alerts || []);
 });
 
-// POST /api/admin/alerts
 app.post('/api/admin/alerts', (req: Request, res: Response) => {
   if (!isAuthenticated(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -137,7 +138,6 @@ app.post('/api/admin/alerts', (req: Request, res: Response) => {
 // Admin Users API Endpoints
 // -------------------------------------------------------------
 
-// GET /api/admin/users
 app.get('/api/admin/users', (req: Request, res: Response) => {
   if (!isAuthenticated(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -150,7 +150,6 @@ app.get('/api/admin/users', (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/admin/users
 app.patch('/api/admin/users', (req: Request, res: Response) => {
   if (!isAuthenticated(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -184,7 +183,6 @@ app.patch('/api/admin/users', (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/admin/users
 app.delete('/api/admin/users', (req: Request, res: Response) => {
   if (!isAuthenticated(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -212,10 +210,688 @@ app.delete('/api/admin/users', (req: Request, res: Response) => {
 });
 
 // -------------------------------------------------------------
-// Analytics API Endpoint
+// [NEW STITCH] Admin Master Dashboard Metrics API Endpoints
 // -------------------------------------------------------------
 
-// GET /api/analytics
+// GET /api/admin/metrics
+app.get('/api/admin/metrics', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const db = readDb();
+  const groups = readGroupsDb();
+  const resources = readResourcesDb();
+
+  res.json({
+    systemStats: {
+      uptimePercent: 99.98,
+      totalStudents: db.users.length * 1500, // mock scaled
+      studentsGrowthTrend: 4.2,
+      activeFaculty: 84,
+      facultyGrowthTrend: 1.5,
+      activeLicenses: db.users.length * 1200,
+      licensesGrowthTrend: 6.8,
+      storageUsagePercent: 62.4
+    },
+    zonesSummary: {
+      studentZone: {
+        onlineNow: db.users.filter(u => u.status === 'active').length * 20,
+        pendingRegistration: 14
+      },
+      teacherZone: {
+        activeCourses: groups.length,
+        flaggedResources: resources.filter(r => r.relevanceScore < 50).length
+      },
+      infraZone: {
+        latencyMs: 18,
+        apiLoadStatus: 'Normal'
+      }
+    }
+  });
+});
+
+// GET /api/admin/ai-insights
+app.get('/api/admin/ai-insights', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  res.json([
+    {
+      id: "ins-1",
+      severity: "info",
+      text: "System predicts a 15% surge in student concurrency tomorrow morning due to physics homework due dates."
+    },
+    {
+      id: "ins-2",
+      severity: "success",
+      text: "Automatic garbage collection active. Saved 4.2 GB database indices storage size."
+    },
+    {
+      id: "ins-3",
+      severity: "warning",
+      text: "Attention Guard webcam engine flagged a high proportion of idle events in STEM Prep Hall."
+    }
+  ]);
+});
+
+// GET /api/admin/system-events
+app.get('/api/admin/system-events', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  res.json([
+    { timestamp: new Date(Date.now() - 60000).toISOString(), module: "Auth_Gate", eventType: "Access Granted", status: "NORMAL", affectedUid: "admin@focusflow.ai" },
+    { timestamp: new Date(Date.now() - 300000).toISOString(), module: "DB_JSON", eventType: "Database Read Sync", status: "NORMAL", affectedUid: "db.json" },
+    { timestamp: new Date(Date.now() - 600000).toISOString(), module: "AI_Tutor", eventType: "Vector Search Success", status: "NORMAL", affectedUid: "educationalAi" }
+  ]);
+});
+
+// POST /api/admin/reports/generate
+app.post('/api/admin/reports/generate', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  res.json({ success: true, downloadUrl: "/api/data/manage" });
+});
+
+// POST /api/admin/system/safe-mode
+app.post('/api/admin/system/safe-mode', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const { enabled } = req.body;
+  res.json({ success: true, status: enabled ? "safe-mode-engaged" : "safe-mode-disengaged" });
+});
+
+// -------------------------------------------------------------
+// [NEW STITCH] Admin Configurations API Endpoints
+// -------------------------------------------------------------
+
+// GET /api/admin/config
+app.get('/api/admin/config', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const db = readDb();
+  res.json({
+    dashboardLayout: {
+      gridStyle: "Standard",
+      quickActionsEnabled: true
+    },
+    aiAssistant: {
+      activeProactivity: db.settings.aiConfig?.personality === 'strict',
+      moodDetection: true
+    },
+    rewardSystem: {
+      status: "Gamma Active",
+      streaksMultiplier: true,
+      publicLeaderboards: true
+    },
+    studyRoomPermissions: {
+      globalMaxCapacity: db.settings.groupConfig?.maxUsersPerGroup || 25,
+      moderatorsPerRoom: 2,
+      guestJoinRequests: "Enabled",
+      screenshareAllowed: db.settings.groupConfig?.allowScreenShare ? "Strict" : "Disabled",
+      audioBroadcast: "Disabled"
+    },
+    groupAppIntegration: [
+      { id: "app-linkedin", name: "LinkedIn", icon: "work", enabled: true },
+      { id: "app-youtube", name: "YouTube", icon: "video_library", enabled: !db.settings.blockedWebsites.includes("youtube.com") },
+      { id: "app-gdocs", name: "Google Docs", icon: "description", enabled: true }
+    ]
+  });
+});
+
+// PUT /api/admin/config
+app.put('/api/admin/config', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const db = readDb();
+    const config = req.body;
+
+    if (config.studyRoomPermissions?.globalMaxCapacity !== undefined) {
+      if (!db.settings.groupConfig) db.settings.groupConfig = {} as any;
+      db.settings.groupConfig!.maxUsersPerGroup = config.studyRoomPermissions.globalMaxCapacity;
+    }
+    
+    if (config.groupAppIntegration) {
+      const youtubeApp = config.groupAppIntegration.find((app: any) => app.id === 'app-youtube');
+      if (youtubeApp && youtubeApp.enabled === false) {
+        if (!db.settings.blockedWebsites.includes("youtube.com")) {
+          db.settings.blockedWebsites.push("youtube.com");
+        }
+      } else if (youtubeApp && youtubeApp.enabled === true) {
+        db.settings.blockedWebsites = db.settings.blockedWebsites.filter(w => w !== "youtube.com");
+      }
+    }
+
+    writeDb(db);
+    res.json({ success: true, updatedConfig: config });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/groups
+app.post('/api/admin/groups', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { name, room } = req.body;
+    if (!name) return res.status(400).json({ error: "Group name is required" });
+
+    const groups = readGroupsDb();
+    const newGroup: ClassroomGroup = {
+      id: 'g-' + Math.random().toString(36).substring(2, 9),
+      name,
+      teacherId: 't-aris-thorne',
+      room: room || 'Room 101',
+      studentCount: 0,
+      active: false,
+      students: [],
+      activeSessionId: null
+    };
+
+    groups.push(newGroup);
+    writeGroupsDb(groups);
+
+    res.status(201).json(newGroup);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// -------------------------------------------------------------
+// [NEW STITCH] Teacher Groups & Session Command API Endpoints
+// -------------------------------------------------------------
+
+// GET /api/teacher/groups
+app.get('/api/teacher/groups', (req: Request, res: Response) => {
+  const groups = readGroupsDb();
+  res.json(groups);
+});
+
+// GET /api/teacher/groups/:groupId/session
+app.get('/api/teacher/groups/:groupId/session', (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const groups = readGroupsDb();
+    const group = groups.find(g => g.id === groupId) || groups[0];
+    
+    res.json({
+      liveSession: {
+        sessionId: group.activeSessionId || "sess-402",
+        focusScore: 84,
+        focusTrend: 5,
+        activeStudents: group.students.length || 3,
+        totalStudents: group.studentCount || 24,
+        appsSummary: { "Notion": 14, "VS Code": 6, "YouTube": 2 },
+        momentum: {
+          timelineMinutes: [10, 20, 30, 40, 50, 60],
+          focusValues: [60, 75, 80, 92, 84, 88],
+          peakFocusPercent: 92,
+          dipTime: "14:20"
+        }
+      },
+      roster: [
+        { studentId: "u1", name: "Alex Rivera", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80", activity: "Focusing on Notion", status: "focusing" },
+        { studentId: "u2", name: "Sara Chen", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80", activity: "Solving Schrödinger Equations", status: "focusing" },
+        { studentId: "u4", name: "Jessica Vance", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&q=80", activity: "Idle for 4m", status: "distracted" }
+      ]
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/teacher/session/:sessionId/end
+app.post('/api/teacher/session/:sessionId/end', (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const groups = readGroupsDb();
+  const target = groups.find(g => g.activeSessionId === sessionId);
+  if (target) {
+    target.active = false;
+    target.activeSessionId = null;
+    writeGroupsDb(groups);
+  }
+  res.json({ success: true, sessionReportId: "report-" + Math.random().toString(36).substring(2, 9) });
+});
+
+// POST /api/teacher/session/:sessionId/broadcast
+app.post('/api/teacher/session/:sessionId/broadcast', (req: Request, res: Response) => {
+  try {
+    const { message } = req.body;
+    const db = readDb();
+    if (!db.alerts) db.alerts = [];
+    const newAlert: AdminAlert = {
+      id: 'alert-' + Math.random().toString(36).substring(2, 9),
+      title: "Teacher Broadcast Announcement",
+      text: message || "Attention, class! Please refocus your attention to the assigned study material.",
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type: 'info',
+      region: 'Room 402',
+      source: 'Instructor Console'
+    };
+    db.alerts.unshift(newAlert);
+    writeDb(db);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/teacher/session/:sessionId/apps/:appId/toggle
+app.post('/api/teacher/session/:sessionId/apps/:appId/toggle', (req: Request, res: Response) => {
+  const { appId } = req.params;
+  const { enabled } = req.body;
+  
+  // Mock logic: if we disable, we block the website globally
+  const db = readDb();
+  if (appId === 'app-youtube') {
+    if (!enabled) {
+      if (!db.settings.blockedWebsites.includes("youtube.com")) db.settings.blockedWebsites.push("youtube.com");
+    } else {
+      db.settings.blockedWebsites = db.settings.blockedWebsites.filter(w => w !== "youtube.com");
+    }
+    writeDb(db);
+  }
+  res.json({ success: true, appId, enabled });
+});
+
+// POST /api/teacher/session/:sessionId/students/:studentId/nudge
+app.post('/api/teacher/session/:sessionId/students/:studentId/nudge', (req: Request, res: Response) => {
+  const { studentId } = req.params;
+  const db = readDb();
+  const user = db.users.find(u => u.id === studentId);
+  
+  // Set alert
+  if (user) {
+    const nudgeAlert: AdminAlert = {
+      id: 'alert-' + Math.random().toString(36).substring(2, 9),
+      title: `Nudge issued to ${user.name}`,
+      text: `Refocus alert sent. Student was idle or browser was unfocused.`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type: 'warning',
+      region: 'Local Client',
+      source: 'Teacher Nudge'
+    };
+    db.alerts.unshift(nudgeAlert);
+    writeDb(db);
+  }
+  res.json({ success: true, status: "nudged" });
+});
+
+// POST /api/teacher/session/:sessionId/students/:studentId/lock
+app.post('/api/teacher/session/:sessionId/students/:studentId/lock', (req: Request, res: Response) => {
+  const { locked } = req.body;
+  res.json({ success: true, locked });
+});
+
+// -------------------------------------------------------------
+// [NEW STITCH] Student Discovery & Rooms API Endpoints
+// -------------------------------------------------------------
+
+// GET /api/student/rooms
+app.get('/api/student/rooms', (req: Request, res: Response) => {
+  const db = readDb();
+  const search = (req.query.search as string || '').toLowerCase().trim();
+  const topic = (req.query.topic as string || '').toLowerCase().trim();
+  
+  let list = db.rooms || [];
+  if (search) {
+    list = list.filter(r => r.name.toLowerCase().includes(search) || r.tags.some(t => t.toLowerCase().includes(search)));
+  }
+  if (topic && topic !== 'all topics') {
+    list = list.filter(r => r.tags.some(t => t.toLowerCase() === topic));
+  }
+  
+  res.json(list);
+});
+
+// POST /api/student/rooms/join
+app.post('/api/student/rooms/join', (req: Request, res: Response) => {
+  const { roomCode, roomId } = req.body;
+  const db = readDb();
+  const room = db.rooms.find(r => r.id === roomId || r.id === roomCode);
+  if (!room) return res.status(404).json({ error: "Focus Room not found" });
+
+  room.activeUsers += 1;
+  writeDb(db);
+
+  res.json({ success: true, roomId: room.id, websocketUrl: `ws://localhost:5000/rooms/${room.id}/live` });
+});
+
+// GET /api/student/flow-goal
+app.get('/api/student/flow-goal', (req: Request, res: Response) => {
+  const db = readDb();
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayAnalytics = db.analytics.find(a => a.date === todayStr);
+
+  res.json({
+    targetMinutes: 120,
+    completedMinutes: todayAnalytics?.focusMinutes || 40,
+    progressPercent: Math.min(100, Math.round(((todayAnalytics?.focusMinutes || 40) / 120) * 100))
+  });
+});
+
+// GET /api/student/rooms/:roomId
+app.get('/api/student/rooms/:roomId', (req: Request, res: Response) => {
+  const { roomId } = req.params;
+  const db = readDb();
+  const resources = readResourcesDb();
+  
+  const room = db.rooms.find(r => r.id === roomId) || db.rooms[0];
+  const roomResources = resources.filter(resItem => 
+    resItem.sharedWithGroups.some(g => g.groupId === 'g-physics-s2')
+  );
+
+  res.json({
+    roomDetails: {
+      roomId: room.id,
+      title: room.name,
+      host: room.hostName || "Prof. Alex Rivera",
+      isVerified: room.isVerified ?? true,
+      activeSession: true,
+      onlineCount: room.activeUsers,
+      maxSeats: room.maxCapacity || 20,
+      focusIndex: db.settings.focusScore
+    },
+    environment: {
+      focusMode: room.focusMode || "Hard Lock",
+      allowedApps: room.allowedApps || ["Notion", "Google Docs"],
+      durationFormat: room.sessionDurationFormat || "90m Focus / 15m Insight Exchange"
+    },
+    participants: [
+      { name: "Alex Rivera", status: "focusing", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" },
+      { name: "Sara Chen", status: "focusing", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80" },
+      { name: "Julian D.", status: "break", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" }
+    ],
+    curatedResources: roomResources.map(r => ({
+      id: r.id,
+      title: r.title,
+      type: r.fileType,
+      size: r.size || "Unknown Size",
+      url: r.url
+    }))
+  });
+});
+
+// POST /api/student/rooms/:roomId/resources/suggest
+app.post('/api/student/rooms/:roomId/resources/suggest', (req: Request, res: Response) => {
+  try {
+    const { roomId } = req.params;
+    const { title, type, url } = req.body;
+    if (!title) return res.status(400).json({ error: "Title is required" });
+
+    const resources = readResourcesDb();
+    const newResource: SharedResource = {
+      id: 'res-' + Math.random().toString(36).substring(2, 9),
+      title,
+      fileType: type || 'link',
+      url: url || '#',
+      size: 'Student Shared',
+      ownerId: 'u-student',
+      relevanceScore: 78,
+      aiSummarySnippet: "User-submitted reference shared with peer study group.",
+      suggestedTags: ["Suggested", "Peer Share"],
+      sharedWithGroups: [
+        {
+          groupId: roomId === 'room-3' ? 'g-physics-s2' : 'g-writing',
+          permissions: { viewOnly: true, canDownload: true, allowAiSummarization: false }
+        }
+      ],
+      stats: { views: 1, downloads: 0 },
+      createdAt: new Date().toISOString(),
+      starred: false,
+      archived: false
+    };
+
+    resources.push(newResource);
+    writeResourcesDb(resources);
+
+    res.status(201).json({ success: true, suggestedResource: newResource });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/student/rooms/:roomId/invite
+app.post('/api/student/rooms/:roomId/invite', (req: Request, res: Response) => {
+  const { emails } = req.body;
+  console.log(`Sending session invitations to: ${emails?.join(', ')}`);
+  res.json({ success: true });
+});
+
+// -------------------------------------------------------------
+// [NEW STITCH] Student Analytics Summaries API Endpoints
+// -------------------------------------------------------------
+
+// GET /api/student/sessions/:sessionId/summary
+app.get('/api/student/sessions/:sessionId/summary', (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const db = readDb();
+  
+  const session = db.sessions.find(s => s.id === sessionId) || db.sessions[0];
+  
+  res.json({
+    summary: {
+      sessionId: session.id,
+      title: session.taskTitle,
+      completedAt: new Date(session.startTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }),
+      durationMinutes: session.durationMinutes,
+      focusScore: session.focusScore,
+      timeline: session.timeline || [
+        { minute: 5, score: 60 },
+        { minute: 10, score: 75 },
+        { minute: 15, score: 92 },
+        { minute: 20, score: 96 }
+      ]
+    },
+    aiSummary: {
+      recapText: `You successfully maintained flow state during the study sprint for "${session.taskTitle}". Your attention index score was 94% overall, and you blocks 4 distraction prompts from social channels. Excellent work!`,
+      suggestedLessonId: "lesson-wave-functions"
+    },
+    milestones: [
+      { name: "Deep Work Streak", reward: "+50 Focus Coins", icon: "bolt" },
+      { name: "Zen Master Focus", reward: "Unlocked Forest Theme Badge", icon: "military_tech" }
+    ],
+    resources: [
+      { title: "Quantum_Wave_Notes.pdf", type: "pdf" }
+    ]
+  });
+});
+
+// POST /api/student/sessions/:sessionId/resources
+app.post('/api/student/sessions/:sessionId/resources', (req: Request, res: Response) => {
+  const { title, url, type } = req.body;
+  res.status(201).json({ success: true, resource: { title, url, type } });
+});
+
+// POST /api/student/schedule
+app.post('/api/student/schedule', (req: Request, res: Response) => {
+  const { lessonId, scheduledTime } = req.body;
+  res.json({ success: true, bookingId: "bk-" + Math.random().toString(36).substring(2, 9) });
+});
+
+// -------------------------------------------------------------
+// [NEW STITCH] Student AI Resource Library API Endpoints
+// -------------------------------------------------------------
+
+// GET /api/student/library
+app.get('/api/student/library', (req: Request, res: Response) => {
+  const resources = readResourcesDb();
+  const search = (req.query.search as string || '').toLowerCase().trim();
+  const type = (req.query.type as string || '').toLowerCase().trim();
+
+  let list = resources.filter(r => !r.archived);
+  if (search) {
+    list = list.filter(r => r.title.toLowerCase().includes(search) || r.suggestedTags.some(t => t.toLowerCase().includes(search)));
+  }
+  if (type && type !== 'all') {
+    list = list.filter(r => r.fileType === type);
+  }
+
+  res.json(list);
+});
+
+// GET /api/student/library/ai-picks
+app.get('/api/student/library/ai-picks', (req: Request, res: Response) => {
+  const resources = readResourcesDb();
+  // Picks matching score > 90%
+  const picks = resources.filter(r => r.relevanceScore >= 90 && !r.archived);
+  res.json(picks);
+});
+
+// POST /api/student/library/upload
+app.post('/api/student/library/upload', (req: Request, res: Response) => {
+  try {
+    const { title, fileType } = req.body;
+    if (!title) return res.status(400).json({ error: "Title is required" });
+
+    const resources = readResourcesDb();
+    const newResource: SharedResource = {
+      id: 'res-' + Math.random().toString(36).substring(2, 9),
+      title,
+      fileType: fileType || 'pdf',
+      url: `/uploads/${title}`,
+      size: '2.1 MB',
+      ownerId: 'u-student',
+      relevanceScore: Math.floor(Math.random() * 20) + 80, // 80-99
+      aiSummarySnippet: "AI-indexed research paper uploaded by student. Recommended for exam preparation.",
+      suggestedTags: ["Student Upload", "Physics"],
+      sharedWithGroups: [],
+      stats: { views: 0, downloads: 0 },
+      createdAt: new Date().toISOString(),
+      starred: false,
+      archived: false
+    };
+
+    resources.push(newResource);
+    writeResourcesDb(resources);
+
+    res.status(201).json(newResource);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/student/library/:resourceId/ai-summary
+app.get('/api/student/library/:resourceId/ai-summary', (req: Request, res: Response) => {
+  const { resourceId } = req.params;
+  const resources = readResourcesDb();
+  const item = resources.find(r => r.id === resourceId);
+  
+  if (!item) return res.status(404).json({ error: "Library asset not found" });
+
+  res.json({
+    summaryHtml: `<p>${item.aiSummarySnippet}</p><p>The document details the foundational experiments, mathematical representations, and common computational pitfalls. Recommend focused review of formulas.</p>`,
+    keyTakeaways: [
+      "Understand Schrödinger boundary thresholds.",
+      "Wave packet dispersions scale inversely to particle mass metrics.",
+      "Integrate vector matrices for multi-dimensional operations."
+    ]
+  });
+});
+
+// PATCH /api/student/library/:resourceId/status
+app.patch('/api/student/library/:resourceId/status', (req: Request, res: Response) => {
+  try {
+    const { resourceId } = req.params;
+    const { starred, archived } = req.body;
+    
+    const resources = readResourcesDb();
+    const item = resources.find(r => r.id === resourceId);
+    if (!item) return res.status(404).json({ error: "Library asset not found" });
+
+    if (starred !== undefined) item.starred = starred;
+    if (archived !== undefined) item.archived = archived;
+
+    writeResourcesDb(resources);
+    res.json(item);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// -------------------------------------------------------------
+// [NEW STITCH] Teacher Material Sharing API Endpoints
+// -------------------------------------------------------------
+
+// POST /api/teacher/resources/upload
+app.post('/api/teacher/resources/upload', (req: Request, res: Response) => {
+  const { filename } = req.body;
+  res.json({
+    tempId: "tmp-" + Math.random().toString(36).substring(2, 9),
+    suggestedTags: ["Quantum Mechanics", "Advanced Physics", "Particle Theory", filename?.split('.').pop() || "PDF"]
+  });
+});
+
+// POST /api/teacher/resources/share
+app.post('/api/teacher/resources/share', (req: Request, res: Response) => {
+  try {
+    const { tempId, title, fileType, tags, groupSettings } = req.body;
+    const resources = readResourcesDb();
+    
+    const sharedWithGroups = groupSettings?.map((gs: any) => ({
+      groupId: gs.groupId,
+      permissions: {
+        viewOnly: gs.permissions?.viewOnly ?? true,
+        canDownload: gs.permissions?.canDownload ?? false,
+        allowAiSummarization: gs.permissions?.allowAiSummarization ?? true
+      }
+    })) || [];
+
+    const newResource: SharedResource = {
+      id: 'doc-' + Math.random().toString(36).substring(2, 9),
+      title: title || `Lecture_Doc_${tempId?.substring(4)}.pdf`,
+      fileType: fileType || 'pdf',
+      url: `/uploads/faculty/${tempId}.pdf`,
+      size: "8.4 MB",
+      ownerId: "t-aris-thorne",
+      relevanceScore: 95,
+      aiSummarySnippet: "Core lecture guidelines distributed by faculty. Required reading materials.",
+      suggestedTags: tags || ["Physics"],
+      sharedWithGroups,
+      stats: { views: 0, downloads: 0 },
+      createdAt: new Date().toISOString(),
+      starred: false,
+      archived: false
+    };
+
+    resources.push(newResource);
+    writeResourcesDb(resources);
+
+    res.status(201).json({ success: true, materialId: newResource.id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/teacher/resources/shared-history
+app.get('/api/teacher/resources/shared-history', (req: Request, res: Response) => {
+  const resources = readResourcesDb();
+  // Filter only those uploaded by teacher
+  const shared = resources.filter(r => r.ownerId === 't-aris-thorne');
+  
+  res.json(shared.map(s => ({
+    id: s.id,
+    name: s.title,
+    format: s.fileType,
+    targetGroup: s.sharedWithGroups[0]?.groupId === 'g-physics-s2' ? "Advanced Physics" : "STEM Group",
+    sharedDate: new Date(s.createdAt).toLocaleDateString() + " • " + new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    status: s.archived ? "Archived" : "Live",
+    views: s.stats.views,
+    downloads: s.stats.downloads
+  })));
+});
+
+// -------------------------------------------------------------
+// Global Analytics Endpoint
+// -------------------------------------------------------------
+
 app.get('/api/analytics', (req: Request, res: Response) => {
   const db = readDb();
   res.json(db.analytics);
@@ -225,7 +901,6 @@ app.get('/api/analytics', (req: Request, res: Response) => {
 // Database Backup & Import API Endpoints
 // -------------------------------------------------------------
 
-// GET /api/data/manage (backup download)
 app.get('/api/data/manage', (req: Request, res: Response) => {
   try {
     const db = readDb();
@@ -237,7 +912,6 @@ app.get('/api/data/manage', (req: Request, res: Response) => {
   }
 });
 
-// POST /api/data/manage
 app.post('/api/data/manage', (req: Request, res: Response) => {
   try {
     const { action } = req.body;
@@ -286,7 +960,6 @@ app.post('/api/data/manage', (req: Request, res: Response) => {
 // Rewards Store API Endpoints
 // -------------------------------------------------------------
 
-// GET /api/rewards
 app.get('/api/rewards', (req: Request, res: Response) => {
   const db = readDb();
   res.json({
@@ -295,13 +968,11 @@ app.get('/api/rewards', (req: Request, res: Response) => {
   });
 });
 
-// POST /api/rewards
 app.post('/api/rewards', (req: Request, res: Response) => {
   try {
     const body = req.body;
     const db = readDb();
 
-    // Admin action: Create reward shop item
     if (body.action === 'create') {
       const { title, description, cost, icon } = body;
       if (!title || cost === undefined) {
@@ -320,7 +991,6 @@ app.post('/api/rewards', (req: Request, res: Response) => {
       return res.status(201).json(newReward);
     }
 
-    // Standard client action: Purchase reward
     if (!body.itemId) {
       return res.status(400).json({ error: 'Item ID is required' });
     }
@@ -349,7 +1019,6 @@ app.post('/api/rewards', (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/rewards
 app.patch('/api/rewards', (req: Request, res: Response) => {
   try {
     const body = req.body;
@@ -381,7 +1050,6 @@ app.patch('/api/rewards', (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/rewards
 app.delete('/api/rewards', (req: Request, res: Response) => {
   try {
     const itemId = req.query.itemId as string;
@@ -403,13 +1071,11 @@ app.delete('/api/rewards', (req: Request, res: Response) => {
 // Group Rooms API Endpoints
 // -------------------------------------------------------------
 
-// GET /api/rooms
 app.get('/api/rooms', (req: Request, res: Response) => {
   const db = readDb();
   res.json(db.rooms);
 });
 
-// POST /api/rooms
 app.post('/api/rooms', (req: Request, res: Response) => {
   try {
     const body = req.body;
@@ -441,7 +1107,17 @@ app.post('/api/rooms', (req: Request, res: Response) => {
       activeUsers: body.activeUsers !== undefined ? body.activeUsers : 0,
       tags: body.tags || ['Study'],
       ambientSound: body.ambientSound || 'Silence',
-      messages: []
+      messages: [],
+      hostName: body.hostName || "Prof. Alex Rivera",
+      isVerified: body.isVerified !== undefined ? body.isVerified : true,
+      maxCapacity: body.maxCapacity !== undefined ? parseInt(body.maxCapacity) : 20,
+      allowedApps: body.allowedApps || ["notion", "gdocs"],
+      focusMode: body.focusMode || "Standard Lock",
+      sessionDurationFormat: body.sessionDurationFormat || "90m Focus / 15m Insight Exchange",
+      allowScreenShare: body.allowScreenShare !== undefined ? body.allowScreenShare : true,
+      videoStreamRequired: body.videoStreamRequired !== undefined ? body.videoStreamRequired : false,
+      chatModerationFilter: body.chatModerationFilter !== undefined ? body.chatModerationFilter : true,
+      censorWords: body.censorWords || ['spam', 'cheat', 'abuse', 'slack', 'tiktok']
     };
 
     db.rooms.push(newRoom);
@@ -452,7 +1128,6 @@ app.post('/api/rooms', (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/rooms
 app.delete('/api/rooms', (req: Request, res: Response) => {
   try {
     const roomId = req.query.roomId as string;
@@ -474,7 +1149,6 @@ app.delete('/api/rooms', (req: Request, res: Response) => {
   }
 });
 
-// POST /api/rooms/:id/chat
 app.post('/api/rooms/:id/chat', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -490,10 +1164,22 @@ app.post('/api/rooms/:id/chat', (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Room not found' });
     }
 
+    let text = body.text;
+    const globalSettings = db.settings;
+    const isModerationActive = room.chatModerationFilter !== undefined ? room.chatModerationFilter : globalSettings.groupConfig?.chatModerationFilter;
+    const censorList = room.censorWords || globalSettings.groupConfig?.censorWords || [];
+    
+    if (isModerationActive && censorList.length > 0) {
+      censorList.forEach((word: string) => {
+        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+        text = text.replace(regex, '*'.repeat(word.length));
+      });
+    }
+
     const newMessage = {
       id: 'msg-' + Math.random().toString(36).substring(2, 9),
       user: body.user,
-      text: body.text,
+      text: text,
       timestamp: new Date().toISOString()
     };
 
@@ -503,8 +1189,7 @@ app.post('/api/rooms/:id/chat', (req: Request, res: Response) => {
       room.messages.shift();
     }
 
-    // AI study chatbot trigger
-    const prompt = body.text.trim();
+    const prompt = text.trim();
     const lowerPrompt = prompt.toLowerCase();
     const isAIGuild = room.name.toLowerCase().includes('ai') || room.tags.some(t => t.toLowerCase().includes('ai'));
     const mentionsAI = lowerPrompt.startsWith('@ai');
@@ -538,7 +1223,6 @@ app.post('/api/rooms/:id/chat', (req: Request, res: Response) => {
 // Search API Endpoint
 // -------------------------------------------------------------
 
-// GET /api/search
 app.get('/api/search', (req: Request, res: Response) => {
   try {
     const query = (req.query.q as string || '').trim().toLowerCase();
@@ -591,13 +1275,11 @@ app.get('/api/search', (req: Request, res: Response) => {
 // Sessions API Endpoints
 // -------------------------------------------------------------
 
-// GET /api/sessions
 app.get('/api/sessions', (req: Request, res: Response) => {
   const db = readDb();
   res.json(db.sessions);
 });
 
-// POST /api/sessions
 app.post('/api/sessions', (req: Request, res: Response) => {
   try {
     const body = req.body;
@@ -609,7 +1291,12 @@ app.post('/api/sessions', (req: Request, res: Response) => {
       durationMinutes: body.durationMinutes || 25,
       taskTitle: body.taskTitle || 'General Focus Session',
       distractionsBlocked: body.distractionsBlocked || 0,
-      focusScore: body.focusScore || 90
+      focusScore: body.focusScore || 90,
+      timeline: [
+        { minute: 5, score: 75 },
+        { minute: 10, score: 82 },
+        { minute: 15, score: body.focusScore || 90 }
+      ]
     };
 
     db.sessions.push(newSession);
@@ -657,13 +1344,11 @@ app.post('/api/sessions', (req: Request, res: Response) => {
 // Settings API Endpoints
 // -------------------------------------------------------------
 
-// GET /api/settings
 app.get('/api/settings', (req: Request, res: Response) => {
   const db = readDb();
   res.json(db.settings);
 });
 
-// PATCH /api/settings
 app.patch('/api/settings', (req: Request, res: Response) => {
   try {
     const body = req.body;
@@ -692,13 +1377,11 @@ app.patch('/api/settings', (req: Request, res: Response) => {
 // Support Tickets API Endpoints
 // -------------------------------------------------------------
 
-// GET /api/support
 app.get('/api/support', (req: Request, res: Response) => {
   const db = readDb();
   res.json(db.tickets);
 });
 
-// POST /api/support
 app.post('/api/support', (req: Request, res: Response) => {
   try {
     const body = req.body;
@@ -731,7 +1414,6 @@ app.post('/api/support', (req: Request, res: Response) => {
   }
 });
 
-// POST /api/support/:id (add reply)
 app.post('/api/support/:id', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -770,13 +1452,11 @@ app.post('/api/support/:id', (req: Request, res: Response) => {
 // Tasks API Endpoints
 // -------------------------------------------------------------
 
-// GET /api/tasks
 app.get('/api/tasks', (req: Request, res: Response) => {
   const db = readDb();
   res.json(db.tasks);
 });
 
-// POST /api/tasks
 app.post('/api/tasks', (req: Request, res: Response) => {
   try {
     const body = req.body;
@@ -803,7 +1483,6 @@ app.post('/api/tasks', (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/tasks/:id
 app.patch('/api/tasks/:id', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -829,7 +1508,6 @@ app.patch('/api/tasks/:id', (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/tasks/:id
 app.delete('/api/tasks/:id', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -847,6 +1525,39 @@ app.delete('/api/tasks/:id', (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Serve frontend static files
+const frontendOutPath = path.join(__dirname, '../../frontend/out');
+if (fs.existsSync(frontendOutPath)) {
+  app.use(express.static(frontendOutPath));
+  
+  // Clean URLs routing fallback for static export:
+  // If req.path is a page route without a dot (no extension like .js/.css), check if we have route.html or route/index.html
+  app.get('*', (req, res, nextFn) => {
+    if (!req.path.includes('.')) {
+      const normalizedPath = req.path.endsWith('/') ? req.path.slice(0, -1) : req.path;
+      
+      const file = path.join(frontendOutPath, `${normalizedPath}.html`);
+      if (fs.existsSync(file)) {
+        return res.sendFile(file);
+      }
+      
+      const indexFile = path.join(frontendOutPath, normalizedPath, 'index.html');
+      if (fs.existsSync(indexFile)) {
+        return res.sendFile(indexFile);
+      }
+      
+      // Default fallback to index.html at root (allows client-side routing)
+      const rootIndex = path.join(frontendOutPath, 'index.html');
+      if (fs.existsSync(rootIndex)) {
+        return res.sendFile(rootIndex);
+      }
+    }
+    nextFn();
+  });
+} else {
+  console.warn(`[Static Serve] Frontend out directory not found at: ${frontendOutPath}. Make sure to build frontend first.`);
+}
 
 // Start the Express server
 app.listen(PORT, () => {

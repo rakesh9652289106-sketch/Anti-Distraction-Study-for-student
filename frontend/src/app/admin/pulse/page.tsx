@@ -1,644 +1,288 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useApp } from '@/context/AppContext';
-import { AdminAlert } from '@/lib/db';
+import { useRouter } from 'next/navigation';
+
+interface MetricStats {
+  systemStats: {
+    uptimePercent: number;
+    totalStudents: number;
+    studentsGrowthTrend: number;
+    activeFaculty: number;
+    facultyGrowthTrend: number;
+    activeLicenses: number;
+    licensesGrowthTrend: number;
+    storageUsagePercent: number;
+  };
+  zonesSummary: {
+    studentZone: { onlineNow: number; pendingRegistration: number };
+    teacherZone: { activeCourses: number; flaggedResources: number };
+    infraZone: { latencyMs: number; apiLoadStatus: string };
+  };
+}
+
+interface AiInsight {
+  id: string;
+  severity: 'info' | 'success' | 'warning' | 'error';
+  text: string;
+}
+
+interface SystemEvent {
+  timestamp: string;
+  module: string;
+  eventType: string;
+  status: string;
+  affectedUid: string;
+}
 
 export default function AdminPulsePage() {
-  const { sessions } = useApp();
-  const [timeUtc, setTimeUtc] = useState('');
-  const [alerts, setAlerts] = useState<AdminAlert[]>([]);
-  const [settings, setSettings] = useState<any>({
-    studyMode: false,
-    distractionShield: true,
-    blockedWebsites: [],
-    focusScore: 92,
-    pomodoroWorkTime: 25,
-    pomodoroBreakTime: 5,
-    currentStreak: 5,
-    focusCoins: 120
-  });
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [newBlockedSite, setNewBlockedSite] = useState('');
+  const router = useRouter();
+  const [metrics, setMetrics] = useState<MetricStats | null>(null);
+  const [insights, setInsights] = useState<AiInsight[]>([]);
+  const [events, setEvents] = useState<SystemEvent[]>([]);
+  const [safeModeActive, setSafeModeActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchAlerts = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const res = await fetch('/api/admin/alerts');
-      if (res.ok) {
-        const data = await res.json();
-        setAlerts(data);
-      }
-    } catch {
-      console.error('Failed to fetch alerts');
-    }
-  };
+      const [resMetrics, resInsights, resEvents] = await Promise.all([
+        fetch('/api/admin/metrics'),
+        fetch('/api/admin/ai-insights'),
+        fetch('/api/admin/system-events')
+      ]);
 
-  const fetchSettings = async () => {
-    try {
-      const res = await fetch('/api/settings');
-      if (res.ok) {
-        const data = await res.json();
-        setSettings(data);
-      }
+      if (resMetrics.ok) setMetrics(await resMetrics.json());
+      if (resInsights.ok) setInsights(await resInsights.json());
+      if (resEvents.ok) setEvents(await resEvents.json());
     } catch (err) {
-      console.error('Failed to fetch settings:', err);
-    }
-  };
-
-  const handleUpdateSetting = async (updates: any) => {
-    setIsUpdating(true);
-    try {
-      const res = await fetch('/api/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSettings(data);
-      }
-    } catch (err) {
-      console.error('Failed to update settings:', err);
+      console.error('Failed to load admin metrics:', err);
     } finally {
-      setIsUpdating(false);
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    const updateTime = () => {
-      setTimeUtc(new Date().toISOString().substring(11, 19) + ' UTC');
-    };
-    updateTime();
-    const timeInterval = setInterval(updateTime, 1000);
-    
-    fetchAlerts();
-    const alertsInterval = setInterval(fetchAlerts, 3000);
-
-    fetchSettings();
-    
-    return () => {
-      clearInterval(timeInterval);
-      clearInterval(alertsInterval);
-    };
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Aggregate stats
-  const totalActiveSessions = sessions.length + 4210; // add mock offset
-  const activeFocusLocks = 1842;
-  const networkBlocksPerHour = 84;
+  const triggerSafeMode = async () => {
+    const nextState = !safeModeActive;
+    try {
+      const res = await fetch('/api/admin/system/safe-mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: nextState })
+      });
+      if (res.ok) {
+        setSafeModeActive(nextState);
+        alert(nextState ? '🚨 safe-mode-engaged: All client student shells locked down.' : 'Safe mode disengaged.');
+      }
+    } catch {
+      alert('Failed to connect to security controller.');
+    }
+  };
 
-  // focus hours graph coords
-  const dataPoint1 = [120, 100, 80, 70, 60, 50, 90, 150, 250, 320, 400, 450, 430, 400, 380, 420, 480, 520, 500, 450, 380, 300, 200, 150];
-  const maxVal = Math.max(...dataPoint1);
-  const minVal = Math.min(...dataPoint1);
-  const range = maxVal - minVal;
+  const generateSystemReport = async () => {
+    try {
+      const res = await fetch('/api/admin/reports/generate', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Report Snapshot compiled! Fetch backup file at: ${data.downloadUrl}`);
+        window.open(data.downloadUrl, '_blank');
+      }
+    } catch {
+      alert('Report generation failed.');
+    }
+  };
 
-  // Generate SVG path points
-  const width = 600;
-  const height = 200;
-  const points = dataPoint1.map((val, idx) => {
-    const x = (idx / (dataPoint1.length - 1)) * width;
-    const y = height - ((val - minVal) / range) * (height - 40) - 20;
-    return `${x},${y}`;
-  }).join(' ');
+  if (isLoading || !metrics) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-400 font-mono">
+        <div className="w-8 h-8 rounded-full border-2 border-slate-800 border-t-emerald-450 animate-spin mb-4"></div>
+        <p className="text-[10px] tracking-widest uppercase">Syncing Dashboard telemetry...</p>
+      </div>
+    );
+  }
 
-  const areaPoints = `0,${height} ${points} ${width},${height}`;
+  const { systemStats, zonesSummary } = metrics;
 
   return (
-    <div className="space-y-lg">
+    <div className="space-y-6 text-slate-200 font-sans">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-md pt-sm">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="font-bold text-headline-lg text-primary">System Pulse</h2>
-          <p className="text-body-md text-on-surface-variant font-medium">
-            Real-time infrastructure and user engagement monitoring.
-          </p>
+          <h2 className="font-bold text-2xl text-white tracking-tight">Admin Master Console</h2>
+          <p className="text-xs text-slate-400 mt-1">Unified monitoring and configuration dashboard hub.</p>
         </div>
-        
-        <div className="flex items-center gap-2 text-on-surface-variant bg-slate-50 border border-outline-variant/35 px-4 py-2 rounded-full">
-          <span className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
-          <span className="text-label-sm font-bold">Live Updates Active</span>
-          <span className="mx-2 text-slate-300">|</span>
-          <span className="text-label-sm font-mono font-bold text-primary">{timeUtc || '12:00:00 UTC'}</span>
+
+        <div className="flex items-center gap-2 bg-[#0d1627] border border-[#16233c] px-4 py-2 rounded-full">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="text-xs font-bold text-slate-300">Uptime Metric: {systemStats.uptimePercent}%</span>
         </div>
       </div>
 
-      {/* Bento Grid */}
+      {/* Grid: 4 Core Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Total Students */}
+        <div className="bg-[#0a101d] border border-[#15233c] rounded-2xl p-5 relative overflow-hidden group">
+          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-700/30 text-5xl">groups</span>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Students</p>
+          <h3 className="text-2xl font-bold text-white mt-2">{systemStats.totalStudents.toLocaleString()}</h3>
+          <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-400 mt-2">
+            <span className="material-symbols-outlined text-xs">trending_up</span>
+            +{systemStats.studentsGrowthTrend}%
+          </span>
+        </div>
+
+        {/* Active Faculty */}
+        <div className="bg-[#0a101d] border border-[#15233c] rounded-2xl p-5 relative overflow-hidden group">
+          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-700/30 text-5xl">school</span>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Faculty</p>
+          <h3 className="text-2xl font-bold text-white mt-2">{systemStats.activeFaculty}</h3>
+          <span className="inline-flex items-center gap-0.5 text-xs font-bold text-slate-400 mt-2">
+            Stable
+          </span>
+        </div>
+
+        {/* Active Licenses */}
+        <div className="bg-[#0a101d] border border-[#15233c] rounded-2xl p-5 relative overflow-hidden group">
+          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-700/30 text-5xl">card_membership</span>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Licenses</p>
+          <h3 className="text-2xl font-bold text-white mt-2">{systemStats.activeLicenses.toLocaleString()}</h3>
+          <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-400 mt-2">
+            <span className="material-symbols-outlined text-xs">trending_up</span>
+            +{systemStats.licensesGrowthTrend}%
+          </span>
+        </div>
+
+        {/* Server Storage */}
+        <div className="bg-[#0a101d] border border-[#15233c] rounded-2xl p-5 relative overflow-hidden group">
+          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-700/30 text-5xl">database</span>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Server Storage</p>
+          <h3 className="text-2xl font-bold text-white mt-2">{systemStats.storageUsagePercent}%</h3>
+          <div className="w-full bg-[#16233c] h-1.5 rounded-full mt-3 overflow-hidden">
+            <div className="bg-emerald-500 h-full" style={{ width: `${systemStats.storageUsagePercent}%` }}></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bento Zone Grid */}
       <div className="grid grid-cols-12 gap-6">
         
-        {/* Row 1: 3 Metrics Cards */}
-        <div className="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Global Focus Score */}
-          <div className="glass-panel rounded-xl p-md flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
-            <div className="absolute top-0 right-0 p-4 opacity-10 text-primary">
-              <span className="material-symbols-outlined text-[64px]">psychology</span>
-            </div>
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider">
-                Global Focus Score
-              </h3>
-              <span className="flex items-center gap-0.5 text-secondary bg-secondary/10 px-2 py-0.5 rounded text-xs font-bold">
-                <span className="material-symbols-outlined text-sm font-bold">trending_up</span>
-                +2.4%
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="font-bold text-headline-xl text-primary">78%</span>
-            </div>
-            <div className="w-full bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden">
-              <div className="bg-primary h-full rounded-full" style={{ width: '78%' }}></div>
-            </div>
-          </div>
-
-          {/* Active Sessions */}
-          <div className="glass-panel rounded-xl p-md flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
-            <div className="absolute top-0 right-0 p-4 opacity-10 text-primary">
-              <span className="material-symbols-outlined text-[64px]">laptop_mac</span>
-            </div>
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider">
-                Active Study Sessions
-              </h3>
-              <span className="flex items-center gap-0.5 text-secondary bg-secondary/10 px-2 py-0.5 rounded text-xs font-bold">
-                <span className="material-symbols-outlined text-sm font-bold">trending_up</span>
-                +12%
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="font-bold text-headline-xl text-primary">{totalActiveSessions.toLocaleString()}</span>
-            </div>
-            <p className="text-label-sm text-on-surface-variant/80 mt-4 font-semibold">
-              Peak hours approaching in 45 mins
-            </p>
-          </div>
-
-          {/* AI availability */}
-          <div className="glass-panel rounded-xl p-md flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
-            <div className="absolute top-0 right-0 p-4 opacity-10 text-primary">
-              <span className="material-symbols-outlined text-[64px]">memory</span>
-            </div>
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-label-sm font-bold text-on-surface-variant uppercase tracking-wider">
-                AI Assistant Uptime
-              </h3>
-              <span className="text-label-sm text-on-surface-variant bg-slate-100 px-2 py-0.5 rounded font-bold">
-                30 Days
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="font-bold text-headline-xl text-secondary">99.9%</span>
-            </div>
-            <p className="text-label-sm text-secondary mt-4 font-bold flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
-              All systems nominal
-            </p>
-          </div>
-        </div>
-
-        {/* Focus Hours Trend Chart (8 columns) */}
-        <div className="col-span-12 lg:col-span-8 glass-panel rounded-xl p-md">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="font-bold text-headline-md text-primary">Global Focus Hours</h3>
-              <p className="text-body-md text-on-surface-variant font-medium">Platform-wide productivity trend (Past 24h)</p>
-            </div>
-          </div>
+        {/* Student and Faculty zones summary (8 columns) */}
+        <div className="col-span-12 lg:col-span-8 bg-[#0a101d] border border-[#15233c] rounded-2xl p-6 space-y-6">
+          <h3 className="font-bold text-lg text-white border-b border-[#16233c] pb-3">Sub-Zones Telemetry</h3>
           
-          <div className="h-64 w-full relative pt-md pr-sm">
-            {/* SVG Line Graph */}
-            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
-              {/* Grid lines */}
-              <line x1="0" y1="20" x2={width} y2="20" stroke="#eceef0" strokeDasharray="5 5" />
-              <line x1="0" y1="60" x2={width} y2="60" stroke="#eceef0" strokeDasharray="5 5" />
-              <line x1="0" y1="100" x2={width} y2="100" stroke="#eceef0" strokeDasharray="5 5" />
-              <line x1="0" y1="140" x2={width} y2="140" stroke="#eceef0" strokeDasharray="5 5" />
-              <line x1="0" y1="180" x2={width} y2="180" stroke="#eceef0" strokeDasharray="5 5" />
-
-              {/* Area fill */}
-              <polygon points={areaPoints} fill="rgba(9, 20, 38, 0.05)" />
-
-              {/* Line path */}
-              <polyline points={points} fill="none" stroke="#091426" strokeWidth="2.5" />
-              
-              {/* Scatter points */}
-              {dataPoint1.map((val, idx) => {
-                const x = (idx / (dataPoint1.length - 1)) * width;
-                const y = height - ((val - minVal) / range) * (height - 40) - 20;
-                return (
-                  <circle
-                    key={idx}
-                    cx={x}
-                    cy={y}
-                    r="3"
-                    fill="#091426"
-                    className="hover:r-5 cursor-pointer transition-all"
-                  />
-                );
-              })}
-            </svg>
-            <div className="flex justify-between text-[9px] text-slate-400 font-bold mt-1 uppercase">
-              <span>12 AM</span>
-              <span>6 AM</span>
-              <span>12 PM</span>
-              <span>6 PM</span>
-              <span>11 PM</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Student Zone */}
+            <div className="bg-[#0d1527] border border-[#1e2e4e]/40 p-4 rounded-xl">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Student Zone</h4>
+              <div className="mt-3 space-y-1">
+                <p className="text-sm font-semibold text-white">Online Now: {zonesSummary.studentZone.onlineNow}</p>
+                <p className="text-xs text-slate-450">Pending: {zonesSummary.studentZone.pendingRegistration}</p>
+              </div>
             </div>
+
+            {/* Teacher Zone */}
+            <div className="bg-[#0d1527] border border-[#1e2e4e]/40 p-4 rounded-xl">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Teacher Zone</h4>
+              <div className="mt-3 space-y-1">
+                <p className="text-sm font-semibold text-white">Active Classes: {zonesSummary.teacherZone.activeCourses}</p>
+                <p className="text-xs text-slate-450">Flagged Files: {zonesSummary.teacherZone.flaggedResources}</p>
+              </div>
+            </div>
+
+            {/* Infrastructure Zone */}
+            <div className="bg-[#0d1527] border border-[#1e2e4e]/40 p-4 rounded-xl">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Infra Node</h4>
+              <div className="mt-3 space-y-1">
+                <p className="text-sm font-semibold text-white">Latency: {zonesSummary.infraZone.latencyMs}ms</p>
+                <p className="text-xs text-emerald-400 font-bold">API Status: {zonesSummary.infraZone.apiLoadStatus}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick command buttons */}
+          <div className="pt-4 border-t border-[#16233c] flex flex-wrap gap-4">
+            <button
+              onClick={generateSystemReport}
+              className="px-4 py-2.5 bg-slate-900 border border-slate-800 hover:bg-[#131d33] text-white font-bold text-xs rounded-lg cursor-pointer"
+            >
+              Generate Report
+            </button>
+            <button
+              onClick={triggerSafeMode}
+              className={`px-4 py-2.5 font-bold text-xs rounded-lg cursor-pointer transition-all border ${
+                safeModeActive
+                  ? 'bg-red-650 text-white border-red-500 hover:bg-red-700 animate-pulse'
+                  : 'bg-[#131d33] border-[#1e2e4e]/60 text-red-400 hover:bg-[#1e2e4e]/40'
+              }`}
+            >
+              {safeModeActive ? '🔴 SAFE MODE ENGAGED (Halt System)' : 'Lock Student Shells'}
+            </button>
           </div>
         </div>
 
-        {/* User Breakdown overview (4 columns) */}
-        <div className="col-span-12 lg:col-span-4 glass-panel rounded-xl p-md flex flex-col justify-between">
+        {/* AI Diagnostics (4 columns) */}
+        <div className="col-span-12 lg:col-span-4 bg-[#0a101d] border border-[#15233c] rounded-2xl p-6 flex flex-col justify-between">
           <div>
-            <h3 className="font-bold text-headline-md text-primary">User Breakdown</h3>
-            <p className="text-label-sm text-on-surface-variant font-medium mb-md">Active user logs</p>
-            
-            <div className="grid grid-cols-2 gap-sm mb-md">
-              <div className="bg-slate-50 border border-outline-variant/30 p-sm rounded-lg">
-                <span className="text-[10px] text-on-surface-variant font-bold block uppercase">Total Active</span>
-                <span className="text-xl font-bold text-primary">124.5k</span>
-              </div>
-              <div className="bg-slate-50 border border-outline-variant/30 p-sm rounded-lg">
-                <span className="text-[10px] text-on-surface-variant font-bold block uppercase">New Today</span>
-                <span className="text-xl font-bold text-primary">+1,240</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-sm">
-            <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">
-              Focus mode distribution
-            </h4>
-            
-            <div>
-              <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                <span>Pomodoro Mode</span>
-                <span>45%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="h-full bg-primary" style={{ width: '45%' }}></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                <span>Deep Work Focus</span>
-                <span>35%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="h-full bg-tertiary-container" style={{ width: '35%' }}></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                <span>Exam Prep Blocks</span>
-                <span>20%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="h-full bg-secondary" style={{ width: '20%' }}></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* AI Infrastructure (4 columns) */}
-        <div className="col-span-12 md:col-span-6 lg:col-span-4 glass-panel rounded-xl p-md">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-headline-md text-primary">AI Infrastructure</h3>
-            <span className="material-symbols-outlined text-slate-400">smart_toy</span>
-          </div>
-
-          <div className="space-y-md">
-            <div className="bg-slate-50 border border-outline-variant/30 rounded-lg p-sm">
-              <p className="text-[10px] text-on-surface-variant font-bold uppercase mb-1">Avg AI Response Speed</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-primary">1.2</span>
-                <span className="text-xs text-on-surface-variant font-semibold">seconds</span>
-              </div>
-            </div>
-
-            <div className="space-y-xs">
-              <h4 className="text-xs font-bold text-on-surface-variant uppercase flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm text-error">warning</span>
-                Burnout Alerts
-              </h4>
-              <div className="flex items-center gap-sm">
-                <div className="w-12 h-12 rounded-full border-2 border-red-200 flex items-center justify-center font-bold text-red-600 text-lg">
-                  42
-                </div>
-                <div className="flex-1">
-                  <p className="text-[10px] text-on-surface-variant font-semibold">Flagged in past hour</p>
-                  <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-                    <div className="bg-red-500 h-full" style={{ width: '15%' }}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Security and Focus lock (4 columns) */}
-        <div className="col-span-12 md:col-span-6 lg:col-span-4 glass-panel rounded-xl p-md">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-headline-md text-primary">Security & Lock</h3>
-            <span className="material-symbols-outlined text-slate-400">lock</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-sm mb-md">
-            <div className="bg-slate-50 border border-outline-variant/30 p-sm rounded-lg text-center">
-              <span className="material-symbols-outlined text-primary mb-1 text-lg">lock_clock</span>
-              <p className="text-lg font-bold text-primary">{activeFocusLocks.toLocaleString()}</p>
-              <p className="text-[9px] text-on-surface-variant font-bold uppercase">Active Locks</p>
-            </div>
-            
-            <div className="bg-red-50 border border-red-200 p-sm rounded-lg text-center">
-              <span className="material-symbols-outlined text-error mb-1 text-lg">block</span>
-              <p className="text-lg font-bold text-error">{networkBlocksPerHour}</p>
-              <p className="text-[9px] text-on-surface-variant font-bold uppercase">Shield Blocks/hr</p>
-            </div>
-          </div>
-
-          <div className="space-y-xs">
-            <h4 className="text-xs font-bold text-on-surface-variant uppercase">Top Blocked Categories</h4>
-            <ul className="space-y-1.5 text-xs font-semibold text-slate-700">
-              <li className="flex justify-between border-b border-slate-100 pb-1">
-                <span>Social Media</span>
-                <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">65%</span>
-              </li>
-              <li className="flex justify-between border-b border-slate-100 pb-1">
-                <span>Video Streaming</span>
-                <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">22%</span>
-              </li>
-              <li className="flex justify-between">
-                <span>Gaming Sites</span>
-                <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">13%</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Recent Operational Alerts (4 columns) */}
-        <div className="col-span-12 md:col-span-6 lg:col-span-4 glass-panel rounded-xl p-md flex flex-col h-[400px]">
-          <h3 className="font-bold text-headline-md text-primary mb-md">Recent Alerts</h3>
-          
-          <div className="space-y-sm flex-1 overflow-y-auto pr-xs">
-            {alerts.slice(0, 5).map(alert => (
-              <div key={alert.id} className="flex gap-sm items-start border-b border-outline-variant/10 pb-2">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-                  alert.type === 'error' 
-                    ? 'bg-red-50 text-red-600 border border-red-200' 
-                    : alert.type === 'warning' 
-                    ? 'bg-amber-50 text-amber-600 border border-amber-200' 
-                    : 'bg-slate-50 text-primary border border-outline-variant/20'
-                }`}>
-                  <span className="material-symbols-outlined text-sm font-bold">
-                    {alert.type === 'error' ? 'error' : alert.type === 'warning' ? 'warning' : 'info'}
-                  </span>
-                </div>
-                <div className="text-xs flex-1">
-                  <h4 className="font-bold text-slate-700">{alert.title}</h4>
-                  <p className="text-on-surface-variant font-medium mt-0.5 leading-tight">{alert.text}</p>
-                  <span className="text-[9px] text-slate-400 font-semibold block mt-1">{alert.time}</span>
-                </div>
-              </div>
-            ))}
-            {alerts.length === 0 && (
-              <div className="text-center text-xs text-slate-400 py-10">
-                No active system alerts.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* User Panel Management & Configuration (12 columns) */}
-        <div className="col-span-12 glass-panel rounded-xl p-md border-l-4 border-l-secondary relative overflow-hidden group">
-          <div className="absolute right-0 top-0 w-32 h-32 bg-secondary/5 rounded-full blur-xl pointer-events-none"></div>
-          
-          <div className="flex justify-between items-center mb-md border-b border-outline-variant/20 pb-sm">
-            <div>
-              <h3 className="font-bold text-headline-md text-primary flex items-center gap-xs">
-                <span className="material-symbols-outlined font-bold text-secondary">tune</span>
-                User Panel Management &amp; Configuration
-              </h3>
-              <p className="text-label-sm text-on-surface-variant font-medium">
-                Centrally administer student panel behaviors, blocklists, economies, and session rules.
-              </p>
-            </div>
-            
-            {isUpdating && (
-              <span className="text-[10px] bg-secondary/15 text-secondary font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                <div className="w-2.5 h-2.5 border border-secondary border-t-transparent rounded-full animate-spin"></div>
-                Saving State...
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-md text-slate-700">
-            
-            {/* Section 1: Study Block Timers */}
-            <div className="bg-surface-bright rounded-lg border border-outline-variant/30 p-sm space-y-md shadow-sm">
-              <h4 className="font-bold text-label-md text-primary flex items-center gap-xs border-b border-outline-variant/10 pb-xs">
-                <span className="material-symbols-outlined text-[16px] font-bold">timer</span>
-                Study Timer Presets
-              </h4>
-
-              {/* Work Interval */}
-              <div className="space-y-sm">
-                <div className="flex justify-between text-xs font-bold text-slate-700">
-                  <span>Default Work Interval</span>
-                  <span className="text-secondary">{settings.pomodoroWorkTime} mins</span>
-                </div>
-                <div className="flex gap-sm items-center">
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateSetting({ pomodoroWorkTime: Math.max(5, settings.pomodoroWorkTime - 5) })}
-                    className="w-7 h-7 bg-white border border-outline-variant/30 text-primary font-bold text-xs rounded flex items-center justify-center hover:bg-slate-100 cursor-pointer active:scale-90"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="range"
-                    min="5"
-                    max="120"
-                    step="5"
-                    value={settings.pomodoroWorkTime}
-                    onChange={e => handleUpdateSetting({ pomodoroWorkTime: parseInt(e.target.value) })}
-                    className="flex-1 accent-secondary"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateSetting({ pomodoroWorkTime: Math.min(120, settings.pomodoroWorkTime + 5) })}
-                    className="w-7 h-7 bg-white border border-outline-variant/30 text-primary font-bold text-xs rounded flex items-center justify-center hover:bg-slate-100 cursor-pointer active:scale-90"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {/* Break Interval */}
-              <div className="space-y-sm">
-                <div className="flex justify-between text-xs font-bold text-slate-700">
-                  <span>Default Break Interval</span>
-                  <span className="text-sky-600">{settings.pomodoroBreakTime} mins</span>
-                </div>
-                <div className="flex gap-sm items-center">
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateSetting({ pomodoroBreakTime: Math.max(1, settings.pomodoroBreakTime - 1) })}
-                    className="w-7 h-7 bg-white border border-outline-variant/30 text-primary font-bold text-xs rounded flex items-center justify-center hover:bg-slate-100 cursor-pointer active:scale-90"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="range"
-                    min="1"
-                    max="30"
-                    step="1"
-                    value={settings.pomodoroBreakTime}
-                    onChange={e => handleUpdateSetting({ pomodoroBreakTime: parseInt(e.target.value) })}
-                    className="flex-1 accent-sky-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateSetting({ pomodoroBreakTime: Math.min(30, settings.pomodoroBreakTime + 1) })}
-                    className="w-7 h-7 bg-white border border-outline-variant/30 text-primary font-bold text-xs rounded flex items-center justify-center hover:bg-slate-100 cursor-pointer active:scale-90"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 2: Distraction Shield Management */}
-            <div className="bg-surface-bright rounded-lg border border-outline-variant/30 p-sm space-y-md shadow-sm">
-              <div className="flex justify-between items-center border-b border-outline-variant/10 pb-xs">
-                <h4 className="font-bold text-label-md text-primary flex items-center gap-xs">
-                  <span className="material-symbols-outlined text-[16px] font-bold">security</span>
-                  Global Blocklist Controls
-                </h4>
-                
-                {/* Shield Toggle Switch */}
-                <label className="relative inline-flex items-center cursor-pointer scale-90">
-                  <input
-                    type="checkbox"
-                    checked={settings.distractionShield}
-                    onChange={e => handleUpdateSetting({ distractionShield: e.target.checked })}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-secondary"></div>
-                </label>
-              </div>
-
-              {/* Blocked Websites Tag list */}
-              <div className="space-y-sm">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  Active Blocked Websites Registry
-                </label>
-                <div className="flex flex-wrap gap-xs max-h-24 overflow-y-auto border border-outline-variant/20 p-xs rounded bg-surface/50">
-                  {settings.blockedWebsites.map((site: string) => (
-                    <span key={site} className="inline-flex items-center gap-xs px-2 py-0.5 bg-slate-150 text-slate-700 text-[10px] font-bold rounded-full border border-slate-200">
-                      {site}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = settings.blockedWebsites.filter((s: string) => s !== site);
-                          handleUpdateSetting({ blockedWebsites: updated });
-                        }}
-                        className="text-slate-400 hover:text-slate-600 cursor-pointer font-bold ml-1"
-                      >
-                        &times;
-                      </button>
-                    </span>
-                  ))}
-                  {settings.blockedWebsites.length === 0 && (
-                    <span className="text-[10px] text-slate-400 italic font-semibold p-xs">No websites blocked</span>
-                  )}
-                </div>
-
-                {/* Add blocked site form */}
-                <form
-                  onSubmit={e => {
-                    e.preventDefault();
-                    if (!newBlockedSite.trim()) return;
-                    const site = newBlockedSite.toLowerCase().trim().replace(/^(https?:\/\/)?(www\.)?/, '');
-                    if (!settings.blockedWebsites.includes(site)) {
-                      const updated = [...settings.blockedWebsites, site];
-                      handleUpdateSetting({ blockedWebsites: updated });
-                    }
-                    setNewBlockedSite('');
-                  }}
-                  className="flex gap-xs"
+            <h3 className="font-bold text-lg text-white border-b border-[#16233c] pb-3">AI Diagnostic Insights</h3>
+            <div className="mt-4 space-y-3">
+              {insights.map(item => (
+                <div
+                  key={item.id}
+                  className={`p-3 rounded-lg border text-xs leading-relaxed ${
+                    item.severity === 'error'
+                      ? 'bg-red-950/20 border-red-900/40 text-red-400'
+                      : item.severity === 'warning'
+                      ? 'bg-amber-950/20 border-amber-900/40 text-amber-400'
+                      : item.severity === 'success'
+                      ? 'bg-emerald-950/20 border-emerald-900/40 text-emerald-400'
+                      : 'bg-slate-900 border-slate-800 text-slate-300'
+                  }`}
                 >
-                  <input
-                    type="text"
-                    value={newBlockedSite}
-                    onChange={e => setNewBlockedSite(e.target.value)}
-                    placeholder="e.g. reddit.com"
-                    className="flex-1 bg-white border border-outline-variant/35 rounded-lg py-1 px-sm text-xs outline-none focus:border-secondary font-semibold text-slate-700"
-                  />
-                  <button
-                    type="submit"
-                    className="px-sm py-1 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 cursor-pointer"
-                  >
-                    Add
-                  </button>
-                </form>
-              </div>
+                  {item.text}
+                </div>
+              ))}
             </div>
+          </div>
+        </div>
 
-            {/* Section 3: Economics & Streaks Adjuster */}
-            <div className="bg-surface-bright rounded-lg border border-outline-variant/30 p-sm space-y-md shadow-sm">
-              <h4 className="font-bold text-label-md text-primary flex items-center gap-xs border-b border-outline-variant/10 pb-xs">
-                <span className="material-symbols-outlined text-[16px] font-bold">military_tech</span>
-                Economics &amp; Stats Adjustment
-              </h4>
-
-              <div className="grid grid-cols-2 gap-sm">
-                {/* Focus Coins Adjustment */}
-                <div className="space-y-sm">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                    Focus Coins Wallet
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.focusCoins}
-                    onChange={e => handleUpdateSetting({ focusCoins: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-white border border-outline-variant/35 rounded-lg py-1 px-sm text-xs outline-none focus:border-secondary font-semibold text-slate-705"
-                  />
-                </div>
-
-                {/* Current Streak Adjustment */}
-                <div className="space-y-sm">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                    Current Streak (Days)
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.currentStreak}
-                    onChange={e => handleUpdateSetting({ currentStreak: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-white border border-[#c5c6cd] rounded-lg py-1 px-sm text-xs outline-none focus:border-secondary font-semibold text-slate-705"
-                  />
-                </div>
-              </div>
-
-              {/* Focus score multiplier */}
-              <div className="space-y-sm">
-                <div className="flex justify-between text-xs font-bold text-slate-700">
-                  <span>User Focus Rating Score</span>
-                  <span className="text-secondary">{settings.focusScore}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={settings.focusScore}
-                  onChange={e => handleUpdateSetting({ focusScore: parseInt(e.target.value) })}
-                  className="w-full accent-secondary"
-                />
-              </div>
-            </div>
-
+        {/* Global System Events Logs (12 columns) */}
+        <div className="col-span-12 bg-[#0a101d] border border-[#15233c] rounded-2xl p-6">
+          <h3 className="font-bold text-lg text-white border-b border-[#16233c] pb-3 mb-4">Global System Events Log</h3>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#16233c] text-slate-400 uppercase font-bold tracking-wider">
+                  <th className="pb-3">Timestamp</th>
+                  <th className="pb-3">Module</th>
+                  <th className="pb-3">Event Type</th>
+                  <th className="pb-3">Status</th>
+                  <th className="pb-3">Target / Affected UID</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#16233c]/40">
+                {events.map((ev, i) => (
+                  <tr key={i} className="text-slate-300 hover:bg-[#131d33]/20">
+                    <td className="py-3 font-mono text-slate-400">{new Date(ev.timestamp).toLocaleString()}</td>
+                    <td className="py-3 font-semibold">{ev.module}</td>
+                    <td className="py-3">{ev.eventType}</td>
+                    <td className="py-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        ev.status === 'CRITICAL' ? 'bg-red-950/40 text-red-400 border border-red-900/50' : 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/50'
+                      }`}>
+                        {ev.status}
+                      </span>
+                    </td>
+                    <td className="py-3 font-mono text-slate-400">{ev.affectedUid}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 

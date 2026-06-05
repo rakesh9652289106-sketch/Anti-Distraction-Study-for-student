@@ -1,0 +1,60 @@
+[
+  {
+    "id": "res-qm-notes",
+    "title": "QM_Lecture_Notes_W4.pdf",
+    "fileType": "pdf",
+    "url": "/uploads/QM_Lecture_Notes_W4.pdf",
+    "size": "12.4 MB",
+    "ownerId": "t-aris-thorne",
+    "relevanceScore": 98,
+    "aiSummarySnippet": "A comprehensive guide on probability amplitudes, wave function behaviors, and Schrödinger equation boundary conditions.",
+    "suggestedTags": ["Quantum Mechanics", "Advanced Physics", "Particle Theory"],
+    "sharedWithGroups": [
+      {
+        "groupId": "g-physics-s2",
+        "permissions": { "viewOnly": true, "canDownload": true, "allowAiSummarization": true }
+      }
+    ],
+    "stats": { "views": 124, "downloads": 82 },
+    "createdAt": "2026-06-04T12:00:00.000Z",
+    "starred": true,
+    "archived": false
+  },
+  {
+    "id": "res-schrodinger",
+    "title": "Schrödinger Eq Workspace",
+    "fileType": "link",
+    "url": "https://notion.so/schrodinger-eq-workspace",
+    "size": "Notion Link",
+    "ownerId": "t-aris-thorne",
+    "relevanceScore": 95,
+    "aiSummarySnippet": "Interactive workspace tracking time-independent Schrödinger equations, probability densities, and wave packet dispersions.",
+    "suggestedTags": ["Quantum Mechanics", "Differential Equations"],
+    "sharedWithGroups": [
+      {
+        "groupId": "g-physics-s2",
+        "permissions": { "viewOnly": true, "canDownload": false, "allowAiSummarization": true }
+      }
+    ],
+    "stats": { "views": 98, "downloads": 0 },
+    "createdAt": "2026-06-04T12:15:00.000Z",
+    "starred": false,
+    "archived": false
+  },
+  {
+    "id": "res-feedforward",
+    "title": "Neural Networks: Feedforward Mechanisms",
+    "fileType": "paper",
+    "url": "/uploads/neural_networks_feedforward.pdf",
+    "size": "4.8 MB",
+    "ownerId": "t-aris-thorne",
+    "relevanceScore": 92,
+    "aiSummarySnippet": "An academic paper diving into activation functions, dot products, layer weight updates, and matrix dot-product optimizations.",
+    "suggestedTags": ["Coding", "Neural Networks", "Calculus"],
+    "sharedWithGroups": [],
+    "stats": { "views": 45, "downloads": 12 },
+    "createdAt": "2026-06-04T14:30:00.000Z",
+    "starred": true,
+    "archived": false
+  }
+]
