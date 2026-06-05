@@ -55,6 +55,7 @@ export interface StudyRoom {
   videoStreamRequired?: boolean;
   chatModerationFilter?: boolean;
   censorWords?: string[];
+  coinsLimit?: number;
 }
 
 export interface GlobalSettings {

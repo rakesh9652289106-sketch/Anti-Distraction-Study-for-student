@@ -561,6 +561,15 @@ app.post('/api/student/rooms/join', (req: Request, res: Response) => {
   const room = db.rooms.find(r => r.id === roomId || r.id === roomCode);
   if (!room) return res.status(404).json({ error: "Focus Room not found" });
 
+  // Enforce coins entry limit
+  if (room.coinsLimit !== undefined && room.coinsLimit > 0) {
+    if (db.settings.focusCoins < room.coinsLimit) {
+      return res.status(403).json({
+        error: `Insufficient Focus Coins. You need at least ${room.coinsLimit} coins to enter this room. You currently have ${db.settings.focusCoins} coins.`
+      });
+    }
+  }
+
   room.activeUsers += 1;
   writeDb(db);
 
@@ -600,7 +609,8 @@ app.get('/api/student/rooms/:roomId', (req: Request, res: Response) => {
       activeSession: true,
       onlineCount: room.activeUsers,
       maxSeats: room.maxCapacity || 20,
-      focusIndex: db.settings.focusScore
+      focusIndex: db.settings.focusScore,
+      coinsLimit: room.coinsLimit || 0
     },
     environment: {
       focusMode: room.focusMode || "Hard Lock",
@@ -1087,6 +1097,16 @@ app.post('/api/rooms', (req: Request, res: Response) => {
     if (body.action === 'join') {
       const room = db.rooms.find(r => r.id === body.roomId);
       if (!room) return res.status(404).json({ error: 'Room not found' });
+      
+      // Enforce coins entry limit
+      if (room.coinsLimit !== undefined && room.coinsLimit > 0) {
+        if (db.settings.focusCoins < room.coinsLimit) {
+          return res.status(403).json({
+            error: `Insufficient Focus Coins. You need at least ${room.coinsLimit} coins to enter this room. You currently have ${db.settings.focusCoins} coins.`
+          });
+        }
+      }
+
       room.activeUsers += 1;
       writeDb(db);
       return res.json(room);
@@ -1120,7 +1140,8 @@ app.post('/api/rooms', (req: Request, res: Response) => {
       allowScreenShare: body.allowScreenShare !== undefined ? body.allowScreenShare : true,
       videoStreamRequired: body.videoStreamRequired !== undefined ? body.videoStreamRequired : false,
       chatModerationFilter: body.chatModerationFilter !== undefined ? body.chatModerationFilter : true,
-      censorWords: body.censorWords || ['spam', 'cheat', 'abuse', 'slack', 'tiktok']
+      censorWords: body.censorWords || ['spam', 'cheat', 'abuse', 'slack', 'tiktok'],
+      coinsLimit: body.coinsLimit !== undefined ? parseInt(body.coinsLimit) : 0
     };
 
     db.rooms.push(newRoom);
@@ -1448,7 +1469,7 @@ app.post('/api/support/:id', (req: Request, res: Response) => {
     }
 
     // Automatically trigger AI Support Bot to answer the message
-    if (body.user !== 'Support Bot') {
+    if (body.user !== 'Support Bot' && body.user !== 'Support Agent') {
       const aiResponse = generateAiResponse(body.text);
       const aiReply = {
         user: 'Support Bot',

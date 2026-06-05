@@ -132,7 +132,8 @@
         "gdocs"
       ],
       "focusMode": "Standard Lock",
-      "sessionDurationFormat": "50m Focus / 10m Break"
+      "sessionDurationFormat": "50m Focus / 10m Break",
+      "coinsLimit": 0
     },
     {
       "id": "room-2",
@@ -160,7 +161,8 @@
         "terminal"
       ],
       "focusMode": "AI Active Nudge",
-      "sessionDurationFormat": "25m Focus / 5m Discussion"
+      "sessionDurationFormat": "25m Focus / 5m Discussion",
+      "coinsLimit": 0
     },
     {
       "id": "room-3",
@@ -181,7 +183,8 @@
         "youtube"
       ],
       "focusMode": "Hard Lock",
-      "sessionDurationFormat": "90m Focus / 15m Insight Exchange"
+      "sessionDurationFormat": "90m Focus / 15m Insight Exchange",
+      "coinsLimit": 0
     }
   ],
   "settings": {
@@ -242,6 +245,25 @@
           "user": "Support Agent",
           "text": "explain python basics\n",
           "timestamp": "2026-06-04T18:09:37.301Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-3pqw3u2",
+      "subject": "Attention guard calibration issue",
+      "message": "My webcam keeps saying I am distracted when I am looking at the screen.",
+      "status": "Answered",
+      "timestamp": "2026-06-05T08:56:16.005Z",
+      "replies": [
+        {
+          "user": "Support Bot",
+          "text": "[ACADEMIC GUIDE] Fact-focused structured curriculum syllabus analysis:\n\nTo maximize your focus and defeat distractions, I recommend the following proven strategies:\n\n1. **Pomodoro Method**: Work for 25 minutes (Focus Mode) and take a 5-minute break. After 4 cycles, take a longer 15-30 minute break.\n2. **Active Recall**: Don't just re-read notes. Close the book and write down everything you remember, or quiz yourself.\n3. **Spaced Repetition**: Review concepts at expanding intervals (1 day, 3 days, 7 days, 14 days) to lock them into long-term memory.\n4. **Environment Design**: Keep your phone in another room and turn on FocusFlow's Distraction Shield to block social media.\n\n*Focus Tip: Start with your hardest task first when your energy levels are highest (Eat the Frog!)*",
+          "timestamp": "2026-06-05T08:56:16.005Z"
+        },
+        {
+          "user": "Support Agent",
+          "text": "Please adjust your screen brightness and position your camera directly in front of you.",
+          "timestamp": "2026-06-05T08:56:16.018Z"
         }
       ]
     }

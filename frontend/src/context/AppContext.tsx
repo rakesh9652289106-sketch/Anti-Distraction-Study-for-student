@@ -38,7 +38,7 @@ interface AppContextType {
   adjustTimerMinutes: (delta: number) => void;
   incrementDistractionShield: () => void;
   buyRewardItem: (itemId: string) => Promise<{ success: boolean; message: string }>;
-  joinStudyRoom: (roomId: string) => Promise<void>;
+  joinStudyRoom: (roomId: string) => Promise<{ success: boolean; message?: string }>;
   leaveStudyRoom: () => Promise<void>;
   sendChatMessage: (text: string) => Promise<void>;
   submitSupportTicket: (subject: string, message: string) => Promise<void>;
@@ -367,9 +367,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const room = await response.json();
         setActiveRoom(room);
         await fetchData();
+        return { success: true };
+      } else {
+        const errData = await response.json();
+        return { success: false, message: errData.error || 'Failed to join room' };
       }
     } catch (err) {
       console.error(err);
+      return { success: false, message: 'Failed to join room due to network error' };
     }
   };
 

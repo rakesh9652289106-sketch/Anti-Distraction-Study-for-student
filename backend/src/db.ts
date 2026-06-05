@@ -59,6 +59,7 @@ export interface StudyRoom {
   videoStreamRequired?: boolean;
   chatModerationFilter?: boolean;
   censorWords?: string[];
+  coinsLimit?: number;
 }
 
 export interface GlobalSettings {
@@ -335,6 +336,7 @@ export function readDb(): DbSchema {
         if (r.allowedApps === undefined) r.allowedApps = d.allowedApps;
         if (r.focusMode === undefined) r.focusMode = d.focusMode;
         if (r.sessionDurationFormat === undefined) r.sessionDurationFormat = d.sessionDurationFormat;
+        if (r.coinsLimit === undefined) r.coinsLimit = 0;
       });
     }
     return parsed;

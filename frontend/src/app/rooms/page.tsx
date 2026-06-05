@@ -45,9 +45,24 @@ export default function VirtualRoomsPage() {
     );
 
     const targetId = matched ? matched.id : (rooms[0]?.id || 'room-1');
-    await joinStudyRoom(targetId);
-    alert(`Joined Study Hall: ${matched ? matched.name : (rooms[0]?.name || 'Silent Library')}`);
+    const targetName = matched ? matched.name : (rooms[0]?.name || 'Silent Library');
+
+    const res = await joinStudyRoom(targetId);
+    if (res && !res.success) {
+      alert(res.message);
+    } else {
+      alert(`Joined Study Hall: ${targetName}`);
+    }
     setRoomCode('');
+  };
+
+  const handleJoinRoomClick = async (roomId: string, roomName: string) => {
+    const res = await joinStudyRoom(roomId);
+    if (res && !res.success) {
+      alert(res.message);
+    } else {
+      alert(`Joined Study Hall: ${roomName}`);
+    }
   };
 
   // Filter logic
@@ -220,7 +235,7 @@ export default function VirtualRoomsPage() {
                       </div>
 
                       {/* Allowed Apps */}
-                      <div className="flex items-center gap-2 mb-5">
+                      <div className="flex items-center gap-2 mb-4">
                         <span className="text-[10px] text-slate-455 font-bold uppercase tracking-wider">Ecosystem:</span>
                         <div className="flex gap-1.5">
                           {(room.allowedApps || ['notion', 'gdocs']).map((app, idx) => (
@@ -233,6 +248,13 @@ export default function VirtualRoomsPage() {
                           ))}
                         </div>
                       </div>
+
+                      {room.coinsLimit !== undefined && room.coinsLimit > 0 && (
+                        <div className="flex items-center gap-1.5 mb-4 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-xl">
+                          <span className="material-symbols-outlined text-sm">monetization_on</span>
+                          <span>Entry Cost: {room.coinsLimit} Focus Coins</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-2">
@@ -245,7 +267,7 @@ export default function VirtualRoomsPage() {
                       
                       {!isJoined ? (
                         <button
-                          onClick={() => joinStudyRoom(room.id)}
+                          onClick={() => handleJoinRoomClick(room.id, room.name)}
                           className="flex-1 py-2 bg-[#091426] hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
                         >
                           Join Study Hall

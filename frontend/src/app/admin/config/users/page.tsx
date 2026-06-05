@@ -4,7 +4,36 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 
 export default function AdminUserManagementPage() {
-  const { fetchData } = useApp();
+  const { tickets, fetchData } = useApp();
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [adminReplyText, setAdminReplyText] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
+
+  const handleSendAdminReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminReplyText.trim() || !selectedTicketId) return;
+    setIsSendingReply(true);
+
+    try {
+      const res = await fetch(`/api/support/${selectedTicketId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: 'Support Agent', text: adminReplyText.trim() })
+      });
+
+      if (res.ok) {
+        setAdminReplyText('');
+        await fetchData();
+        triggerToast('Reply sent to student successfully.');
+      } else {
+        alert('Failed to send reply');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
   const [usersList, setUsersList] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -156,8 +185,8 @@ export default function AdminUserManagementPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* User directory table (8 cols or full width if no selection) */}
-        <div className={`${selectedUser ? 'lg:col-span-8' : 'lg:col-span-12'} glass-panel rounded-xl p-md border border-slate-800 bg-[#0d1527]/90 text-slate-200 overflow-x-auto transition-all`}>
+        {/* User directory table (6 columns) */}
+        <div className="lg:col-span-6 glass-panel rounded-xl p-md border border-slate-800 bg-[#0d1527]/90 text-slate-200 overflow-x-auto transition-all">
           <h3 className="font-bold text-headline-md text-white mb-md flex items-center gap-xs">
             <span className="material-symbols-outlined text-secondary font-bold">manage_accounts</span>
             Registered Student Directory ({usersList.length})
@@ -180,7 +209,7 @@ export default function AdminUserManagementPage() {
                   <td className="py-sm pl-xs">
                     <div>
                       <h4 className="font-bold text-white text-xs">{user.name}</h4>
-                      <p className="text-[10px] text-slate-450 leading-relaxed font-semibold mt-0.5">{user.email}</p>
+                      <p className="text-[10px] text-slate-455 leading-relaxed font-semibold mt-0.5">{user.email}</p>
                     </div>
                   </td>
                   
@@ -203,7 +232,7 @@ export default function AdminUserManagementPage() {
                       user.status === 'active' 
                         ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/20' 
                         : user.status === 'suspended'
-                        ? 'bg-red-950/40 text-red-450 border border-red-900/20'
+                        ? 'bg-red-950/40 text-red-455 border border-red-900/20'
                         : 'bg-slate-900 text-slate-400 border border-slate-800'
                     }`}>
                       {user.status}
@@ -227,7 +256,7 @@ export default function AdminUserManagementPage() {
                     </button>
                     <button
                       onClick={() => handleKickFromRoom(user.name)}
-                      className="p-1 bg-[#131d33]/50 border border-slate-800 hover:bg-amber-950/20 hover:text-amber-400 text-slate-450 rounded cursor-pointer"
+                      className="p-1 bg-[#131d33]/50 border border-slate-800 hover:bg-amber-950/20 hover:text-amber-400 text-slate-455 rounded cursor-pointer"
                       title="Kick from Room"
                     >
                       <span className="material-symbols-outlined text-sm block">logout</span>
@@ -246,9 +275,156 @@ export default function AdminUserManagementPage() {
           </table>
         </div>
 
-        {/* Edit Student profile Side Card (4 cols) */}
-        {selectedUser && (
-          <div className="lg:col-span-4 glass-panel rounded-xl p-md border border-slate-800 bg-[#0d1527]/90 text-slate-200 flex flex-col justify-between animate-fade-in">
+        {/* Support Tickets Desk (6 columns) */}
+        <div className="lg:col-span-6 glass-panel rounded-xl p-md border border-slate-800 bg-[#0d1527]/90 text-slate-200 flex flex-col h-full min-h-[500px]">
+          {selectedTicketId === null ? (
+            // LIST VIEW
+            <>
+              <h3 className="font-bold text-headline-md text-white mb-md flex items-center gap-xs">
+                <span className="material-symbols-outlined text-secondary font-bold">support_agent</span>
+                Support Ticket Desk ({tickets.length})
+              </h3>
+              
+              <div className="flex-1 overflow-y-auto space-y-sm max-h-[600px] pr-xs">
+                {tickets.map(ticket => (
+                  <div
+                    key={ticket.id}
+                    onClick={() => setSelectedTicketId(ticket.id)}
+                    className="p-sm bg-[#131D33]/40 border border-slate-805 hover:border-[#1E2E4E] hover:bg-[#131D33]/80 rounded-xl cursor-pointer transition-all space-y-xs"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] text-slate-500 font-mono">{ticket.id}</span>
+                      <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold tracking-wider ${
+                        ticket.status === 'Open'
+                          ? 'bg-amber-950/40 text-amber-400 border border-amber-900/20'
+                          : 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/20'
+                      }`}>
+                        {ticket.status}
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-white text-xs line-clamp-1">{ticket.subject}</h4>
+                    <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">{ticket.message}</p>
+                    <div className="flex justify-between items-center pt-xs text-[9px] text-slate-500 font-medium">
+                      <span>{new Date(ticket.timestamp).toLocaleString()}</span>
+                      <span>{ticket.replies?.length || 0} messages</span>
+                    </div>
+                  </div>
+                ))}
+                {tickets.length === 0 && (
+                  <div className="text-center py-xl text-slate-500 font-semibold italic text-xs">
+                    No support tickets submitted by students.
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            // CONVERSATION THREAD DETAIL VIEW
+            (() => {
+              const activeTicket = tickets.find(t => t.id === selectedTicketId);
+              if (!activeTicket) {
+                setSelectedTicketId(null);
+                return null;
+              }
+              return (
+                <div className="flex flex-col h-full space-y-md flex-1">
+                  {/* Detail Header */}
+                  <div className="flex justify-between items-start border-b border-slate-800 pb-sm">
+                    <div className="flex items-center gap-xs">
+                      <button
+                        onClick={() => setSelectedTicketId(null)}
+                        className="p-1 hover:bg-[#131D33] text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer mr-xs"
+                        title="Back to Tickets"
+                      >
+                        <span className="material-symbols-outlined text-sm block">arrow_back</span>
+                      </button>
+                      <div>
+                        <h4 className="font-bold text-white text-xs leading-none">{activeTicket.subject}</h4>
+                        <span className="text-[9px] text-slate-500 font-mono mt-1 block">ID: {activeTicket.id}</span>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold tracking-wider ${
+                      activeTicket.status === 'Open'
+                        ? 'bg-amber-950/40 text-amber-400 border border-amber-900/20'
+                        : 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/20'
+                    }`}>
+                      {activeTicket.status}
+                    </span>
+                  </div>
+
+                  {/* Original Student Query */}
+                  <div className="bg-[#131d33]/20 border border-slate-800/60 p-sm rounded-xl space-y-xs">
+                    <p className="text-[9px] text-[#5FE29C] font-bold uppercase tracking-wider">Original Query</p>
+                    <p className="text-xs text-slate-200 leading-relaxed font-semibold">{activeTicket.message}</p>
+                    <p className="text-[9px] text-slate-505 font-medium">{new Date(activeTicket.timestamp).toLocaleString()}</p>
+                  </div>
+
+                  {/* Message Bubble Thread */}
+                  <div className="flex-1 overflow-y-auto space-y-sm max-h-[300px] min-h-[180px] bg-[#0a101d]/50 border border-slate-900/80 p-sm rounded-xl pr-2">
+                    {activeTicket.replies?.map((rep, idx) => {
+                      const isAdminReply = rep.user === 'Support Agent' || rep.user === 'Administrator';
+                      const isBotReply = rep.user === 'Support Bot';
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex flex-col max-w-[85%] space-y-1 ${
+                            isAdminReply ? 'ml-auto items-end' : 'mr-auto items-start'
+                          }`}
+                        >
+                          <span className="text-[9px] font-bold text-slate-455">
+                            {rep.user}
+                          </span>
+                          <div
+                            className={`p-sm rounded-xl text-xs leading-relaxed ${
+                              isAdminReply
+                                ? 'bg-[#1e2e4e] text-white rounded-tr-none'
+                                : isBotReply
+                                ? 'bg-slate-800/40 text-slate-350 rounded-tl-none border border-slate-800'
+                                : 'bg-[#131d33] text-slate-200 rounded-tl-none border border-slate-850'
+                            }`}
+                          >
+                            {rep.text}
+                          </div>
+                          <span className="text-[8px] text-slate-500">
+                            {new Date(rep.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Reply Form */}
+                  <form onSubmit={handleSendAdminReply} className="space-y-sm pt-xs">
+                    <div className="relative">
+                      <textarea
+                        required
+                        rows={3}
+                        value={adminReplyText}
+                        onChange={e => setAdminReplyText(e.target.value)}
+                        placeholder="Type your official support response here..."
+                        className="w-full bg-[#131D33] border border-[#1E2E4E] focus:border-emerald-500/50 rounded-lg p-sm text-slate-200 outline-none text-xs font-semibold placeholder-slate-600"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isSendingReply || !adminReplyText.trim()}
+                      className="w-full py-2 bg-[#5FE29C] hover:bg-[#4CD08A] text-[#0A101D] font-bold rounded-lg text-xs flex items-center justify-center gap-xs cursor-pointer disabled:opacity-50 transition-colors font-sans"
+                    >
+                      {isSendingReply ? 'Sending response...' : 'Send Response'}
+                      <span className="material-symbols-outlined text-[16px] font-bold">send</span>
+                    </button>
+                  </form>
+                </div>
+              );
+            })()
+          )}
+        </div>
+
+      </div>
+
+      {/* Edit Student profile Modal Overlay */}
+      {selectedUser && (
+        <div className="fixed inset-0 bg-[#091426]/75 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-[#0d1527] border border-[#1e2e4e] rounded-2xl p-6 max-w-md w-full shadow-2xl relative text-slate-200 flex flex-col justify-between animate-fade-in">
             <div>
               <div className="flex justify-between items-start mb-md">
                 <div>
@@ -262,7 +438,7 @@ export default function AdminUserManagementPage() {
                 </div>
                 <button
                   onClick={() => setSelectedUser(null)}
-                  className="text-slate-550 hover:text-slate-350 cursor-pointer"
+                  className="text-slate-555 hover:text-slate-350 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">close</span>
                 </button>
@@ -366,9 +542,8 @@ export default function AdminUserManagementPage() {
               Student ID: <span className="font-mono text-slate-400">{selectedUser.id}</span>
             </div>
           </div>
-        )}
-
-      </div>
+        </div>
+      )}
     </div>
   );
 }

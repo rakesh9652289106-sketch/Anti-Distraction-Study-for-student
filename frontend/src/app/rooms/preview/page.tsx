@@ -14,6 +14,7 @@ interface RoomDetails {
   onlineCount: number;
   maxSeats: number;
   focusIndex: number;
+  coinsLimit?: number;
 }
 
 interface Environment {
@@ -78,7 +79,10 @@ function RoomPreviewContent() {
     if (!id) return;
     setIsJoining(true);
     try {
-      await joinStudyRoom(id);
+      const res = await joinStudyRoom(id);
+      if (res && !res.success) {
+        alert(res.message);
+      }
       setIsJoining(false);
       // Wait briefly, then re-fetch room status
       await fetchRoomData();
@@ -158,6 +162,12 @@ function RoomPreviewContent() {
               <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
               Active Session
             </span>
+            {roomDetails.coinsLimit !== undefined && roomDetails.coinsLimit > 0 && (
+              <span className="bg-amber-50 text-amber-600 border border-amber-100 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">monetization_on</span>
+                Entry Cost: {roomDetails.coinsLimit} Coins
+              </span>
+            )}
             <span className="text-slate-500 text-xs font-semibold">• {roomDetails.onlineCount} Scholars Online</span>
           </div>
           

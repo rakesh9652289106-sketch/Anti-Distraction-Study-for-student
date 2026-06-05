@@ -23,6 +23,7 @@ export default function AdminCreateRoomPage() {
   const [censorWords, setCensorWords] = useState<string[]>(['spam', 'cheat', 'abuse', 'slack', 'tiktok']);
   const [newCensorWord, setNewCensorWord] = useState('');
   const [allowedApps, setAllowedApps] = useState<string[]>(['notion', 'gdocs']);
+  const [coinsLimit, setCoinsLimit] = useState(0);
 
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,7 +95,8 @@ export default function AdminCreateRoomPage() {
           videoStreamRequired,
           chatModerationFilter,
           censorWords,
-          allowedApps
+          allowedApps,
+          coinsLimit
         })
       });
 
@@ -111,6 +113,7 @@ export default function AdminCreateRoomPage() {
         setChatModerationFilter(true);
         setCensorWords(['spam', 'cheat', 'abuse', 'slack', 'tiktok']);
         setAllowedApps(['notion', 'gdocs']);
+        setCoinsLimit(0);
         
         triggerToast(`Virtual Study Sanctuary "${roomName.trim()}" has been deployed!`);
         await fetchData();
@@ -334,7 +337,7 @@ export default function AdminCreateRoomPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-sm">
                   {/* Session Duration format */}
                   <div className="space-y-xs">
-                    <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest">
+                    <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-widest">
                       Session Intervals Format
                     </label>
                     <div className="relative">
@@ -356,6 +359,29 @@ export default function AdminCreateRoomPage() {
                     </div>
                   </div>
 
+                  {/* Coins Entry Requirement */}
+                  <div className="space-y-xs">
+                    <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest">
+                      Coins Entry Requirement
+                    </label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">
+                        monetization_on
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="1000"
+                        value={coinsLimit}
+                        onChange={e => setCoinsLimit(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-[#131D33] border border-[#1E2E4E] focus:border-emerald-500/50 rounded-lg py-2 pl-[36px] pr-sm text-slate-200 outline-none text-xs font-semibold placeholder-slate-650"
+                        placeholder="e.g. 50"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-sm pt-xs">
                   {/* Toggle switches */}
                   <div className="flex flex-col justify-end gap-2 text-xs">
                     <label className="flex items-center gap-sm cursor-pointer select-none">
@@ -535,6 +561,12 @@ export default function AdminCreateRoomPage() {
                       <div className="text-[10px] text-slate-350 font-bold">{room.ambientSound}</div>
                       <div className="text-[9px] text-slate-500 font-semibold">{room.sessionDurationFormat || '90m Focus'}</div>
                       <div className="text-[9px] text-slate-400/80 font-bold mt-1">Seats: {room.activeUsers} / {room.maxCapacity || 20}</div>
+                      {room.coinsLimit !== undefined && room.coinsLimit > 0 && (
+                        <div className="text-[9px] text-amber-400/95 font-bold mt-1 flex items-center gap-0.5">
+                          <span className="material-symbols-outlined text-[10px]">monetization_on</span>
+                          Min: {room.coinsLimit} Coins
+                        </div>
+                      )}
                     </td>
                     <td className="py-sm text-center">
                       <div className="flex justify-center items-center gap-1.5">
