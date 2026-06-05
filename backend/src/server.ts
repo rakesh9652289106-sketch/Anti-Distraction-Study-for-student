@@ -874,6 +874,20 @@ app.post('/api/teacher/resources/share', (req: Request, res: Response) => {
       archived: false
     };
 
+    // Ensure the faculty directory exists and copy the mock PDF
+    if (fileType === 'pdf' || fileType === undefined) {
+      const uploadsDir = path.join(__dirname, '../uploads');
+      const facultyDir = path.join(uploadsDir, 'faculty');
+      if (!fs.existsSync(facultyDir)) {
+        fs.mkdirSync(facultyDir, { recursive: true });
+      }
+      const templatePath = path.join(uploadsDir, 'QM_Lecture_Notes_W4.pdf');
+      const targetPath = path.join(facultyDir, `${tempId}.pdf`);
+      if (fs.existsSync(templatePath)) {
+        fs.copyFileSync(templatePath, targetPath);
+      }
+    }
+
     resources.push(newResource);
     writeResourcesDb(resources);
 

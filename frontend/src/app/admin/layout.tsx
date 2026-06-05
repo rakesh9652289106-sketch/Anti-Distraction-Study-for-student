@@ -254,6 +254,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Study Environments', path: '/admin/config/environments', icon: 'domain' },
     { name: 'Create & Configure Rooms', path: '/admin/create-room', icon: 'add_home_work' },
     { name: 'User & Group Management', path: '/admin/config/users', icon: 'manage_accounts' },
+    { name: 'Share Study Materials', path: '/admin/resources', icon: 'auto_stories' },
     { name: 'Rewards & Engagement', path: '/admin/config/rewards', icon: 'military_tech' }
   ];
 
