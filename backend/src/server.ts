@@ -1394,16 +1394,19 @@ app.post('/api/support', (req: Request, res: Response) => {
 
     const db = readDb();
     
+    // Generate AI response to the student's ticket query
+    const aiResponse = generateAiResponse(body.message);
+
     const newTicket: SupportTicket = {
       id: 'ticket-' + Math.random().toString(36).substring(2, 9),
       subject: body.subject,
       message: body.message,
-      status: 'Open',
+      status: 'Answered',
       timestamp: new Date().toISOString(),
       replies: [
         {
           user: 'Support Bot',
-          text: `Thank you for your report. Our AI agent is analyzing the issue: "${body.subject}". We will get back to you shortly.`,
+          text: aiResponse,
           timestamp: new Date().toISOString()
         }
       ]
@@ -1441,6 +1444,18 @@ app.post('/api/support/:id', (req: Request, res: Response) => {
     ticket.replies.push(newReply);
     
     if (body.user === 'Support Agent') {
+      ticket.status = 'Answered';
+    }
+
+    // Automatically trigger AI Support Bot to answer the message
+    if (body.user !== 'Support Bot') {
+      const aiResponse = generateAiResponse(body.text);
+      const aiReply = {
+        user: 'Support Bot',
+        text: aiResponse,
+        timestamp: new Date().toISOString()
+      };
+      ticket.replies.push(aiReply);
       ticket.status = 'Answered';
     }
 
