@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Background Particle System Simulation
+  // Background Particle System Simulation matching Stitch's Zen Emerald settings
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -19,7 +19,7 @@ export default function LoginPage() {
     if (!ctx) return;
 
     let animationId: number;
-    let particles: Array<{
+    const particles: Array<{
       x: number;
       y: number;
       size: number;
@@ -28,7 +28,7 @@ export default function LoginPage() {
       opacity: number;
       color: string;
     }> = [];
-    const particleCount = 40;
+    const particleCount = 30; // Reduced for minimalism
 
     const resize = () => {
       canvas.width = window.innerWidth;
@@ -38,16 +38,16 @@ export default function LoginPage() {
     window.addEventListener('resize', resize);
     resize();
 
-    // Initialize particles
+    // Initialize particles with slower "Zen" speeds and Emerald colors
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        size: Math.random() * 4 + 1,
-        speedX: (Math.random() - 0.5) * 0.4,
-        speedY: (Math.random() - 0.5) * 0.4,
-        opacity: Math.random() * 0.3 + 0.1,
-        color: Math.random() > 0.5 ? '#1e293b' : '#006c49'
+        size: Math.random() * 3 + 1,
+        speedX: (Math.random() - 0.5) * 0.15,
+        speedY: (Math.random() - 0.5) * 0.15,
+        opacity: Math.random() * 0.2 + 0.05,
+        color: '#6cf8bb' // Soft emerald/green
       });
     }
 
@@ -84,7 +84,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) {
+    if (!emailOrPhone.trim() || !password.trim()) {
       setError('Please fill in all credentials.');
       return;
     }
@@ -93,8 +93,8 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // If email has 'admin' or password is the admin key, authenticate as Admin
-      if (email.includes('admin') || password === 'admin123') {
+      // If input contains 'admin' or password is the admin key, authenticate as Admin
+      if (emailOrPhone.includes('admin') || password === 'admin123') {
         const res = await fetch('/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -108,6 +108,7 @@ export default function LoginPage() {
         }
       } else {
         // Standard Student mock authentication
+        sessionStorage.setItem('student_authenticated', 'true');
         setTimeout(() => {
           router.push('/');
         }, 800);
@@ -120,58 +121,81 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between relative overflow-hidden font-sans">
+    <div className="min-h-screen flex flex-col justify-between relative overflow-hidden zen-bg">
+      {/* Wave flow and glassmorphic card styles */}
+      <style>{`
+        .zen-bg {
+          background: linear-gradient(135deg, #002113 0%, #003220 50%, #002113 100%);
+          background-size: 400% 400%;
+          animation: wave-flow 20s ease-in-out infinite;
+        }
+        @keyframes wave-flow {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .glass-card {
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.3);
+        }
+      `}</style>
+
       {/* Particle Canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-0" />
+      <canvas ref={canvasRef} id="particle-canvas" className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-60" />
 
       {/* Top Navbar */}
-      <header className="w-full z-50 flex justify-center px-6 py-4 max-w-7xl mx-auto bg-white/40 backdrop-blur-lg border-b border-slate-200/40">
+      <header className="fixed top-0 w-full z-50 flex justify-center px-gutter py-4 max-w-container-max mx-auto">
         <div className="flex items-center justify-between w-full">
-          <div className="text-xl font-bold text-slate-800 font-mono tracking-wider">FocusFlow</div>
-          <nav className="hidden md:flex gap-6">
-            <a className="text-slate-500 hover:text-slate-800 text-xs font-semibold transition-colors" href="#">Help</a>
+          <div className="font-headline-md text-headline-md font-bold text-white/90">FocusFlow</div>
+          <nav className="hidden md:flex gap-md">
+            <a className="text-white/70 font-label-md hover:text-white transition-colors" href="#">Help</a>
           </nav>
         </div>
       </header>
 
       {/* Main Form Center */}
-      <main className="flex-grow flex items-center justify-center py-12 px-6 relative z-10">
-        <section className="w-full max-w-[420px]">
-          <div className="bg-white/75 backdrop-blur-2xl border border-white/40 shadow-xl rounded-2xl p-8">
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Login to Learn</h1>
-              <p className="text-xs text-slate-500 mt-1">Access your digital sanctuary for deep work.</p>
+      <main className="flex-grow flex items-center justify-center pt-xl pb-lg px-gutter relative z-10">
+        <section className="w-full max-w-[440px]">
+          <div className="glass-card rounded-xl p-lg">
+            {/* Header */}
+            <div className="text-center mb-lg">
+              <h1 className="font-headline-lg text-headline-lg text-primary mb-xs">Login to Learn</h1>
+              <p className="font-body-md text-body-md text-on-surface-variant">Access your digital sanctuary for deep work.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Email */}
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="email">
-                  Student Email
+            {/* Login Form */}
+            <form onSubmit={handleSubmit} className="space-y-md">
+              {/* Phone Field */}
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface" htmlFor="phone">
+                  Phone Number
                 </label>
                 <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
-                    alternate_email
+                  <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
+                    phone
                   </span>
                   <input
-                    id="email"
-                    type="email"
+                    id="phone"
+                    type="tel"
                     required
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="name@university.edu"
-                    className="w-full pl-10 pr-4 py-2.5 bg-white/50 border border-slate-200 focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 rounded-lg text-xs outline-none transition-all placeholder-slate-400"
+                    value={emailOrPhone}
+                    onChange={e => setEmailOrPhone(e.target.value)}
+                    placeholder="+1 (555) 000-0000"
+                    className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
                   />
                 </div>
               </div>
 
-              {/* Password */}
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider" htmlFor="password">
+              {/* Password Field */}
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface" htmlFor="password">
                   Password
                 </label>
                 <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
+                  <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
                     lock
                   </span>
                   <input
@@ -181,54 +205,59 @@ export default function LoginPage() {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-2.5 bg-white/50 border border-slate-200 focus:border-slate-800 focus:ring-4 focus:ring-slate-800/5 rounded-lg text-xs outline-none transition-all placeholder-slate-400"
+                    className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
                   />
                 </div>
               </div>
 
-              {/* Remember & Reset */}
-              <div className="flex items-center justify-between text-xs">
-                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              {/* Options */}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-xs cursor-pointer group">
                   <input
                     type="checkbox"
-                    className="w-4 h-4 rounded border-slate-200 text-slate-800 focus:ring-slate-800"
+                    className="w-4 h-4 rounded border-outline-variant text-secondary focus:ring-secondary cursor-pointer"
                   />
-                  <span className="text-slate-500 font-semibold">Remember Me</span>
+                  <span className="font-label-md text-label-md text-on-surface-variant group-hover:text-on-surface transition-colors select-none">
+                    Remember Me
+                  </span>
                 </label>
-                <a className="text-slate-800 font-bold hover:underline" href="#">Forgot Password?</a>
+                <a className="font-label-md text-label-md text-secondary font-semibold hover:underline" href="#">
+                  Forgot Password?
+                </a>
               </div>
 
               {error && (
-                <div className="text-xs text-red-650 bg-red-50 border border-red-100 rounded-lg p-3 flex gap-2">
+                <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-3 flex gap-2">
                   <span className="material-symbols-outlined text-[16px] shrink-0">error</span>
                   <span>{error}</span>
                 </div>
               )}
 
-              {/* Submit */}
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-slate-850 hover:bg-slate-900 text-white font-bold text-xs py-3 rounded-lg active:scale-[0.98] transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full bg-secondary text-white font-label-md text-label-md py-sm rounded-lg hover:brightness-110 transition-all duration-200 transform active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 {isSubmitting ? 'Verifying Credentials...' : 'Enter Portal'}
               </button>
             </form>
 
+            {/* Social logins option */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-slate-200"></div>
               </div>
               <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                <span className="px-3 bg-white/0">Or continue with</span>
+                <span className="px-3 bg-white">Or continue with</span>
               </div>
             </div>
 
-            {/* Social logins */}
             <div className="grid grid-cols-2 gap-4">
               <button
+                type="button"
                 onClick={() => { router.push('/'); }}
-                className="flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-lg bg-white/40 hover:bg-white/60 text-xs font-semibold transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-lg bg-white/40 hover:bg-white/60 text-xs font-semibold transition-colors cursor-pointer text-slate-700"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
@@ -239,8 +268,9 @@ export default function LoginPage() {
                 <span>Google</span>
               </button>
               <button
+                type="button"
                 onClick={() => { router.push('/'); }}
-                className="flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-lg bg-white/40 hover:bg-white/60 text-xs font-semibold transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-lg bg-white/40 hover:bg-white/60 text-xs font-semibold transition-colors cursor-pointer text-slate-700"
               >
                 <svg className="w-4 h-4" viewBox="0 0 23 23">
                   <path d="M0 0h23v23H0z" fill="#f3f3f3"></path>
@@ -253,9 +283,13 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="mt-8 text-center text-xs">
-              <p className="text-slate-500 font-semibold">
-                New student? <a className="text-slate-800 font-bold hover:underline" href="#">Create an account</a>
+            {/* Footer Link */}
+            <div className="mt-lg text-center">
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                New student?{' '}
+                <a className="text-secondary font-semibold hover:underline" href="#">
+                  Create an account
+                </a>
               </p>
             </div>
           </div>
@@ -263,16 +297,32 @@ export default function LoginPage() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full py-6 flex flex-col md:flex-row items-center justify-between px-6 max-w-7xl mx-auto bg-transparent relative z-10 text-[10px] font-bold tracking-wide text-slate-400">
-        <div className="mb-4 md:mb-0">
+      <footer className="w-full py-md flex flex-col md:flex-row items-center justify-between px-gutter max-w-container-max mx-auto bg-transparent relative z-10">
+        <div className="font-label-sm text-label-sm text-white/50 mb-4 md:mb-0">
           © 2026 FocusFlow. Cognitive Sustainability for Deep Work.
         </div>
-        <div className="flex gap-4">
-          <a className="hover:text-slate-800 transition-colors" href="#">Privacy Policy</a>
-          <a className="hover:text-slate-800 transition-colors" href="#">Terms of Service</a>
-          <a className="hover:text-slate-800 transition-colors" href="#">Security</a>
+        <div className="flex gap-md">
+          <a className="font-label-sm text-label-sm text-white/50 hover:text-white transition-colors" href="#">
+            Privacy Policy
+          </a>
+          <a className="font-label-sm text-label-sm text-white/50 hover:text-white transition-colors" href="#">
+            Terms of Service
+          </a>
+          <a className="font-label-sm text-label-sm text-white/50 hover:text-white transition-colors" href="#">
+            Security
+          </a>
         </div>
       </footer>
+
+      {/* Floating Support Button */}
+      <button
+        onClick={() => router.push('/support')}
+        className="fixed bottom-md right-gutter w-12 h-12 bg-secondary text-white rounded-full shadow-lg flex items-center justify-center hover:brightness-110 transition-all duration-200 z-50 cursor-pointer"
+        title="Support Desk"
+      >
+        <span className="material-symbols-outlined">question_mark</span>
+      </button>
     </div>
   );
 }
+

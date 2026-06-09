@@ -207,9 +207,9 @@ export default function AdminMonitorPage() {
           </div>
           
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {activeAlerts.map(alert => (
+            {activeAlerts.map((alert, idx) => (
               <div
-                key={alert.id}
+                key={alert.id ? `${alert.id}-${idx}` : `alert-${idx}`}
                 className={`p-3 rounded-lg border text-xs font-semibold leading-relaxed ${
                   alert.type === 'error'
                     ? 'bg-red-50/70 border-red-200/50 text-red-700'
@@ -248,8 +248,8 @@ export default function AdminMonitorPage() {
           <div className="flex-1 overflow-y-auto p-4 relative">
             <div className="absolute left-[33px] top-6 bottom-6 w-px bg-slate-200 z-0"></div>
             <div className="space-y-4 relative z-10">
-              {streamLogs.map(log => (
-                <div key={log.id} className="flex gap-4 items-start group">
+              {streamLogs.map((log, idx) => (
+                <div key={log.id ? `${log.id}-${idx}` : `log-${idx}`} className="flex gap-4 items-start group">
                   <div className={`w-8 h-8 rounded-full border-2 border-white flex items-center justify-center shrink-0 shadow-sm transition-transform ${
                     log.type === 'start'
                       ? 'bg-emerald-100 text-emerald-600'

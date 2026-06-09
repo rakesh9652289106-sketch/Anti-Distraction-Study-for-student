@@ -597,7 +597,7 @@ app.get('/api/student/rooms/:roomId', (req: Request, res: Response) => {
   
   const room = db.rooms.find(r => r.id === roomId) || db.rooms[0];
   const roomResources = resources.filter(resItem => 
-    resItem.sharedWithGroups.some(g => g.groupId === 'g-physics-s2')
+    resItem.sharedWithGroups.some(g => g.groupId === roomId)
   );
 
   res.json({
@@ -640,11 +640,17 @@ app.post('/api/student/rooms/:roomId/resources/suggest', (req: Request, res: Res
     if (!title) return res.status(400).json({ error: "Title is required" });
 
     const resources = readResourcesDb();
+    
+    let resourceUrl = url || 'https://en.wikipedia.org/wiki/Quantum_mechanics';
+    if (type === 'video' && !url) {
+      resourceUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+    }
+
     const newResource: SharedResource = {
       id: 'res-' + Math.random().toString(36).substring(2, 9),
       title,
       fileType: type || 'link',
-      url: url || '#',
+      url: resourceUrl,
       size: 'Student Shared',
       ownerId: 'u-student',
       relevanceScore: 78,
@@ -652,7 +658,7 @@ app.post('/api/student/rooms/:roomId/resources/suggest', (req: Request, res: Res
       suggestedTags: ["Suggested", "Peer Share"],
       sharedWithGroups: [
         {
-          groupId: roomId === 'room-3' ? 'g-physics-s2' : 'g-writing',
+          groupId: roomId,
           permissions: { viewOnly: true, canDownload: true, allowAiSummarization: false }
         }
       ],
@@ -765,11 +771,35 @@ app.post('/api/student/library/upload', (req: Request, res: Response) => {
     if (!title) return res.status(400).json({ error: "Title is required" });
 
     const resources = readResourcesDb();
+    
+    let resourceUrl = '';
+    if (fileType === 'video') {
+      resourceUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+    } else if (fileType === 'link') {
+      resourceUrl = (title && (title.startsWith('http://') || title.startsWith('https://'))) 
+        ? title 
+        : "https://en.wikipedia.org/wiki/Quantum_mechanics";
+    } else {
+      const cleanTitle = title.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const safeFilename = cleanTitle.toLowerCase().endsWith('.pdf') ? cleanTitle : `${cleanTitle}.pdf`;
+      resourceUrl = `/uploads/${safeFilename}`;
+
+      const uploadsDir = path.join(__dirname, '../uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      const templatePath = path.join(uploadsDir, 'QM_Lecture_Notes_W4.pdf');
+      const targetPath = path.join(uploadsDir, safeFilename);
+      if (fs.existsSync(templatePath) && !fs.existsSync(targetPath)) {
+        fs.copyFileSync(templatePath, targetPath);
+      }
+    }
+
     const newResource: SharedResource = {
       id: 'res-' + Math.random().toString(36).substring(2, 9),
       title,
       fileType: fileType || 'pdf',
-      url: `/uploads/${title}`,
+      url: resourceUrl,
       size: '2.1 MB',
       ownerId: 'u-student',
       relevanceScore: Math.floor(Math.random() * 20) + 80, // 80-99
@@ -857,11 +887,20 @@ app.post('/api/teacher/resources/share', (req: Request, res: Response) => {
       }
     })) || [];
 
+    let resourceUrl = `/uploads/faculty/${tempId}.pdf`;
+    if (fileType === 'video') {
+      resourceUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+    } else if (fileType === 'link') {
+      resourceUrl = (title && (title.startsWith('http://') || title.startsWith('https://'))) 
+        ? title 
+        : "https://en.wikipedia.org/wiki/Quantum_mechanics";
+    }
+
     const newResource: SharedResource = {
       id: 'doc-' + Math.random().toString(36).substring(2, 9),
       title: title || `Lecture_Doc_${tempId?.substring(4)}.pdf`,
       fileType: fileType || 'pdf',
-      url: `/uploads/faculty/${tempId}.pdf`,
+      url: resourceUrl,
       size: "8.4 MB",
       ownerId: "t-aris-thorne",
       relevanceScore: 95,
@@ -875,7 +914,7 @@ app.post('/api/teacher/resources/share', (req: Request, res: Response) => {
     };
 
     // Ensure the faculty directory exists and copy the mock PDF
-    if (fileType === 'pdf' || fileType === undefined) {
+    if (fileType !== 'video' && fileType !== 'link') {
       const uploadsDir = path.join(__dirname, '../uploads');
       const facultyDir = path.join(uploadsDir, 'faculty');
       if (!fs.existsSync(facultyDir)) {
@@ -900,19 +939,23 @@ app.post('/api/teacher/resources/share', (req: Request, res: Response) => {
 // GET /api/teacher/resources/shared-history
 app.get('/api/teacher/resources/shared-history', (req: Request, res: Response) => {
   const resources = readResourcesDb();
-  // Filter only those uploaded by teacher
   const shared = resources.filter(r => r.ownerId === 't-aris-thorne');
-  
-  res.json(shared.map(s => ({
-    id: s.id,
-    name: s.title,
-    format: s.fileType,
-    targetGroup: s.sharedWithGroups[0]?.groupId === 'g-physics-s2' ? "Advanced Physics" : "STEM Group",
-    sharedDate: new Date(s.createdAt).toLocaleDateString() + " • " + new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    status: s.archived ? "Archived" : "Live",
-    views: s.stats.views,
-    downloads: s.stats.downloads
-  })));
+  const db = readDb();
+  res.json(shared.map(s => {
+    const firstGroupId = s.sharedWithGroups[0]?.groupId;
+    const room = db.rooms.find(r => r.id === firstGroupId);
+    const targetName = room ? room.name : (firstGroupId === 'g-physics-s2' ? "Advanced Physics" : "STEM Group");
+    return {
+      id: s.id,
+      name: s.title,
+      format: s.fileType,
+      targetGroup: targetName,
+      sharedDate: new Date(s.createdAt).toLocaleDateString() + " • " + new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: s.archived ? "Archived" : "Live",
+      views: s.stats.views,
+      downloads: s.stats.downloads
+    };
+  }));
 });
 
 // -------------------------------------------------------------
@@ -1612,7 +1655,16 @@ if (fs.existsSync(frontendOutPath)) {
   console.warn(`[Static Serve] Frontend out directory not found at: ${frontendOutPath}. Make sure to build frontend first.`);
 }
 
-// Start the Express server
-app.listen(PORT, () => {
-  console.log(`FocusFlow Express Backend Server running on http://localhost:${PORT}`);
+// Start the Express server after initializing database sync from Firestore
+import { syncFromFirestore } from './db';
+
+syncFromFirestore().then(() => {
+  app.listen(PORT, () => {
+    console.log(`FocusFlow Express Backend Server running on http://localhost:${PORT}`);
+  });
+}).catch(err => {
+  console.error("Critical: Failed to sync database from Firestore. Starting server anyway...", err);
+  app.listen(PORT, () => {
+    console.log(`FocusFlow Express Backend Server running on http://localhost:${PORT}`);
+  });
 });

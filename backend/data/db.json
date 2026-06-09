@@ -3,7 +3,7 @@
     {
       "id": "1",
       "title": "Review Chapter 4",
-      "completed": true,
+      "completed": false,
       "subject": "Biology",
       "estimatedPomodoros": 2,
       "actualPomodoros": 2
@@ -11,7 +11,7 @@
     {
       "id": "2",
       "title": "Biology - Cell Structure Notes",
-      "completed": true,
+      "completed": false,
       "subject": "Biology",
       "estimatedPomodoros": 3,
       "actualPomodoros": 1
@@ -19,7 +19,7 @@
     {
       "id": "3",
       "title": "Math Problem Set 3",
-      "completed": true,
+      "completed": false,
       "subject": "Mathematics",
       "estimatedPomodoros": 4,
       "actualPomodoros": 0
@@ -188,7 +188,7 @@
     }
   ],
   "settings": {
-    "studyMode": true,
+    "studyMode": false,
     "distractionShield": true,
     "blockedWebsites": [
       "instagram.com",

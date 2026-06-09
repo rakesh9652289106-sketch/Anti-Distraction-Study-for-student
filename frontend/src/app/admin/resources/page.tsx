@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ClassroomGroup } from '@/lib/db';
+import { StudyRoom } from '@/lib/db';
 
 interface SharedHistoryItem {
   id: string;
@@ -15,7 +15,7 @@ interface SharedHistoryItem {
 }
 
 export default function AdminResourcesPage() {
-  const [groups, setGroups] = useState<ClassroomGroup[]>([]);
+  const [rooms, setRooms] = useState<StudyRoom[]>([]);
   const [history, setHistory] = useState<SharedHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,30 +26,30 @@ export default function AdminResourcesPage() {
   const [newTagInput, setNewTagInput] = useState('');
   const [tempFileId, setTempFileId] = useState('');
 
-  // Sharing permissions config state mapped by Group ID
-  const [selectedGroups, setSelectedGroups] = useState<Record<string, boolean>>({});
-  const [permissions, setPermissions] = useState<Record<string, { viewOnly: boolean; canDownload: boolean; allowAiSummarization: boolean }>>({});
+  // Sharing permissions config state mapped by Room ID
+  const [selectedRooms, setSelectedRooms] = useState<Record<string, boolean>>({});
+  const [roomPermissions, setRoomPermissions] = useState<Record<string, { viewOnly: boolean; canDownload: boolean; allowAiSummarization: boolean }>>({});
 
   const loadData = async () => {
     try {
-      const [resGroups, resHistory] = await Promise.all([
-        fetch('/api/teacher/groups'),
+      const [resRooms, resHistory] = await Promise.all([
+        fetch('/api/student/rooms'),
         fetch('/api/teacher/resources/shared-history')
       ]);
 
-      if (resGroups.ok) {
-        const groupsData: ClassroomGroup[] = await resGroups.json();
-        setGroups(groupsData || []);
+      if (resRooms.ok) {
+        const roomsData: StudyRoom[] = await resRooms.json();
+        setRooms(roomsData || []);
         
         // Initialize default permissions mappings
         const initialSelected: Record<string, boolean> = {};
         const initialPerms: Record<string, { viewOnly: boolean; canDownload: boolean; allowAiSummarization: boolean }> = {};
-        groupsData.forEach((g, idx) => {
-          initialSelected[g.id] = idx === 0; // Check the first group by default
-          initialPerms[g.id] = { viewOnly: true, canDownload: false, allowAiSummarization: true };
+        roomsData.forEach((r, idx) => {
+          initialSelected[r.id] = idx === 0; // Check the first room by default
+          initialPerms[r.id] = { viewOnly: true, canDownload: false, allowAiSummarization: true };
         });
-        setSelectedGroups(initialSelected);
-        setPermissions(initialPerms);
+        setSelectedRooms(initialSelected);
+        setRoomPermissions(initialPerms);
       }
 
       if (resHistory.ok) {
@@ -106,19 +106,19 @@ export default function AdminResourcesPage() {
     setSuggestedTags(prev => prev.filter(t => t !== tag));
   };
 
-  const handleToggleGroupSelected = (groupId: string) => {
-    setSelectedGroups(prev => ({
+  const handleToggleRoomSelected = (roomId: string) => {
+    setSelectedRooms(prev => ({
       ...prev,
-      [groupId]: !prev[groupId]
+      [roomId]: !prev[roomId]
     }));
   };
 
-  const handlePermissionChange = (groupId: string, key: 'viewOnly' | 'canDownload' | 'allowAiSummarization') => {
-    setPermissions(prev => ({
+  const handlePermissionChange = (roomId: string, key: 'viewOnly' | 'canDownload' | 'allowAiSummarization') => {
+    setRoomPermissions(prev => ({
       ...prev,
-      [groupId]: {
-        ...prev[groupId],
-        [key]: !prev[groupId][key]
+      [roomId]: {
+        ...prev[roomId],
+        [key]: !prev[roomId][key]
       }
     }));
   };
@@ -129,16 +129,16 @@ export default function AdminResourcesPage() {
       return;
     }
 
-    // Build targeted group configurations
-    const groupSettings = Object.entries(selectedGroups)
-      .filter(([_, isSelected]) => isSelected)
-      .map(([groupId, _]) => ({
-        groupId,
-        permissions: permissions[groupId]
+    // Build targeted room configurations mapping roomId to groupId (which backend maps to study rooms)
+    const groupSettings = Object.entries(selectedRooms)
+      .filter(([, isSelected]) => isSelected)
+      .map(([roomId]) => ({
+        groupId: roomId,
+        permissions: roomPermissions[roomId]
       }));
 
     if (groupSettings.length === 0) {
-      alert('Please select at least one student group to share this resource with.');
+      alert('Please select at least one study room to share this resource with.');
       return;
     }
 
@@ -174,7 +174,7 @@ export default function AdminResourcesPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-400 font-mono">
-        <div className="w-8 h-8 rounded-full border-2 border-slate-800 border-t-emerald-450 animate-spin mb-4"></div>
+        <div className="w-8 h-8 rounded-full border-2 border-slate-800 border-t-emerald-400 animate-spin mb-4"></div>
         <p className="text-[10px] tracking-widest uppercase">Aligning classroom catalogs...</p>
       </div>
     );
@@ -268,18 +268,18 @@ export default function AdminResourcesPage() {
 
         </div>
 
-        {/* Right Column: Settings & Group check toggles (5 cols) */}
+        {/* Right Column: Settings & Room check toggles (5 cols) */}
         <div className="lg:col-span-5 glass-panel rounded-2xl p-5 border border-[#1E2E4E] bg-[#0d1527]/90 text-slate-200 flex flex-col justify-between">
           <div>
-            <h3 className="text-xs font-bold text-slate-405 uppercase tracking-widest mb-4">Distribution Target Groups</h3>
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Distribution Target Rooms</h3>
             
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-xs">
-              {groups.map(group => {
-                const isChecked = selectedGroups[group.id] || false;
-                const perms = permissions[group.id] || { viewOnly: true, canDownload: false, allowAiSummarization: true };
+              {rooms.map(room => {
+                const isChecked = selectedRooms[room.id] || false;
+                const perms = roomPermissions[room.id] || { viewOnly: true, canDownload: false, allowAiSummarization: true };
                 return (
                   <div 
-                    key={group.id} 
+                    key={room.id} 
                     className={`p-3 bg-[#131d33]/40 border border-slate-850 rounded-xl transition-opacity duration-300 ${
                       isChecked ? 'opacity-100 border-[#1E2E4E]' : 'opacity-60'
                     }`}
@@ -287,14 +287,14 @@ export default function AdminResourcesPage() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-emerald-400 flex items-center justify-center">
-                          <span className="material-symbols-outlined text-md">science</span>
+                          <span className="material-symbols-outlined text-md">meeting_room</span>
                         </div>
-                        <span className="text-xs font-bold text-white truncate max-w-[150px]">{group.name}</span>
+                        <span className="text-xs font-bold text-white truncate max-w-[180px]">{room.name}</span>
                       </div>
                       <input 
                         type="checkbox" 
                         checked={isChecked}
-                        onChange={() => handleToggleGroupSelected(group.id)}
+                        onChange={() => handleToggleRoomSelected(room.id)}
                         className="rounded border-[#1E2E4E] text-[#5FE29C] bg-[#131D33] focus:ring-emerald-500/30 w-4 h-4 cursor-pointer"
                       />
                     </div>
@@ -308,7 +308,7 @@ export default function AdminResourcesPage() {
                           <input 
                             type="checkbox" 
                             checked={perms.viewOnly}
-                            onChange={() => handlePermissionChange(group.id, 'viewOnly')}
+                            onChange={() => handlePermissionChange(room.id, 'viewOnly')}
                             className="sr-only peer"
                           />
                           <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500 relative inline-flex items-center"></div>
@@ -319,7 +319,7 @@ export default function AdminResourcesPage() {
                           <input 
                             type="checkbox" 
                             checked={perms.canDownload}
-                            onChange={() => handlePermissionChange(group.id, 'canDownload')}
+                            onChange={() => handlePermissionChange(room.id, 'canDownload')}
                             className="sr-only peer"
                           />
                           <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500 relative inline-flex items-center"></div>
@@ -332,7 +332,7 @@ export default function AdminResourcesPage() {
                           <input 
                             type="checkbox" 
                             checked={perms.allowAiSummarization}
-                            onChange={() => handlePermissionChange(group.id, 'allowAiSummarization')}
+                            onChange={() => handlePermissionChange(room.id, 'allowAiSummarization')}
                             className="sr-only peer"
                           />
                           <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500 relative inline-flex items-center"></div>
@@ -352,7 +352,7 @@ export default function AdminResourcesPage() {
               className="w-full bg-[#5FE29C] hover:bg-[#4CD08A] text-[#0A101D] py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-lg transition-transform active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-sm font-bold">send</span>
-              Share and Deploy to Selected Groups
+              Share and Deploy to Selected Rooms
             </button>
           </div>
         </div>
@@ -369,7 +369,7 @@ export default function AdminResourcesPage() {
                 <thead className="bg-[#131d33]/50 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="px-5 py-3">Material Name</th>
-                    <th className="px-5 py-3">Target Groups</th>
+                    <th className="px-5 py-3">Target Rooms</th>
                     <th className="px-5 py-3">Shared Date</th>
                     <th className="px-5 py-3">Status</th>
                     <th className="px-5 py-3">Views</th>

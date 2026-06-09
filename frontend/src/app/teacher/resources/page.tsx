@@ -131,8 +131,8 @@ export default function TeacherResourcesPage() {
 
     // Build targeted group configurations
     const groupSettings = Object.entries(selectedGroups)
-      .filter(([_, isSelected]) => isSelected)
-      .map(([groupId, _]) => ({
+      .filter(([, isSelected]) => isSelected)
+      .map(([groupId]) => ({
         groupId,
         permissions: permissions[groupId]
       }));

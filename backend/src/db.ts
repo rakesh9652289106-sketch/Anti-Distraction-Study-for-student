@@ -299,109 +299,139 @@ function getInitialData(): DbSchema {
 }
 
 // Read database
-export function readDb(): DbSchema {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
+let dbCache: DbSchema = getInitialData();
+let resourcesCache: SharedResource[] = [];
+let groupsCache: ClassroomGroup[] = [];
 
-  if (!fs.existsSync(DB_FILE)) {
-    const defaultData = getInitialData();
-    fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2), 'utf8');
-    return defaultData;
-  }
+// Initialize Firebase Web SDK
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 
+const firebaseConfig = {
+  projectId: "anti-distraction-study",
+  appId: "1:996142802859:web:4663775e7ab78e6aa454ee",
+  storageBucket: "anti-distraction-study.firebasestorage.app",
+  apiKey: "AIzaSyC34pe5sjeX7xqfRVkWdS7RAOzkGV22bNI",
+  authDomain: "anti-distraction-study.firebaseapp.com",
+  messagingSenderId: "996142802859",
+  measurementId: "G-V4ZCBG46PM"
+};
+
+const app = initializeApp(firebaseConfig);
+const firestoreDb = getFirestore(app);
+
+// Asynchronously sync data from Firestore
+export async function syncFromFirestore() {
+  console.log("[Firestore Sync] Starting synchronization...");
   try {
-    const raw = fs.readFileSync(DB_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    if (!parsed.alerts) {
-      parsed.alerts = [];
+    const docKeys: Array<keyof DbSchema> = ['tasks', 'sessions', 'analytics', 'rewards', 'rooms', 'settings', 'tickets', 'alerts', 'users'];
+    
+    for (const key of docKeys) {
+      const docRef = doc(firestoreDb, 'focusflow', key);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (key === 'settings') {
+          dbCache.settings = data as GlobalSettings;
+        } else {
+          (dbCache as any)[key] = data.list || [];
+        }
+      } else {
+        console.log(`[Firestore Sync] Key "${key}" not found in Firestore. Creating default...`);
+        if (key === 'settings') {
+          await setDoc(docRef, dbCache.settings);
+        } else {
+          await setDoc(docRef, { list: dbCache[key] });
+        }
+      }
     }
-    if (!parsed.users) {
-      parsed.users = getInitialData().users;
+
+    // Sync resources
+    const resRef = doc(firestoreDb, 'focusflow', 'resources');
+    const resSnap = await getDoc(resRef);
+    if (resSnap.exists()) {
+      resourcesCache = resSnap.data().list || [];
+    } else {
+      console.log(`[Firestore Sync] Key "resources" not found in Firestore. Creating default...`);
+      await setDoc(resRef, { list: [] });
+      resourcesCache = [];
     }
-    if (parsed.settings && !parsed.settings.groupConfig) {
-      parsed.settings.groupConfig = getInitialData().settings.groupConfig;
+
+    // Sync groups
+    const grpRef = doc(firestoreDb, 'focusflow', 'groups');
+    const grpSnap = await getDoc(grpRef);
+    if (grpSnap.exists()) {
+      groupsCache = grpSnap.data().list || [];
+    } else {
+      console.log(`[Firestore Sync] Key "groups" not found in Firestore. Creating default...`);
+      await setDoc(grpRef, { list: [] });
+      groupsCache = [];
     }
-    if (parsed.settings && !parsed.settings.aiConfig) {
-      parsed.settings.aiConfig = getInitialData().settings.aiConfig;
-    }
-    // Defensive check to ensure Stitch properties are added to loaded rooms
-    if (parsed.rooms) {
-      const defaults = getInitialData().rooms;
-      parsed.rooms.forEach((r: any, idx: number) => {
-        const d = defaults.find(item => item.id === r.id) || defaults[0];
-        if (r.hostName === undefined) r.hostName = d.hostName;
-        if (r.isVerified === undefined) r.isVerified = d.isVerified;
-        if (r.maxCapacity === undefined) r.maxCapacity = d.maxCapacity;
-        if (r.allowedApps === undefined) r.allowedApps = d.allowedApps;
-        if (r.focusMode === undefined) r.focusMode = d.focusMode;
-        if (r.sessionDurationFormat === undefined) r.sessionDurationFormat = d.sessionDurationFormat;
-        if (r.coinsLimit === undefined) r.coinsLimit = 0;
-      });
-    }
-    return parsed;
+
+    console.log("[Firestore Sync] Synchronization complete!");
   } catch (err) {
-    console.error('Error reading DB, returning defaults', err);
-    return getInitialData();
+    console.error("[Firestore Sync] Error during synchronization:", err);
   }
+}
+
+export function readDb(): DbSchema {
+  // Defensive checks to ensure loaded database structure remains correct
+  if (dbCache.rooms) {
+    const defaults = getInitialData().rooms;
+    dbCache.rooms.forEach((r: any) => {
+      const d = defaults.find(item => item.id === r.id) || defaults[0];
+      if (r.hostName === undefined) r.hostName = d.hostName;
+      if (r.isVerified === undefined) r.isVerified = d.isVerified;
+      if (r.maxCapacity === undefined) r.maxCapacity = d.maxCapacity;
+      if (r.allowedApps === undefined) r.allowedApps = d.allowedApps;
+      if (r.focusMode === undefined) r.focusMode = d.focusMode;
+      if (r.sessionDurationFormat === undefined) r.sessionDurationFormat = d.sessionDurationFormat;
+      if (r.coinsLimit === undefined) r.coinsLimit = 0;
+    });
+  }
+  return dbCache;
 }
 
 // Write database
 export function writeDb(data: DbSchema) {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+  dbCache = data;
+  saveDbToFirestore(data);
 }
 
-// -------------------------------------------------------------
-// Separate Database Helpers for resources.json & groups.json
-// -------------------------------------------------------------
+async function saveDbToFirestore(data: DbSchema) {
+  try {
+    const docKeys: Array<keyof DbSchema> = ['tasks', 'sessions', 'analytics', 'rewards', 'rooms', 'settings', 'tickets', 'alerts', 'users'];
+    for (const key of docKeys) {
+      const docRef = doc(firestoreDb, 'focusflow', key);
+      if (key === 'settings') {
+        await setDoc(docRef, data.settings);
+      } else {
+        await setDoc(docRef, { list: data[key] });
+      }
+    }
+  } catch (err) {
+    console.error("[Firestore Save] Error saving db to Firestore:", err);
+  }
+}
 
 export function readResourcesDb(): SharedResource[] {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(RESOURCES_FILE)) {
-    fs.writeFileSync(RESOURCES_FILE, JSON.stringify([], null, 2), 'utf8');
-    return [];
-  }
-  try {
-    const raw = fs.readFileSync(RESOURCES_FILE, 'utf8');
-    return JSON.parse(raw) as SharedResource[];
-  } catch (err) {
-    console.error('Error reading resources DB', err);
-    return [];
-  }
+  return resourcesCache;
 }
 
 export function writeResourcesDb(data: SharedResource[]) {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-  fs.writeFileSync(RESOURCES_FILE, JSON.stringify(data, null, 2), 'utf8');
+  resourcesCache = data;
+  setDoc(doc(firestoreDb, 'focusflow', 'resources'), { list: data }).catch(err => {
+    console.error("[Firestore Save] Error saving resources:", err);
+  });
 }
 
 export function readGroupsDb(): ClassroomGroup[] {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(GROUPS_FILE)) {
-    fs.writeFileSync(GROUPS_FILE, JSON.stringify([], null, 2), 'utf8');
-    return [];
-  }
-  try {
-    const raw = fs.readFileSync(GROUPS_FILE, 'utf8');
-    return JSON.parse(raw) as ClassroomGroup[];
-  } catch (err) {
-    console.error('Error reading groups DB', err);
-    return [];
-  }
+  return groupsCache;
 }
 
 export function writeGroupsDb(data: ClassroomGroup[]) {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-  fs.writeFileSync(GROUPS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  groupsCache = data;
+  setDoc(doc(firestoreDb, 'focusflow', 'groups'), { list: data }).catch(err => {
+    console.error("[Firestore Save] Error saving groups:", err);
+  });
 }

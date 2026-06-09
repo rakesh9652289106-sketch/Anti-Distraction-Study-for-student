@@ -33,3 +33,6 @@ yarn-error.log*
 .env*
 frontend/.env*
 backend/.env*
+
+# uploads
+/backend/uploads/faculty/

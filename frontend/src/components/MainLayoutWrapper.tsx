@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
@@ -10,7 +10,32 @@ import AssistantSidebar from '@/components/AssistantSidebar';
 export default function MainLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { settings, isAssistantOpen, setIsAssistantOpen } = useApp();
   const pathname = usePathname();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const isBypassShell = pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/teacher');
+
+  useEffect(() => {
+    if (!isBypassShell) {
+      const isAuthenticated = sessionStorage.getItem('student_authenticated') === 'true';
+      if (!isAuthenticated) {
+        router.push('/login');
+      } else {
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
+    }
+  }, [isBypassShell, router, pathname]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <span className="material-symbols-outlined animate-spin text-[36px] text-secondary">
+          sync
+        </span>
+      </div>
+    );
+  }
 
   if (isBypassShell) {
     return (
