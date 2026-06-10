@@ -7,7 +7,7 @@ import { useApp } from '@/context/AppContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { settings, startTimer, isTimerRunning, pauseTimer } = useApp();
+  const { settings, startTimer, isTimerRunning, pauseTimer, user, logout } = useApp();
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: 'dashboard' },
@@ -103,8 +103,30 @@ export default function Sidebar() {
         })}
       </div>
       
-      {/* Footer copyright or streak counter */}
-      <div className="pt-sm border-t border-outline-variant/10 text-center text-xs text-on-surface-variant/40">
+      {/* User profile & Logout */}
+      {user && (
+        <div className="mt-auto pt-md border-t border-outline-variant/20 flex flex-col gap-xs">
+          <div className="flex items-center gap-xs px-sm py-1">
+            <div className="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-sm shrink-0">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="truncate text-left flex-grow">
+              <p className="text-xs font-bold text-primary truncate leading-none">{user.name}</p>
+              <p className="text-[10px] text-on-surface-variant truncate mt-1">{user.email || user.phone}</p>
+            </div>
+          </div>
+          <button
+            onClick={logout}
+            className="flex items-center gap-xs px-sm py-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 text-label-md font-semibold transition-all cursor-pointer w-full text-left"
+          >
+            <span className="material-symbols-outlined text-sm">logout</span>
+            <span>Sign Out</span>
+          </button>
+        </div>
+      )}
+
+      {/* Footer copyright */}
+      <div className="pt-sm border-t border-outline-variant/10 text-center text-[10px] text-on-surface-variant/40 mt-sm">
         AI Study Sentinel v1.0
       </div>
     </nav>

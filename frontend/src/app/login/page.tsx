@@ -2,11 +2,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useApp } from '@/context/AppContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login, signup } = useApp();
+
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -84,17 +92,27 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailOrPhone.trim() || !password.trim()) {
-      setError('Please fill in all credentials.');
-      return;
+    setError('');
+
+    // Check fields
+    if (isRegisterMode) {
+      if (!name.trim() || !email.trim() || !phone.trim() || !password.trim()) {
+        setError('Please fill in all registration fields.');
+        return;
+      }
+    } else {
+      if (!emailOrPhone.trim() || !password.trim()) {
+        setError('Please fill in all credentials.');
+        return;
+      }
     }
 
     setIsSubmitting(true);
-    setError('');
 
     try {
-      // If input contains 'admin' or password is the admin key, authenticate as Admin
-      if (emailOrPhone.includes('admin') || password === 'admin123') {
+      // Admin bypass
+      const isInputAdmin = emailOrPhone.toLowerCase().includes('admin') || email.toLowerCase().includes('admin');
+      if (isInputAdmin || password === 'admin123') {
         const res = await fetch('/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -106,12 +124,23 @@ export default function LoginPage() {
           const data = await res.json();
           setError(data.error || 'Incorrect administrator password.');
         }
-      } else {
-        // Standard Student mock authentication
-        sessionStorage.setItem('student_authenticated', 'true');
-        setTimeout(() => {
+        return;
+      }
+
+      if (isRegisterMode) {
+        const res = await signup(name.trim(), email.trim(), phone.trim(), password);
+        if (res.success) {
           router.push('/');
-        }, 800);
+        } else {
+          setError(res.error || 'Registration failed.');
+        }
+      } else {
+        const res = await login(emailOrPhone.trim(), password);
+        if (res.success) {
+          router.push('/');
+        } else {
+          setError(res.error || 'Incorrect phone number/email or password.');
+        }
       }
     } catch {
       setError('Connection failure. Check network infrastructure.');
@@ -162,32 +191,105 @@ export default function LoginPage() {
           <div className="glass-card rounded-xl p-lg">
             {/* Header */}
             <div className="text-center mb-lg">
-              <h1 className="font-headline-lg text-headline-lg text-primary mb-xs">Login to Learn</h1>
-              <p className="font-body-md text-body-md text-on-surface-variant">Access your digital sanctuary for deep work.</p>
+              <h1 className="font-headline-lg text-headline-lg text-primary mb-xs">
+                {isRegisterMode ? 'Join FocusFlow' : 'Login to Learn'}
+              </h1>
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                {isRegisterMode ? 'Register your personal productivity hub.' : 'Access your digital sanctuary for deep work.'}
+              </p>
             </div>
 
-            {/* Login Form */}
+            {/* Login / Register Form */}
             <form onSubmit={handleSubmit} className="space-y-md">
-              {/* Phone Field */}
-              <div className="space-y-xs">
-                <label className="font-label-md text-label-md text-on-surface" htmlFor="phone">
-                  Phone Number
-                </label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
-                    phone
-                  </span>
-                  <input
-                    id="phone"
-                    type="tel"
-                    required
-                    value={emailOrPhone}
-                    onChange={e => setEmailOrPhone(e.target.value)}
-                    placeholder="+1 (555) 000-0000"
-                    className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
-                  />
+              {isRegisterMode && (
+                <>
+                  {/* Name Field */}
+                  <div className="space-y-xs">
+                    <label className="font-label-md text-label-md text-on-surface" htmlFor="name">
+                      Full Name
+                    </label>
+                    <div className="relative group">
+                      <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
+                        person
+                      </span>
+                      <input
+                        id="name"
+                        type="text"
+                        required
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder="John Doe"
+                        className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email Field */}
+                  <div className="space-y-xs">
+                    <label className="font-label-md text-label-md text-on-surface" htmlFor="email">
+                      Email Address
+                    </label>
+                    <div className="relative group">
+                      <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
+                        mail
+                      </span>
+                      <input
+                        id="email"
+                        type="email"
+                        required
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="john@example.com"
+                        className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Phone Field */}
+                  <div className="space-y-xs">
+                    <label className="font-label-md text-label-md text-on-surface" htmlFor="phone">
+                      Phone Number
+                    </label>
+                    <div className="relative group">
+                      <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
+                        phone
+                      </span>
+                      <input
+                        id="phone"
+                        type="tel"
+                        required
+                        value={phone}
+                        onChange={e => setPhone(e.target.value)}
+                        placeholder="+1 (555) 000-0000"
+                        className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {!isRegisterMode && (
+                /* Phone / Email Field */
+                <div className="space-y-xs">
+                  <label className="font-label-md text-label-md text-on-surface" htmlFor="phoneOrEmail">
+                    Phone Number or Email
+                  </label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
+                      contact_mail
+                    </span>
+                    <input
+                      id="phoneOrEmail"
+                      type="text"
+                      required
+                      value={emailOrPhone}
+                      onChange={e => setEmailOrPhone(e.target.value)}
+                      placeholder="Enter phone or email address"
+                      className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Password Field */}
               <div className="space-y-xs">
@@ -211,20 +313,22 @@ export default function LoginPage() {
               </div>
 
               {/* Options */}
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-xs cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-outline-variant text-secondary focus:ring-secondary cursor-pointer"
-                  />
-                  <span className="font-label-md text-label-md text-on-surface-variant group-hover:text-on-surface transition-colors select-none">
-                    Remember Me
-                  </span>
-                </label>
-                <a className="font-label-md text-label-md text-secondary font-semibold hover:underline" href="#">
-                  Forgot Password?
-                </a>
-              </div>
+              {!isRegisterMode && (
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-xs cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-outline-variant text-secondary focus:ring-secondary cursor-pointer"
+                    />
+                    <span className="font-label-md text-label-md text-on-surface-variant group-hover:text-on-surface transition-colors select-none">
+                      Remember Me
+                    </span>
+                  </label>
+                  <a className="font-label-md text-label-md text-secondary font-semibold hover:underline" href="#">
+                    Forgot Password?
+                  </a>
+                </div>
+              )}
 
               {error && (
                 <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-3 flex gap-2">
@@ -239,7 +343,7 @@ export default function LoginPage() {
                 disabled={isSubmitting}
                 className="w-full bg-secondary text-white font-label-md text-label-md py-sm rounded-lg hover:brightness-110 transition-all duration-200 transform active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                {isSubmitting ? 'Verifying Credentials...' : 'Enter Portal'}
+                {isSubmitting ? 'Verifying Credentials...' : (isRegisterMode ? 'Create Account' : 'Enter Portal')}
               </button>
             </form>
 
@@ -286,10 +390,29 @@ export default function LoginPage() {
             {/* Footer Link */}
             <div className="mt-lg text-center">
               <p className="font-body-md text-body-md text-on-surface-variant">
-                New student?{' '}
-                <a className="text-secondary font-semibold hover:underline" href="#">
-                  Create an account
-                </a>
+                {isRegisterMode ? (
+                  <>
+                    Already registered?{' '}
+                    <button
+                      type="button"
+                      onClick={() => { setIsRegisterMode(false); setError(''); }}
+                      className="text-secondary font-semibold hover:underline bg-transparent border-none cursor-pointer"
+                    >
+                      Login here
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    New student?{' '}
+                    <button
+                      type="button"
+                      onClick={() => { setIsRegisterMode(true); setError(''); }}
+                      className="text-secondary font-semibold hover:underline bg-transparent border-none cursor-pointer"
+                    >
+                      Create an account
+                    </button>
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -325,4 +448,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

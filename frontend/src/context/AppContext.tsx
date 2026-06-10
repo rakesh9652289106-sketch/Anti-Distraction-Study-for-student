@@ -1,9 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Task, StudySession, GlobalSettings, StudyRoom, SupportTicket } from '@/lib/db';
+import { Task, StudySession, GlobalSettings, StudyRoom, SupportTicket, StudentUser } from '@/lib/db';
 
 interface AppContextType {
+  user: StudentUser | null;
   tasks: Task[];
   settings: GlobalSettings;
   sessions: StudySession[];
@@ -27,6 +28,9 @@ interface AppContextType {
 
   // Actions
   fetchData: () => Promise<void>;
+  login: (emailOrPhone: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (name: string, email: string, phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   addTask: (title: string, subject: string, estimatedPomodoros?: number) => Promise<void>;
   toggleTaskCompleted: (id: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -66,16 +70,17 @@ async function fetchJsonSafely<T>(url: string): Promise<T | null> {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<StudentUser | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [settings, setSettings] = useState<GlobalSettings>({
     studyMode: false,
-    distractionShield: true,
-    blockedWebsites: [],
     focusScore: 92,
     pomodoroWorkTime: 25,
     pomodoroBreakTime: 5,
     currentStreak: 5,
-    focusCoins: 120
+    focusCoins: 120,
+    distractionShield: true,
+    blockedWebsites: []
   });
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [rooms, setRooms] = useState<StudyRoom[]>([]);
@@ -96,6 +101,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const activeTaskTitle = tasks.find(t => t.id === activeTaskId)?.title || 'General Focus';
 
   const fetchData = async () => {
+    const authenticated = sessionStorage.getItem('student_authenticated') === 'true';
+    if (!authenticated) return;
+
     try {
       const [tasksData, settingsData, sessionsData, roomsData, ticketsData] = await Promise.all([
         fetchJsonSafely<Task[]>('/api/tasks'),
@@ -122,6 +130,80 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       console.warn('Error inside fetchData:', err);
     }
   };
+
+  const login = async (emailOrPhone: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailOrPhone, password })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUser(data.user);
+        sessionStorage.setItem('student_authenticated', 'true');
+        await fetchData();
+        return { success: true };
+      } else {
+        return { success: false, error: data.error || 'Login failed' };
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Connection failed' };
+    }
+  };
+
+  const signup = async (name: string, email: string, phone: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, phone, password })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUser(data.user);
+        sessionStorage.setItem('student_authenticated', 'true');
+        await fetchData();
+        return { success: true };
+      } else {
+        return { success: false, error: data.error || 'Registration failed' };
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Connection failed' };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' });
+      if (response.ok) {
+        setUser(null);
+        sessionStorage.removeItem('student_authenticated');
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
+
+  const checkAuth = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+        sessionStorage.setItem('student_authenticated', 'true');
+      } else {
+        setUser(null);
+        sessionStorage.removeItem('student_authenticated');
+      }
+    } catch (err) {
+      console.warn('Authentication check failed:', err);
+    }
+  };
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
   const handleTimerFinished = async () => {
     setIsTimerRunning(false);
@@ -428,6 +510,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
+        user,
         tasks,
         settings,
         sessions,
@@ -445,6 +528,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isAssistantOpen,
         setIsAssistantOpen,
         fetchData,
+        login,
+        signup,
+        logout,
         addTask,
         toggleTaskCompleted,
         deleteTask,

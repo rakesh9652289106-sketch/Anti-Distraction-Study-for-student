@@ -4,6 +4,7 @@ import path from 'path';
 // Types
 export interface Task {
   id: string;
+  userId?: string;
   title: string;
   completed: boolean;
   subject: string;
@@ -13,6 +14,7 @@ export interface Task {
 
 export interface StudySession {
   id: string;
+  userId?: string;
   startTime: string;
   durationMinutes: number;
   taskTitle: string;
@@ -23,6 +25,7 @@ export interface StudySession {
 
 export interface AnalyticsSummary {
   date: string;
+  userId?: string;
   focusMinutes: number;
   distractionsBlocked: number;
   focusScore: number;
@@ -95,6 +98,7 @@ export interface GlobalSettings {
 
 export interface SupportTicket {
   id: string;
+  userId?: string;
   subject: string;
   message: string;
   status: string;
@@ -120,12 +124,16 @@ export interface StudentUser {
   id: string;
   name: string;
   email: string;
+  phone?: string;
+  passwordHash?: string;
   focusScore: number;
   focusCoins: number;
   currentStreak: number;
   status: 'active' | 'suspended' | 'offline';
   lastActive: string;
   chatMuted: boolean;
+  settings?: GlobalSettings;
+  purchasedRewards?: string[];
 }
 
 // Stitch New Resource & Group Types
@@ -162,6 +170,7 @@ export interface ClassroomGroup {
 
 export interface TimetableEvent {
   id: string;
+  userId?: string;
   title: string;
   day: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
   time: string;
@@ -301,11 +310,126 @@ function getInitialData(): DbSchema {
       { id: '3', title: 'Maintenance Scheduled', text: 'Routine DB index optimization scheduled for off-peak hours (02:00 UTC).', time: '08:00 AM', region: 'GLOBAL', source: 'ADMIN_SCHED', type: 'info' }
     ],
     users: [
-      { id: 'u1', name: 'Alex Rivera', email: 'alex@student.edu', focusScore: 94, focusCoins: 150, currentStreak: 6, status: 'active', lastActive: '10 mins ago', chatMuted: false },
-      { id: 'u2', name: 'Sara Chen', email: 'sara@student.edu', focusScore: 98, focusCoins: 310, currentStreak: 12, status: 'active', lastActive: 'Just now', chatMuted: false },
-      { id: 'u3', name: 'Michael K.', email: 'michael@student.edu', focusScore: 82, focusCoins: 45, currentStreak: 2, status: 'offline', lastActive: '2 hours ago', chatMuted: false },
-      { id: 'u4', name: 'Jessica Vance', email: 'jessica@student.edu', focusScore: 91, focusCoins: 120, currentStreak: 5, status: 'active', lastActive: '15 mins ago', chatMuted: false },
-      { id: 'u5', name: 'Emily Watson', email: 'emily@student.edu', focusScore: 45, focusCoins: 10, currentStreak: 0, status: 'suspended', lastActive: '1 day ago', chatMuted: true }
+      {
+        id: 'u1',
+        name: 'Alex Rivera',
+        email: 'alex@student.edu',
+        phone: '1112223331',
+        passwordHash: 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', // password123
+        focusScore: 94,
+        focusCoins: 150,
+        currentStreak: 6,
+        status: 'active',
+        lastActive: '10 mins ago',
+        chatMuted: false,
+        purchasedRewards: ['r2'],
+        settings: {
+          studyMode: false,
+          distractionShield: true,
+          blockedWebsites: ['instagram.com', 'facebook.com', 'youtube.com', 'twitter.com', 'tiktok.com'],
+          focusScore: 94,
+          pomodoroWorkTime: 25,
+          pomodoroBreakTime: 5,
+          currentStreak: 6,
+          focusCoins: 150
+        }
+      },
+      {
+        id: 'u2',
+        name: 'Sara Chen',
+        email: 'sara@student.edu',
+        phone: '1112223332',
+        passwordHash: 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f',
+        focusScore: 98,
+        focusCoins: 310,
+        currentStreak: 12,
+        status: 'active',
+        lastActive: 'Just now',
+        chatMuted: false,
+        purchasedRewards: ['r2'],
+        settings: {
+          studyMode: false,
+          distractionShield: true,
+          blockedWebsites: ['instagram.com', 'facebook.com', 'youtube.com', 'twitter.com', 'tiktok.com'],
+          focusScore: 98,
+          pomodoroWorkTime: 25,
+          pomodoroBreakTime: 5,
+          currentStreak: 12,
+          focusCoins: 310
+        }
+      },
+      {
+        id: 'u3',
+        name: 'Michael K.',
+        email: 'michael@student.edu',
+        phone: '1112223333',
+        passwordHash: 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f',
+        focusScore: 82,
+        focusCoins: 45,
+        currentStreak: 2,
+        status: 'offline',
+        lastActive: '2 hours ago',
+        chatMuted: false,
+        purchasedRewards: [],
+        settings: {
+          studyMode: false,
+          distractionShield: true,
+          blockedWebsites: ['instagram.com', 'facebook.com', 'youtube.com', 'twitter.com', 'tiktok.com'],
+          focusScore: 82,
+          pomodoroWorkTime: 25,
+          pomodoroBreakTime: 5,
+          currentStreak: 2,
+          focusCoins: 45
+        }
+      },
+      {
+        id: 'u4',
+        name: 'Jessica Vance',
+        email: 'jessica@student.edu',
+        phone: '1112223334',
+        passwordHash: 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f',
+        focusScore: 91,
+        focusCoins: 120,
+        currentStreak: 5,
+        status: 'active',
+        lastActive: '15 mins ago',
+        chatMuted: false,
+        purchasedRewards: [],
+        settings: {
+          studyMode: false,
+          distractionShield: true,
+          blockedWebsites: ['instagram.com', 'facebook.com', 'youtube.com', 'twitter.com', 'tiktok.com'],
+          focusScore: 91,
+          pomodoroWorkTime: 25,
+          pomodoroBreakTime: 5,
+          currentStreak: 5,
+          focusCoins: 120
+        }
+      },
+      {
+        id: 'u5',
+        name: 'Emily Watson',
+        email: 'emily@student.edu',
+        phone: '1112223335',
+        passwordHash: 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f',
+        focusScore: 45,
+        focusCoins: 10,
+        currentStreak: 0,
+        status: 'suspended',
+        lastActive: '1 day ago',
+        chatMuted: true,
+        purchasedRewards: [],
+        settings: {
+          studyMode: false,
+          distractionShield: true,
+          blockedWebsites: ['instagram.com', 'facebook.com', 'youtube.com', 'twitter.com', 'tiktok.com'],
+          focusScore: 45,
+          pomodoroWorkTime: 25,
+          pomodoroBreakTime: 5,
+          currentStreak: 0,
+          focusCoins: 10
+        }
+      }
     ],
     timetable: [
       { id: 't-1', title: 'Calculus Revision', day: 'Mon', time: '9:00 AM', subject: 'Mathematics', pomodoros: 2 },
