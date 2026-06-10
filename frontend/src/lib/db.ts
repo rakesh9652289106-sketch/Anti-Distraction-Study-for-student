@@ -56,6 +56,7 @@ export interface StudyRoom {
   chatModerationFilter?: boolean;
   censorWords?: string[];
   coinsLimit?: number;
+  bonusCoins?: number;
 }
 
 export interface GlobalSettings {
@@ -153,3 +154,14 @@ export interface ClassroomGroup {
   students: string[];
   activeSessionId?: string | null;
 }
+
+export interface TimetableEvent {
+  id: string;
+  title: string;
+  day: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
+  time: string;
+  subject: string;
+  pomodoros: number;
+  isAiSuggested?: boolean;
+}
+

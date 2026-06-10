@@ -19,7 +19,8 @@ import {
   AdminAlert,
   StudentUser,
   SharedResource,
-  ClassroomGroup
+  ClassroomGroup,
+  TimetableEvent
 } from './db';
 import { generateAiResponse } from './educationalAi';
 
@@ -407,6 +408,124 @@ app.post('/api/admin/groups', (req: Request, res: Response) => {
   }
 });
 
+// GET /api/admin/groups
+app.get('/api/admin/groups', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const db = readDb();
+    const groups = readGroupsDb();
+    
+    // Auto-create groups for any preexisting rooms that lack one
+    let modified = false;
+    db.rooms.forEach(room => {
+      const existing = groups.find(g => g.id === room.id);
+      if (!existing) {
+        groups.push({
+          id: room.id,
+          name: room.name,
+          teacherId: 't-aris-thorne',
+          room: room.name,
+          studentCount: 0,
+          active: true,
+          students: [],
+          activeSessionId: null
+        });
+        modified = true;
+      }
+    });
+    
+    if (modified) {
+      writeGroupsDb(groups);
+    }
+    
+    res.json(groups);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/groups/:groupId
+app.delete('/api/admin/groups/:groupId', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { groupId } = req.params;
+    const groups = readGroupsDb();
+    const index = groups.findIndex(g => g.id === groupId);
+    if (index === -1) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    
+    groups.splice(index, 1);
+    writeGroupsDb(groups);
+    res.json({ success: true, message: 'Group deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/groups/:groupId/students/:studentId
+app.delete('/api/admin/groups/:groupId/students/:studentId', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { groupId, studentId } = req.params;
+    const groups = readGroupsDb();
+    const group = groups.find(g => g.id === groupId);
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    
+    const initialLength = group.students.length;
+    group.students = group.students.filter(id => id !== studentId);
+    
+    if (group.students.length === initialLength) {
+      return res.status(404).json({ error: 'Student not found in group' });
+    }
+    
+    group.studentCount = group.students.length;
+    writeGroupsDb(groups);
+    
+    res.json({ success: true, message: 'Student removed from group successfully', group });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/groups/:groupId/students
+app.post('/api/admin/groups/:groupId/students', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { groupId } = req.params;
+    const { studentId } = req.body;
+    if (!studentId) {
+      return res.status(400).json({ error: 'Student ID is required' });
+    }
+    
+    const groups = readGroupsDb();
+    const group = groups.find(g => g.id === groupId);
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    
+    if (!group.students.includes(studentId)) {
+      group.students.push(studentId);
+      group.studentCount = group.students.length;
+      writeGroupsDb(groups);
+    }
+    
+    res.json({ success: true, message: 'Student added to group successfully', group });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // -------------------------------------------------------------
 // [NEW STITCH] Teacher Groups & Session Command API Endpoints
 // -------------------------------------------------------------
@@ -571,6 +690,9 @@ app.post('/api/student/rooms/join', (req: Request, res: Response) => {
   }
 
   room.activeUsers += 1;
+  if (room.bonusCoins !== undefined && room.bonusCoins > 0) {
+    db.settings.focusCoins += room.bonusCoins;
+  }
   writeDb(db);
 
   res.json({ success: true, roomId: room.id, websocketUrl: `ws://localhost:5000/rooms/${room.id}/live` });
@@ -1165,6 +1287,9 @@ app.post('/api/rooms', (req: Request, res: Response) => {
       }
 
       room.activeUsers += 1;
+      if (room.bonusCoins !== undefined && room.bonusCoins > 0) {
+        db.settings.focusCoins += room.bonusCoins;
+      }
       writeDb(db);
       return res.json(room);
     }
@@ -1198,11 +1323,27 @@ app.post('/api/rooms', (req: Request, res: Response) => {
       videoStreamRequired: body.videoStreamRequired !== undefined ? body.videoStreamRequired : false,
       chatModerationFilter: body.chatModerationFilter !== undefined ? body.chatModerationFilter : true,
       censorWords: body.censorWords || ['spam', 'cheat', 'abuse', 'slack', 'tiktok'],
-      coinsLimit: body.coinsLimit !== undefined ? parseInt(body.coinsLimit) : 0
+      coinsLimit: body.coinsLimit !== undefined ? parseInt(body.coinsLimit) : 0,
+      bonusCoins: body.bonusCoins !== undefined ? parseInt(body.bonusCoins) : 0
     };
 
     db.rooms.push(newRoom);
     writeDb(db);
+
+    // Automatically create a corresponding classroom group
+    const groups = readGroupsDb();
+    groups.push({
+      id: newRoom.id,
+      name: newRoom.name,
+      teacherId: 't-aris-thorne',
+      room: newRoom.name,
+      studentCount: 0,
+      active: true,
+      students: [],
+      activeSessionId: null
+    });
+    writeGroupsDb(groups);
+
     res.status(201).json(newRoom);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1224,6 +1365,15 @@ app.delete('/api/rooms', (req: Request, res: Response) => {
 
     db.rooms.splice(index, 1);
     writeDb(db);
+
+    // Also delete corresponding classroom group
+    const groups = readGroupsDb();
+    const gIndex = groups.findIndex(g => g.id === roomId);
+    if (gIndex !== -1) {
+      groups.splice(gIndex, 1);
+      writeGroupsDb(groups);
+    }
+
     res.json({ success: true, message: 'Room deleted successfully' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1539,6 +1689,91 @@ app.post('/api/support/:id', (req: Request, res: Response) => {
 
     writeDb(db);
     res.status(201).json(newReply);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// -------------------------------------------------------------
+// Weekly Timetable API Endpoints
+// -------------------------------------------------------------
+
+app.get('/api/timetable', (req: Request, res: Response) => {
+  try {
+    const db = readDb();
+    res.json(db.timetable || []);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/timetable', (req: Request, res: Response) => {
+  try {
+    const { title, day, time, subject, pomodoros, isAiSuggested } = req.body;
+    if (!title || !day || !time || !subject) {
+      return res.status(400).json({ error: 'Title, day, time, and subject are required' });
+    }
+    const db = readDb();
+    if (!db.timetable) db.timetable = [];
+
+    const newEvent: TimetableEvent = {
+      id: 'event-' + Math.random().toString(36).substring(2, 9),
+      title,
+      day,
+      time,
+      subject,
+      pomodoros: parseInt(pomodoros) || 1,
+      isAiSuggested: !!isAiSuggested
+    };
+
+    db.timetable.push(newEvent);
+    writeDb(db);
+    res.status(201).json(newEvent);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/timetable/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { title, day, time, subject, pomodoros, isAiSuggested } = req.body;
+    const db = readDb();
+    if (!db.timetable) db.timetable = [];
+
+    const event = db.timetable.find(e => e.id === id);
+    if (!event) {
+      return res.status(404).json({ error: 'Timetable event not found' });
+    }
+
+    if (title !== undefined) event.title = title;
+    if (day !== undefined) event.day = day;
+    if (time !== undefined) event.time = time;
+    if (subject !== undefined) event.subject = subject;
+    if (pomodoros !== undefined) event.pomodoros = parseInt(pomodoros) || 1;
+    if (isAiSuggested !== undefined) event.isAiSuggested = !!isAiSuggested;
+
+    writeDb(db);
+    res.json(event);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/timetable/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const db = readDb();
+    if (!db.timetable) db.timetable = [];
+
+    const index = db.timetable.findIndex(e => e.id === id);
+    if (index === -1) {
+      return res.status(404).json({ error: 'Timetable event not found' });
+    }
+
+    db.timetable.splice(index, 1);
+    writeDb(db);
+    res.json({ success: true, message: 'Timetable event deleted successfully' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

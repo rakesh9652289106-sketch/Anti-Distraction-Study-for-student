@@ -1,12 +1,42 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { TimetableEvent } from '@/lib/db';
+import { useRouter } from 'next/navigation';
 
 export default function PlannerPage() {
+  const router = useRouter();
   const { tasks, addTask, toggleTaskCompleted } = useApp();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskSubject, setNewTaskSubject] = useState('Biology');
+
+  const [timetable, setTimetable] = useState<TimetableEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTimetable = async () => {
+    try {
+      const response = await fetch('/api/timetable');
+      if (response.ok) {
+        const data = await response.json();
+        setTimetable(data);
+      }
+    } catch (err) {
+      console.error('Error fetching timetable:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTimetable();
+  }, []);
+
+  const handleOpenAddModal = () => {
+    router.push('/planner/add');
+  };
+
+  const days: Array<'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'> = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,62 +70,80 @@ export default function PlannerPage() {
                 </span>
                 <h3 className="font-bold text-headline-md text-primary">AI Weekly Timetable</h3>
               </div>
-              <div className="flex gap-xs items-center">
-                <button className="p-1 rounded hover:bg-surface-variant text-on-surface-variant transition-colors">
-                  <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+              <div className="flex gap-sm items-center">
+                <button
+                  onClick={handleOpenAddModal}
+                  className="flex items-center gap-xs px-sm py-1.5 bg-primary text-on-primary rounded-lg text-label-sm font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">add</span>
+                  Add Event
                 </button>
-                <span className="font-semibold text-label-md py-1">Oct 24 - Oct 30</span>
-                <button className="p-1 rounded hover:bg-surface-variant text-on-surface-variant transition-colors">
-                  <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-                </button>
+                <div className="flex gap-xs items-center">
+                  <button className="p-1 rounded hover:bg-surface-variant text-on-surface-variant transition-colors">
+                    <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                  </button>
+                  <span className="font-semibold text-label-md py-1">Oct 24 - Oct 30</span>
+                  <button className="p-1 rounded hover:bg-surface-variant text-on-surface-variant transition-colors">
+                    <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-5 gap-xs min-h-[300px]">
+            <div className="grid grid-cols-7 gap-xs min-h-[300px]">
               {/* Day Headers */}
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, idx) => (
+              {days.map((day) => (
                 <div key={day} className="text-center pb-xs border-b border-outline-variant/30">
-                  <span className={`text-label-sm ${idx === 1 ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
+                  <span className={`text-label-sm ${day === 'Wed' ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
                     {day}
                   </span>
                 </div>
               ))}
 
-              {/* Day blocks mockup */}
-              {/* Monday */}
-              <div className="col-start-1 mt-xs p-xs bg-surface-container-low rounded-md border border-outline-variant/20 h-fit">
-                <p className="text-[10px] text-primary font-bold mb-0.5">9:00 AM</p>
-                <p className="text-[12px] leading-tight text-on-surface font-semibold">Calculus Revision</p>
-              </div>
-
-              {/* Tuesday - Highlighted Block */}
-              <div className="col-start-2 mt-xs p-sm bg-tertiary-fixed rounded-md border border-tertiary-fixed-dim relative group cursor-pointer h-fit">
-                <div className="absolute -top-2 -right-2 bg-primary text-white text-[9px] px-1.5 py-0.5 rounded-full shadow-sm">
-                  AI Suggested
+              {/* Day columns */}
+              {loading ? (
+                <div className="col-span-7 flex items-center justify-center py-xl text-on-surface-variant font-medium">
+                  Loading timetable...
                 </div>
-                <p className="text-[10px] text-tertiary-container font-bold mb-0.5">11:00 AM - 2h</p>
-                <p className="text-[13px] text-tertiary-container font-bold leading-tight">Biology Deep Dive</p>
-                <div className="flex items-center gap-1 mt-2 text-on-tertiary-container">
-                  <span className="material-symbols-outlined text-[13px]">timer</span>
-                  <span className="text-[10px] font-semibold">4 Pomodoros</span>
-                </div>
-              </div>
-
-              {/* Wednesday - Empty */}
-              <div className="col-start-3"></div>
-
-              {/* Thursday */}
-              <div className="col-start-4 mt-xs p-xs bg-surface-container-low rounded-md border border-outline-variant/20 h-fit">
-                <p className="text-[10px] text-primary font-bold mb-0.5">2:00 PM</p>
-                <p className="text-[12px] leading-tight text-on-surface font-semibold">History Essay</p>
-              </div>
-
-              {/* Friday */}
-              <div className="col-start-5 mt-xs p-xs bg-surface-container-low rounded-md border border-outline-variant/20 h-fit">
-                <p className="text-[10px] text-primary font-bold mb-0.5">10:00 AM</p>
-                <p className="text-[12px] leading-tight text-on-surface font-semibold">Chemistry Lab Prep</p>
-              </div>
+              ) : (
+                days.map((day) => {
+                  const dayEvents = timetable.filter(e => e.day === day);
+                  return (
+                    <div key={day} className="flex flex-col gap-xs mt-xs min-h-[200px] bg-surface-variant/5 rounded-md p-[2px]">
+                      {dayEvents.map(event => (
+                        <div
+                          key={event.id}
+                          onClick={() => router.push(`/planner/add?id=${event.id}`)}
+                          className={`p-xs rounded-md border text-left cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group relative ${
+                            event.isAiSuggested
+                              ? 'bg-tertiary-fixed border-tertiary-fixed-dim text-tertiary-container relative p-sm'
+                              : 'bg-surface-container-low border-outline-variant/20 hover:border-primary/45 text-on-surface'
+                          }`}
+                        >
+                          {event.isAiSuggested && (
+                            <div className="absolute -top-2 -right-2 bg-primary text-white text-[9px] px-1.5 py-0.5 rounded-full shadow-sm">
+                              AI Suggested
+                            </div>
+                          )}
+                          <p className={`text-[10px] font-bold mb-0.5 ${event.isAiSuggested ? 'text-tertiary-container' : 'text-primary'}`}>
+                            {event.time}
+                          </p>
+                          <p className={`text-[12px] leading-tight font-semibold ${event.isAiSuggested ? 'text-tertiary-container' : 'text-on-surface'}`}>
+                            {event.title}
+                          </p>
+                          {event.pomodoros > 0 && (
+                            <div className={`flex items-center gap-1 mt-1.5 ${event.isAiSuggested ? 'text-on-tertiary-container' : 'text-on-surface-variant/70'}`}>
+                              <span className="material-symbols-outlined text-[12px]">timer</span>
+                              <span className="text-[9px] font-semibold">{event.pomodoros} Pomos</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 

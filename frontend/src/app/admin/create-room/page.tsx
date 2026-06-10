@@ -24,6 +24,7 @@ export default function AdminCreateRoomPage() {
   const [newCensorWord, setNewCensorWord] = useState('');
   const [allowedApps, setAllowedApps] = useState<string[]>(['notion', 'gdocs']);
   const [coinsLimit, setCoinsLimit] = useState(0);
+  const [bonusCoins, setBonusCoins] = useState(0);
 
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,7 +97,8 @@ export default function AdminCreateRoomPage() {
           chatModerationFilter,
           censorWords,
           allowedApps,
-          coinsLimit
+          coinsLimit,
+          bonusCoins
         })
       });
 
@@ -114,6 +116,7 @@ export default function AdminCreateRoomPage() {
         setCensorWords(['spam', 'cheat', 'abuse', 'slack', 'tiktok']);
         setAllowedApps(['notion', 'gdocs']);
         setCoinsLimit(0);
+        setBonusCoins(0);
         
         triggerToast(`Virtual Study Sanctuary "${roomName.trim()}" has been deployed!`);
         await fetchData();
@@ -301,7 +304,7 @@ export default function AdminCreateRoomPage() {
                     <input
                       type="range"
                       min="2"
-                      max="50"
+                      max="65"
                       step="1"
                       value={maxCapacity}
                       onChange={e => setMaxCapacity(parseInt(e.target.value))}
@@ -334,7 +337,7 @@ export default function AdminCreateRoomPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-sm">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-sm">
                   {/* Session Duration format */}
                   <div className="space-y-xs">
                     <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-widest">
@@ -376,6 +379,27 @@ export default function AdminCreateRoomPage() {
                         onChange={e => setCoinsLimit(Math.max(0, parseInt(e.target.value) || 0))}
                         className="w-full bg-[#131D33] border border-[#1E2E4E] focus:border-emerald-500/50 rounded-lg py-2 pl-[36px] pr-sm text-slate-200 outline-none text-xs font-semibold placeholder-slate-650"
                         placeholder="e.g. 50"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bonus Coins Awarded on Join */}
+                  <div className="space-y-xs">
+                    <label className="block text-[10px] font-bold text-slate-455 uppercase tracking-widest">
+                      Bonus Coins on Join
+                    </label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">
+                        savings
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="1000"
+                        value={bonusCoins}
+                        onChange={e => setBonusCoins(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-[#131D33] border border-[#1E2E4E] focus:border-emerald-500/50 rounded-lg py-2 pl-[36px] pr-sm text-slate-200 outline-none text-xs font-semibold placeholder-slate-650"
+                        placeholder="e.g. 100"
                       />
                     </div>
                   </div>
@@ -561,10 +585,16 @@ export default function AdminCreateRoomPage() {
                       <div className="text-[10px] text-slate-350 font-bold">{room.ambientSound}</div>
                       <div className="text-[9px] text-slate-500 font-semibold">{room.sessionDurationFormat || '90m Focus'}</div>
                       <div className="text-[9px] text-slate-400/80 font-bold mt-1">Seats: {room.activeUsers} / {room.maxCapacity || 20}</div>
-                      {room.coinsLimit !== undefined && room.coinsLimit > 0 && (
-                        <div className="text-[9px] text-amber-400/95 font-bold mt-1 flex items-center gap-0.5">
+                       {room.coinsLimit !== undefined && room.coinsLimit > 0 && (
+                        <div className="text-[9px] text-amber-400/95 font-bold mt-1 flex items-center gap-0.5 font-sans">
                           <span className="material-symbols-outlined text-[10px]">monetization_on</span>
                           Min: {room.coinsLimit} Coins
+                        </div>
+                      )}
+                      {room.bonusCoins !== undefined && room.bonusCoins > 0 && (
+                        <div className="text-[9px] text-emerald-400 font-bold mt-1 flex items-center gap-0.5 font-sans">
+                          <span className="material-symbols-outlined text-[10px]">savings</span>
+                          Gift: +{room.bonusCoins} Coins
                         </div>
                       )}
                     </td>

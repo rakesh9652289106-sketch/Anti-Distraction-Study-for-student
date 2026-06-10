@@ -60,6 +60,7 @@ export interface StudyRoom {
   chatModerationFilter?: boolean;
   censorWords?: string[];
   coinsLimit?: number;
+  bonusCoins?: number;
 }
 
 export interface GlobalSettings {
@@ -159,6 +160,16 @@ export interface ClassroomGroup {
   activeSessionId?: string | null;
 }
 
+export interface TimetableEvent {
+  id: string;
+  title: string;
+  day: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
+  time: string;
+  subject: string;
+  pomodoros: number;
+  isAiSuggested?: boolean;
+}
+
 export interface DbSchema {
   tasks: Task[];
   sessions: StudySession[];
@@ -169,6 +180,7 @@ export interface DbSchema {
   tickets: SupportTicket[];
   alerts: AdminAlert[];
   users: StudentUser[];
+  timetable: TimetableEvent[];
 }
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -294,6 +306,12 @@ function getInitialData(): DbSchema {
       { id: 'u3', name: 'Michael K.', email: 'michael@student.edu', focusScore: 82, focusCoins: 45, currentStreak: 2, status: 'offline', lastActive: '2 hours ago', chatMuted: false },
       { id: 'u4', name: 'Jessica Vance', email: 'jessica@student.edu', focusScore: 91, focusCoins: 120, currentStreak: 5, status: 'active', lastActive: '15 mins ago', chatMuted: false },
       { id: 'u5', name: 'Emily Watson', email: 'emily@student.edu', focusScore: 45, focusCoins: 10, currentStreak: 0, status: 'suspended', lastActive: '1 day ago', chatMuted: true }
+    ],
+    timetable: [
+      { id: 't-1', title: 'Calculus Revision', day: 'Mon', time: '9:00 AM', subject: 'Mathematics', pomodoros: 2 },
+      { id: 't-2', title: 'Biology Deep Dive', day: 'Tue', time: '11:00 AM - 2h', subject: 'Biology', pomodoros: 4, isAiSuggested: true },
+      { id: 't-3', title: 'History Essay', day: 'Thu', time: '2:00 PM', subject: 'History', pomodoros: 2 },
+      { id: 't-4', title: 'Chemistry Lab Prep', day: 'Fri', time: '10:00 AM', subject: 'Physics', pomodoros: 2 }
     ]
   };
 }
@@ -324,7 +342,7 @@ const firestoreDb = getFirestore(app);
 export async function syncFromFirestore() {
   console.log("[Firestore Sync] Starting synchronization...");
   try {
-    const docKeys: Array<keyof DbSchema> = ['tasks', 'sessions', 'analytics', 'rewards', 'rooms', 'settings', 'tickets', 'alerts', 'users'];
+    const docKeys: Array<keyof DbSchema> = ['tasks', 'sessions', 'analytics', 'rewards', 'rooms', 'settings', 'tickets', 'alerts', 'users', 'timetable'];
     
     for (const key of docKeys) {
       const docRef = doc(firestoreDb, 'focusflow', key);
@@ -387,6 +405,7 @@ export function readDb(): DbSchema {
       if (r.focusMode === undefined) r.focusMode = d.focusMode;
       if (r.sessionDurationFormat === undefined) r.sessionDurationFormat = d.sessionDurationFormat;
       if (r.coinsLimit === undefined) r.coinsLimit = 0;
+      if (r.bonusCoins === undefined) r.bonusCoins = 0;
     });
   }
   return dbCache;
@@ -400,7 +419,7 @@ export function writeDb(data: DbSchema) {
 
 async function saveDbToFirestore(data: DbSchema) {
   try {
-    const docKeys: Array<keyof DbSchema> = ['tasks', 'sessions', 'analytics', 'rewards', 'rooms', 'settings', 'tickets', 'alerts', 'users'];
+    const docKeys: Array<keyof DbSchema> = ['tasks', 'sessions', 'analytics', 'rewards', 'rooms', 'settings', 'tickets', 'alerts', 'users', 'timetable'];
     for (const key of docKeys) {
       const docRef = doc(firestoreDb, 'focusflow', key);
       if (key === 'settings') {
