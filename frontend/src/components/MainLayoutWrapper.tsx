@@ -6,12 +6,14 @@ import { useApp } from '@/context/AppContext';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import AssistantSidebar from '@/components/AssistantSidebar';
+import CommandPalette from '@/components/CommandPalette';
 
 export default function MainLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { settings, isAssistantOpen, setIsAssistantOpen } = useApp();
   const pathname = usePathname();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const isBypassShell = pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/teacher');
 
   useEffect(() => {
@@ -29,6 +31,13 @@ export default function MainLayoutWrapper({ children }: { children: React.ReactN
     }
   }, [isBypassShell, router, pathname]);
 
+  // Global command palette listener
+  useEffect(() => {
+    const handleToggle = () => setIsCommandPaletteOpen(prev => !prev);
+    window.addEventListener('toggle-command-palette', handleToggle);
+    return () => window.removeEventListener('toggle-command-palette', handleToggle);
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -43,6 +52,10 @@ export default function MainLayoutWrapper({ children }: { children: React.ReactN
     return (
       <main className="w-full min-h-screen relative z-10">
         {children}
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+        />
       </main>
     );
   }
@@ -68,11 +81,17 @@ export default function MainLayoutWrapper({ children }: { children: React.ReactN
       {/* Assistant Panel */}
       <AssistantSidebar isOpen={isAssistantOpen} onClose={() => setIsAssistantOpen(false)} />
 
+      {/* Universal Command Palette */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+      />
+
       {/* Floating Toggle Button */}
       {!isAssistantOpen && (
         <button
           onClick={() => setIsAssistantOpen(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-secondary text-white shadow-2xl flex items-center justify-center z-50 cursor-pointer transition-all duration-300 hover:scale-110 hover:-translate-y-1 hover:shadow-secondary/30 active:scale-95 animate-pulse"
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-secondary text-white shadow-2xl flex items-center justify-center z-40 cursor-pointer transition-all duration-300 hover:scale-110 hover:-translate-y-1 hover:shadow-secondary/30 active:scale-95 animate-pulse"
           title="Open AI Assistant"
         >
           <span className="material-symbols-outlined text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -83,4 +102,3 @@ export default function MainLayoutWrapper({ children }: { children: React.ReactN
     </div>
   );
 }
-
