@@ -313,6 +313,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateSettings = async (newSettings: Partial<GlobalSettings>) => {
+    // 1. Optimistic state update so toggle and study mode respond immediately
+    setSettings(prev => {
+      const updated = { ...prev, ...newSettings };
+      try {
+        localStorage.setItem('focusflow_local_settings', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 2. Persist to backend API asynchronously
     try {
       const response = await fetch('/api/settings', {
         method: 'PATCH',
@@ -321,10 +331,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
       if (response.ok) {
         const data = await response.json();
-        setSettings(data);
+        setSettings(prev => ({ ...prev, ...data }));
       }
     } catch (err) {
-      console.error(err);
+      console.warn('Backend sync deferred, keeping local state:', err);
     }
   };
 

@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
-const rawBackendUrl = process.env.BACKEND_URL || `http://127.0.0.1:${process.env.BACKEND_PORT || '5002'}`;
+let rawBackendUrl = process.env.BACKEND_URL || `http://127.0.0.1:${process.env.BACKEND_PORT || '5002'}`;
+
+// If Render assigned an internal service name without a domain, auto-expand to .onrender.com
+if (rawBackendUrl && !rawBackendUrl.includes('.') && !rawBackendUrl.includes('localhost') && !rawBackendUrl.includes('127.0.0.1')) {
+  rawBackendUrl = `${rawBackendUrl.replace(/^https?:\/\//, '')}.onrender.com`;
+}
+
 const BACKEND_URL = rawBackendUrl.startsWith('http') ? rawBackendUrl : `https://${rawBackendUrl}`;
 
 const nextConfig: NextConfig = {

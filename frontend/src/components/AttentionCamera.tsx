@@ -4,7 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 
 export default function AttentionCamera() {
-  const { settings, isTimerRunning, activeRoom } = useApp();
+  const { settings, isTimerRunning, activeRoom, updateSettings, startTimer } = useApp();
+  const [manualCheckActive, setManualCheckActive] = useState<boolean>(false);
 
   const sensitivity = settings?.aiConfig?.attentionGuardSensitivity || 'medium';
   const lookAwayThreshold = sensitivity === 'high' ? 10 : sensitivity === 'low' ? 60 : 30;
@@ -245,39 +246,38 @@ export default function AttentionCamera() {
   // Start Camera
   const startCamera = async (deviceIdToUse?: string) => {
     setCameraError(null);
-    
-    // Laptop/PC webcam enforcement - block mobile browsers
-    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
-      setCameraError('AI Attention Guard is optimized for Laptop/PC built-in webcams. Mobile cameras are disabled.');
-      setIsCameraActive(false);
-      return;
-    }
 
     // Stop any existing stream
     stopActiveStream();
 
     try {
-      // First request basic camera access so device labels populate in security model
-      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      tempStream.getTracks().forEach(track => track.stop());
+      let mediaStream: MediaStream | null = null;
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        tempStream.getTracks().forEach(track => track.stop());
 
-      // Update devices list and select standard laptop webcam
-      const resolvedId = await updateDevicesList(deviceIdToUse || selectedDeviceId);
+        // Update devices list
+        const resolvedId = await updateDevicesList(deviceIdToUse || selectedDeviceId);
 
-      const constraints: MediaStreamConstraints = {
-        video: resolvedId 
-          ? { deviceId: { exact: resolvedId }, width: 320, height: 240 } 
-          : { width: 320, height: 240, facingMode: 'user' }
-      };
+        const constraints: MediaStreamConstraints = {
+          video: resolvedId 
+            ? { deviceId: resolvedId, width: { ideal: 320 }, height: { ideal: 240 } } 
+            : { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } }
+        };
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (constraintErr) {
+        console.warn('Constrained camera acquisition failed, falling back to basic video:', constraintErr);
+        // Fallback to generic webcam stream
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
       setIsCameraActive(true);
-      activeDeviceIdRef.current = resolvedId || '';
+      activeDeviceIdRef.current = selectedDeviceId || '';
       const now = Date.now();
       lastBlinkTimeRef.current = now;
       hasAlertedForCurrentStareRef.current = false;
@@ -311,7 +311,7 @@ export default function AttentionCamera() {
       setCalibColor('N/A');
     } catch (err) {
       console.error('Error accessing webcam:', err);
-      setCameraError('Webcam access blocked or unavailable.');
+      setCameraError('Webcam access blocked or unavailable. Please allow camera permissions in your browser.');
       setIsCameraActive(false);
     }
   };
@@ -327,9 +327,10 @@ export default function AttentionCamera() {
     }
   };
 
-  const shouldBeActive = settings.studyMode && isTimerRunning;
+  // Active when Study Mode + Timer is on, OR when manual test check is running
+  const shouldBeActive = (settings.studyMode && isTimerRunning) || manualCheckActive;
 
-  // Toggle based on Focus Mode setting
+  // Toggle based on Focus Mode setting or manual check
   useEffect(() => {
     if (shouldBeActive) {
       startCamera();
@@ -814,14 +815,37 @@ export default function AttentionCamera() {
 
   if (!shouldBeActive) {
     return (
-      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 rounded-xl p-sm text-center">
-        <span className="material-symbols-outlined text-on-surface-variant/40 text-2xl mb-1">videocam_off</span>
-        <p className="text-[10px] text-on-surface-variant font-bold uppercase">Eye-Blink Tracker Offline</p>
-        <p className="text-[9px] text-on-surface-variant/75 mt-0.5">
-          {!settings.studyMode 
-            ? "Webcam activates automatically when Study Mode is turned on."
-            : "Webcam activates automatically when Focus session starts."}
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-xl p-3 text-center space-y-2">
+        <div className="flex items-center justify-center gap-1.5 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wide">
+          <span className="material-symbols-outlined text-secondary text-lg">videocam</span>
+          AI Attention Guard
+        </div>
+        <p className="text-[11px] text-on-surface-variant/80">
+          Monitors eye blink rate, gaze direction & student focus in real-time.
         </p>
+
+        <div className="pt-1 flex flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={() => setManualCheckActive(true)}
+            className="w-full py-1.5 px-3 bg-secondary hover:brightness-110 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-98"
+          >
+            <span className="material-symbols-outlined text-sm">camera</span>
+            Start Camera Check
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => {
+              updateSettings({ studyMode: true });
+              startTimer();
+            }}
+            className="w-full py-1.5 px-3 bg-primary/10 hover:bg-primary/15 text-primary dark:text-emerald-400 font-semibold text-xs rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-sm">play_circle</span>
+            Turn On Study Mode & Start Session
+          </button>
+        </div>
       </div>
     );
   }
@@ -847,9 +871,23 @@ export default function AttentionCamera() {
           <span className={`w-2 h-2 rounded-full inline-block ${isCameraActive ? 'bg-secondary animate-pulse' : 'bg-red-500'}`}></span>
           AI Attention Guard
         </h4>
-        <span className="text-[9px] bg-slate-100 text-on-surface-variant px-1.5 py-0.5 rounded font-mono font-bold">
-          Alerts: {alertsCount}
-        </span>
+        <div className="flex items-center gap-1">
+          {manualCheckActive && (
+            <button
+              type="button"
+              onClick={() => {
+                setManualCheckActive(false);
+                stopCamera();
+              }}
+              className="text-[9px] px-2 py-0.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded cursor-pointer transition-colors"
+            >
+              Stop Check
+            </button>
+          )}
+          <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-on-surface-variant px-1.5 py-0.5 rounded font-mono font-bold">
+            Alerts: {alertsCount}
+          </span>
+        </div>
       </div>
 
       {/* Video Webcam HUD */}

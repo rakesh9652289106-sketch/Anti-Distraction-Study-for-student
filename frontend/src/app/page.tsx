@@ -17,9 +17,11 @@ export default function DashboardPage() {
     activeTaskId,
     setActiveTaskId,
     settings,
+    updateSettings,
     sessions,
     incrementDistractionShield,
-    distractionsBlockedThisSession
+    distractionsBlockedThisSession,
+    setIsAssistantOpen
   } = useApp();
 
   const [simSite, setSimSite] = useState('');
@@ -120,18 +122,43 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Play/Reset Timer controls */}
-      <div className="flex gap-md mb-xl">
+      {/* Play/Reset/Study Mode Timer controls */}
+      <div className="flex flex-wrap items-center justify-center gap-md mb-xl">
         <button
           onClick={isTimerRunning ? pauseTimer : startTimer}
           className="px-md py-sm bg-primary text-on-primary font-semibold rounded-lg flex items-center gap-xs cursor-pointer shadow hover:opacity-90 transition-all active:scale-95"
         >
           <span className="material-symbols-outlined">{isTimerRunning ? 'pause' : 'play_arrow'}</span>
-          {isTimerRunning ? 'Pause' : 'Start Focus'}
+          {isTimerRunning ? 'Pause Session' : 'Start Focus Session'}
         </button>
+
+        <button
+          onClick={() => updateSettings({ studyMode: !settings.studyMode })}
+          className={`px-md py-sm font-semibold rounded-lg flex items-center gap-xs cursor-pointer border transition-all active:scale-95 ${
+            settings.studyMode
+              ? 'bg-secondary text-white border-secondary shadow-[0_0_12px_rgba(0,108,73,0.3)]'
+              : 'bg-surface-container-high border-outline-variant/30 text-primary hover:bg-surface-variant'
+          }`}
+          title="Toggle Study Shield Mode"
+        >
+          <span className="material-symbols-outlined text-lg">
+            {settings.studyMode ? 'shield' : 'shield_with_heart'}
+          </span>
+          {settings.studyMode ? 'Study Mode: ON' : 'Study Mode: OFF'}
+        </button>
+
+        <button
+          onClick={() => setIsAssistantOpen(true)}
+          className="px-md py-sm bg-surface-container-high border border-outline-variant/30 text-primary font-semibold rounded-lg flex items-center gap-xs cursor-pointer hover:bg-surface-variant transition-all active:scale-95"
+          title="Open AI Attention Camera Monitor"
+        >
+          <span className="material-symbols-outlined text-secondary text-lg">videocam</span>
+          Camera Check
+        </button>
+
         <button
           onClick={resetTimer}
-          className="px-md py-sm bg-surface-container-high border border-outline-variant/30 text-primary font-semibold rounded-lg flex items-center gap-xs cursor-pointer hover:bg-surface-variant transition-all active:scale-95"
+          className="px-md py-sm bg-surface-container-high border border-outline-variant/30 text-on-surface-variant font-semibold rounded-lg flex items-center gap-xs cursor-pointer hover:bg-surface-variant transition-all active:scale-95"
         >
           <span className="material-symbols-outlined">restart_alt</span>
           Reset
