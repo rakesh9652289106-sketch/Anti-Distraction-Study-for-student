@@ -1,6 +1,5 @@
 export interface Task {
   id: string;
-  userId?: string;
   title: string;
   completed: boolean;
   subject: string;
@@ -10,7 +9,6 @@ export interface Task {
 
 export interface StudySession {
   id: string;
-  userId?: string;
   startTime: string;
   durationMinutes: number;
   taskTitle: string;
@@ -21,7 +19,6 @@ export interface StudySession {
 
 export interface AnalyticsSummary {
   date: string;
-  userId?: string;
   focusMinutes: number;
   distractionsBlocked: number;
   focusScore: number;
@@ -94,7 +91,6 @@ export interface GlobalSettings {
 
 export interface SupportTicket {
   id: string;
-  userId?: string;
   subject: string;
   message: string;
   status: string;
@@ -120,16 +116,12 @@ export interface StudentUser {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  passwordHash?: string;
   focusScore: number;
   focusCoins: number;
   currentStreak: number;
   status: 'active' | 'suspended' | 'offline';
   lastActive: string;
   chatMuted: boolean;
-  settings?: GlobalSettings;
-  purchasedRewards?: string[];
 }
 
 export interface SharedResource {
@@ -165,7 +157,6 @@ export interface ClassroomGroup {
 
 export interface TimetableEvent {
   id: string;
-  userId?: string;
   title: string;
   day: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
   time: string;

@@ -56,6 +56,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       });
 
       if (res.ok) {
+        sessionStorage.setItem('student_authenticated', 'true');
+        localStorage.setItem('student_authenticated', 'true');
         setIsAuthenticated(true);
         setPassword('');
         setCorporateId('');
@@ -120,6 +122,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="w-full bg-[#0D1527]/90 border border-[#1D2A44] rounded-2xl p-7 shadow-2xl backdrop-blur-md">
+            {/* Quick Demo Fill */}
+            <div className="mb-4 p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-bold text-emerald-400 tracking-wider uppercase">Sample Credentials</div>
+                <div className="text-[11px] text-slate-200 font-mono mt-0.5">admin@focusflow.ai</div>
+                <div className="text-[10px] text-emerald-300 font-mono">Access Key: admin123</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCorporateId('admin@focusflow.ai');
+                  setPassword('admin123');
+                  setError('');
+                }}
+                className="px-2.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold rounded-lg cursor-pointer transition-colors"
+              >
+                Auto-Fill
+              </button>
+            </div>
+
             <form onSubmit={handleLogin} className="space-y-md">
               <div className="space-y-xs">
                 <label className="block text-[10px] font-bold text-slate-400/90 uppercase tracking-widest">

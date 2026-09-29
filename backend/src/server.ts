@@ -25,11 +25,17 @@ import {
 import { generateAiResponse } from './educationalAi';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5002;
 
 // Enable CORS for client requests
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow server-to-server proxies, curl, mobile, localhost, or onrender domains
+    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1') || origin.endsWith('.onrender.com') || process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
   credentials: true
 }));
 
@@ -38,161 +44,6 @@ app.use(cookieParser());
 
 // Serve static uploads folder
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
-import crypto from 'crypto';
-
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
-
-// Student helper to retrieve active user
-function getStudentId(req: Request): string | null {
-  return req.cookies?.focusflow_student_auth || null;
-}
-
-// -------------------------------------------------------------
-// Student Auth API Endpoints
-// -------------------------------------------------------------
-
-app.get('/api/auth/me', (req: Request, res: Response) => {
-  try {
-    const studentId = getStudentId(req);
-    if (!studentId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    const db = readDb();
-    const student = db.users.find(u => u.id === studentId);
-    if (!student) {
-      return res.status(401).json({ error: 'Student profile not found' });
-    }
-    res.json({ success: true, user: student });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/auth/signup', (req: Request, res: Response) => {
-  try {
-    const { name, email, phone, password } = req.body;
-    if (!name || !email || !phone || !password) {
-      return res.status(400).json({ error: 'All registration fields are required' });
-    }
-
-    const db = readDb();
-    
-    // Check duplicate
-    const duplicate = db.users.find(u => u.email === email || u.phone === phone);
-    if (duplicate) {
-      return res.status(400).json({ error: 'Account already exists with this email or phone' });
-    }
-
-    const passwordHash = hashPassword(password);
-    const newStudent: StudentUser = {
-      id: 'u-' + Math.random().toString(36).substring(2, 9),
-      name,
-      email,
-      phone,
-      passwordHash,
-      focusScore: 90,
-      focusCoins: 100,
-      currentStreak: 0,
-      status: 'active',
-      lastActive: 'Just now',
-      chatMuted: false,
-      purchasedRewards: [],
-      settings: {
-        studyMode: false,
-        distractionShield: true,
-        blockedWebsites: ['instagram.com', 'facebook.com', 'youtube.com', 'twitter.com', 'tiktok.com'],
-        focusScore: 90,
-        pomodoroWorkTime: 25,
-        pomodoroBreakTime: 5,
-        currentStreak: 0,
-        focusCoins: 100
-      }
-    };
-
-    db.users.push(newStudent);
-    writeDb(db);
-
-    res.cookie('focusflow_student_auth', newStudent.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-      maxAge: 86400 * 30 * 1000 // 30 days
-    });
-
-    res.status(201).json({ success: true, user: newStudent });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/auth/login', (req: Request, res: Response) => {
-  try {
-    const { emailOrPhone, password } = req.body;
-    if (!emailOrPhone || !password) {
-      return res.status(400).json({ error: 'Credentials are required' });
-    }
-
-    const db = readDb();
-    const passwordHash = hashPassword(password);
-
-    const student = db.users.find(u => 
-      (u.email === emailOrPhone || u.phone === emailOrPhone) && 
-      u.passwordHash === passwordHash
-    );
-
-    if (!student) {
-      return res.status(401).json({ error: 'Incorrect email/phone or password' });
-    }
-
-    // Update status
-    student.status = 'active';
-    student.lastActive = 'Just now';
-    writeDb(db);
-
-    res.cookie('focusflow_student_auth', student.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-      maxAge: 86400 * 30 * 1000 // 30 days
-    });
-
-    res.json({ success: true, user: student });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/auth/logout', (req: Request, res: Response) => {
-  try {
-    const studentId = getStudentId(req);
-    if (studentId) {
-      const db = readDb();
-      const student = db.users.find(u => u.id === studentId);
-      if (student) {
-        student.status = 'offline';
-        student.lastActive = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ago';
-        writeDb(db);
-      }
-    }
-
-    res.cookie('focusflow_student_auth', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-      maxAge: 0
-    });
-
-    res.json({ success: true, message: 'Logged out successfully' });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // Helper for admin authorization
 function isAuthenticated(req: Request): boolean {
@@ -218,7 +69,7 @@ app.post('/api/admin/login', (req: Request, res: Response) => {
       res.cookie('focusflow_admin_auth', 'authenticated', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/',
         maxAge: 86400 * 1000 // 1 day in ms
       });
@@ -235,7 +86,7 @@ app.post('/api/admin/logout', (req: Request, res: Response) => {
   res.cookie('focusflow_admin_auth', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
     path: '/',
     maxAge: 0
   });
@@ -850,7 +701,7 @@ app.post('/api/student/rooms/join', (req: Request, res: Response) => {
   }
   writeDb(db);
 
-  res.json({ success: true, roomId: room.id, websocketUrl: `ws://localhost:5000/rooms/${room.id}/live` });
+  res.json({ success: true, roomId: room.id, websocketUrl: `ws://localhost:${PORT}/rooms/${room.id}/live` });
 });
 
 // GET /api/student/flow-goal
@@ -1241,12 +1092,7 @@ app.get('/api/teacher/resources/shared-history', (req: Request, res: Response) =
 
 app.get('/api/analytics', (req: Request, res: Response) => {
   const db = readDb();
-  const studentId = getStudentId(req);
-  if (studentId) {
-    res.json(db.analytics.filter(a => a.userId === studentId || !a.userId));
-  } else {
-    res.json([]);
-  }
+  res.json(db.analytics);
 });
 
 // -------------------------------------------------------------
@@ -1314,24 +1160,9 @@ app.post('/api/data/manage', (req: Request, res: Response) => {
 
 app.get('/api/rewards', (req: Request, res: Response) => {
   const db = readDb();
-  const studentId = getStudentId(req);
-  let focusCoins = db.settings.focusCoins;
-  let items = db.rewards;
-
-  if (studentId) {
-    const student = db.users.find(u => u.id === studentId);
-    if (student) {
-      focusCoins = student.focusCoins;
-      const purchasedList = student.purchasedRewards || [];
-      items = db.rewards.map(r => ({
-        ...r,
-        purchased: purchasedList.includes(r.id)
-      }));
-    }
-  }
   res.json({
-    items,
-    focusCoins
+    items: db.rewards,
+    focusCoins: db.settings.focusCoins
   });
 });
 
@@ -1368,40 +1199,19 @@ app.post('/api/rewards', (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Item not found' });
     }
 
-    const studentId = getStudentId(req);
-    if (!studentId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const student = db.users.find(u => u.id === studentId);
-    if (!student) {
-      return res.status(401).json({ error: 'Student not found' });
-    }
-
-    if (!student.purchasedRewards) {
-      student.purchasedRewards = [];
-    }
-
-    if (student.purchasedRewards.includes(body.itemId)) {
+    if (item.purchased) {
       return res.status(400).json({ error: 'Item already purchased' });
     }
 
-    if (student.focusCoins < item.cost) {
+    if (db.settings.focusCoins < item.cost) {
       return res.status(400).json({ error: 'Insufficient Focus Coins' });
     }
 
-    student.focusCoins -= item.cost;
-    if (student.settings) {
-      student.settings.focusCoins = student.focusCoins;
-    }
-    student.purchasedRewards.push(body.itemId);
+    db.settings.focusCoins -= item.cost;
+    item.purchased = true;
 
     writeDb(db);
-    res.json({
-      message: 'Purchase successful',
-      item: { ...item, purchased: true },
-      focusCoins: student.focusCoins
-    });
+    res.json({ message: 'Purchase successful', item, focusCoins: db.settings.focusCoins });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -1414,19 +1224,6 @@ app.patch('/api/rewards', (req: Request, res: Response) => {
     const { action } = body;
 
     if (action === 'reset') {
-      const studentId = getStudentId(req);
-      if (studentId) {
-        const student = db.users.find(u => u.id === studentId);
-        if (student) {
-          student.purchasedRewards = [];
-          student.focusCoins = 120;
-          if (student.settings) {
-            student.settings.focusCoins = 120;
-          }
-          writeDb(db);
-          return res.json({ success: true, message: 'All purchases reset successfully' });
-        }
-      }
       db.rewards.forEach(r => r.purchased = false);
       db.settings.focusCoins = 120;
       writeDb(db);
@@ -1717,32 +1514,16 @@ app.get('/api/search', (req: Request, res: Response) => {
 
 app.get('/api/sessions', (req: Request, res: Response) => {
   const db = readDb();
-  const studentId = getStudentId(req);
-  if (studentId) {
-    res.json(db.sessions.filter(s => s.userId === studentId || !s.userId));
-  } else {
-    res.json([]);
-  }
+  res.json(db.sessions);
 });
 
 app.post('/api/sessions', (req: Request, res: Response) => {
   try {
     const body = req.body;
     const db = readDb();
-    const studentId = getStudentId(req);
-
-    if (!studentId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const student = db.users.find(u => u.id === studentId);
-    if (!student) {
-      return res.status(401).json({ error: 'Student not found' });
-    }
 
     const newSession: StudySession = {
       id: 'session-' + Math.random().toString(36).substring(2, 9),
-      userId: studentId,
       startTime: new Date().toISOString(),
       durationMinutes: body.durationMinutes || 25,
       taskTitle: body.taskTitle || 'General Focus Session',
@@ -1758,30 +1539,16 @@ app.post('/api/sessions', (req: Request, res: Response) => {
     db.sessions.push(newSession);
 
     const coinReward = 10 + (body.distractionsBlocked || 0) * 2;
-    student.focusCoins += coinReward;
-    if (student.settings) {
-      student.settings.focusCoins = student.focusCoins;
-    }
+    db.settings.focusCoins += coinReward;
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const hasTodayAnalytics = db.analytics.some(a => a.date === todayStr && a.userId === studentId);
+    const hasTodayAnalytics = db.analytics.some(a => a.date === todayStr);
     
     if (!hasTodayAnalytics) {
-      student.currentStreak += 1;
-      if (student.settings) {
-        student.settings.currentStreak = student.currentStreak;
-      }
+      db.settings.currentStreak += 1;
     }
 
-    // Update student focusScore moving average
-    const studentSessions = db.sessions.filter(s => s.userId === studentId);
-    const totalScore = studentSessions.reduce((sum, s) => sum + s.focusScore, 0);
-    student.focusScore = studentSessions.length > 0 ? Math.round(totalScore / studentSessions.length) : newSession.focusScore;
-    if (student.settings) {
-      student.settings.focusScore = student.focusScore;
-    }
-
-    const dailyLog = db.analytics.find(a => a.date === todayStr && a.userId === studentId);
+    const dailyLog = db.analytics.find(a => a.date === todayStr);
     if (dailyLog) {
       dailyLog.focusMinutes += newSession.durationMinutes;
       dailyLog.distractionsBlocked += newSession.distractionsBlocked;
@@ -1789,7 +1556,6 @@ app.post('/api/sessions', (req: Request, res: Response) => {
     } else {
       const newDailyLog: AnalyticsSummary = {
         date: todayStr,
-        userId: studentId,
         focusMinutes: newSession.durationMinutes,
         distractionsBlocked: newSession.distractionsBlocked,
         focusScore: newSession.focusScore
@@ -1798,14 +1564,14 @@ app.post('/api/sessions', (req: Request, res: Response) => {
     }
 
     if (body.taskId) {
-      const task = db.tasks.find(t => t.id === body.taskId && (t.userId === studentId || !t.userId));
+      const task = db.tasks.find(t => t.id === body.taskId);
       if (task) {
         task.actualPomodoros += 1;
       }
     }
 
     writeDb(db);
-    res.status(201).json({ session: newSession, coinsEarned: coinReward, streak: student.currentStreak });
+    res.status(201).json({ session: newSession, coinsEarned: coinReward, streak: db.settings.currentStreak });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -1817,13 +1583,6 @@ app.post('/api/sessions', (req: Request, res: Response) => {
 
 app.get('/api/settings', (req: Request, res: Response) => {
   const db = readDb();
-  const studentId = getStudentId(req);
-  if (studentId) {
-    const student = db.users.find(u => u.id === studentId);
-    if (student && student.settings) {
-      return res.json(student.settings);
-    }
-  }
   res.json(db.settings);
 });
 
@@ -1831,41 +1590,21 @@ app.patch('/api/settings', (req: Request, res: Response) => {
   try {
     const body = req.body;
     const db = readDb();
-    const studentId = getStudentId(req);
 
-    let settingsTarget = db.settings;
-    let student = null;
-
-    if (studentId) {
-      student = db.users.find(u => u.id === studentId);
-      if (student) {
-        if (!student.settings) {
-          student.settings = { ...db.settings };
-        }
-        settingsTarget = student.settings;
-      }
-    }
-
-    if (body.studyMode !== undefined) settingsTarget.studyMode = body.studyMode;
-    if (body.distractionShield !== undefined) settingsTarget.distractionShield = body.distractionShield;
-    if (body.blockedWebsites !== undefined) settingsTarget.blockedWebsites = body.blockedWebsites;
-    if (body.focusScore !== undefined) settingsTarget.focusScore = body.focusScore;
-    if (body.pomodoroWorkTime !== undefined) settingsTarget.pomodoroWorkTime = body.pomodoroWorkTime;
-    if (body.pomodoroBreakTime !== undefined) settingsTarget.pomodoroBreakTime = body.pomodoroBreakTime;
-    if (body.currentStreak !== undefined) settingsTarget.currentStreak = body.currentStreak;
-    if (body.focusCoins !== undefined) settingsTarget.focusCoins = body.focusCoins;
-    if (body.uiConfig !== undefined) settingsTarget.uiConfig = body.uiConfig;
-    if (body.aiConfig !== undefined) settingsTarget.aiConfig = body.aiConfig;
-    if (body.groupConfig !== undefined) settingsTarget.groupConfig = body.groupConfig;
-
-    if (student) {
-      if (body.focusScore !== undefined) student.focusScore = body.focusScore;
-      if (body.focusCoins !== undefined) student.focusCoins = body.focusCoins;
-      if (body.currentStreak !== undefined) student.currentStreak = body.currentStreak;
-    }
+    if (body.studyMode !== undefined) db.settings.studyMode = body.studyMode;
+    if (body.distractionShield !== undefined) db.settings.distractionShield = body.distractionShield;
+    if (body.blockedWebsites !== undefined) db.settings.blockedWebsites = body.blockedWebsites;
+    if (body.focusScore !== undefined) db.settings.focusScore = body.focusScore;
+    if (body.pomodoroWorkTime !== undefined) db.settings.pomodoroWorkTime = body.pomodoroWorkTime;
+    if (body.pomodoroBreakTime !== undefined) db.settings.pomodoroBreakTime = body.pomodoroBreakTime;
+    if (body.currentStreak !== undefined) db.settings.currentStreak = body.currentStreak;
+    if (body.focusCoins !== undefined) db.settings.focusCoins = body.focusCoins;
+    if (body.uiConfig !== undefined) db.settings.uiConfig = body.uiConfig;
+    if (body.aiConfig !== undefined) db.settings.aiConfig = body.aiConfig;
+    if (body.groupConfig !== undefined) db.settings.groupConfig = body.groupConfig;
 
     writeDb(db);
-    res.json(settingsTarget);
+    res.json(db.settings);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -1877,12 +1616,7 @@ app.patch('/api/settings', (req: Request, res: Response) => {
 
 app.get('/api/support', (req: Request, res: Response) => {
   const db = readDb();
-  const studentId = getStudentId(req);
-  if (studentId) {
-    res.json((db.tickets || []).filter(t => t.userId === studentId || !t.userId));
-  } else {
-    res.json([]);
-  }
+  res.json(db.tickets);
 });
 
 app.post('/api/support', (req: Request, res: Response) => {
@@ -1892,11 +1626,6 @@ app.post('/api/support', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Subject and Message are required' });
     }
 
-    const studentId = getStudentId(req);
-    if (!studentId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
     const db = readDb();
     
     // Generate AI response to the student's ticket query
@@ -1904,7 +1633,6 @@ app.post('/api/support', (req: Request, res: Response) => {
 
     const newTicket: SupportTicket = {
       id: 'ticket-' + Math.random().toString(36).substring(2, 9),
-      userId: studentId,
       subject: body.subject,
       message: body.message,
       status: 'Answered',
@@ -1934,9 +1662,8 @@ app.post('/api/support/:id', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'User and Text are required' });
     }
 
-    const studentId = getStudentId(req);
     const db = readDb();
-    const ticket = db.tickets.find(t => t.id === id && (body.user === 'Support Agent' || t.userId === studentId || !t.userId));
+    const ticket = db.tickets.find(t => t.id === id);
 
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
@@ -1980,12 +1707,7 @@ app.post('/api/support/:id', (req: Request, res: Response) => {
 app.get('/api/timetable', (req: Request, res: Response) => {
   try {
     const db = readDb();
-    const studentId = getStudentId(req);
-    if (studentId) {
-      res.json((db.timetable || []).filter(e => e.userId === studentId || !e.userId));
-    } else {
-      res.json([]);
-    }
+    res.json(db.timetable || []);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -1997,16 +1719,11 @@ app.post('/api/timetable', (req: Request, res: Response) => {
     if (!title || !day || !time || !subject) {
       return res.status(400).json({ error: 'Title, day, time, and subject are required' });
     }
-    const studentId = getStudentId(req);
-    if (!studentId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
     const db = readDb();
     if (!db.timetable) db.timetable = [];
 
     const newEvent: TimetableEvent = {
       id: 'event-' + Math.random().toString(36).substring(2, 9),
-      userId: studentId,
       title,
       day,
       time,
@@ -2027,14 +1744,10 @@ app.put('/api/timetable/:id', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { title, day, time, subject, pomodoros, isAiSuggested } = req.body;
-    const studentId = getStudentId(req);
-    if (!studentId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
     const db = readDb();
     if (!db.timetable) db.timetable = [];
 
-    const event = db.timetable.find(e => e.id === id && (e.userId === studentId || !e.userId));
+    const event = db.timetable.find(e => e.id === id);
     if (!event) {
       return res.status(404).json({ error: 'Timetable event not found' });
     }
@@ -2056,14 +1769,10 @@ app.put('/api/timetable/:id', (req: Request, res: Response) => {
 app.delete('/api/timetable/:id', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const studentId = getStudentId(req);
-    if (!studentId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
     const db = readDb();
     if (!db.timetable) db.timetable = [];
 
-    const index = db.timetable.findIndex(e => e.id === id && (e.userId === studentId || !e.userId));
+    const index = db.timetable.findIndex(e => e.id === id);
     if (index === -1) {
       return res.status(404).json({ error: 'Timetable event not found' });
     }
@@ -2082,12 +1791,7 @@ app.delete('/api/timetable/:id', (req: Request, res: Response) => {
 
 app.get('/api/tasks', (req: Request, res: Response) => {
   const db = readDb();
-  const studentId = getStudentId(req);
-  if (studentId) {
-    res.json(db.tasks.filter(t => t.userId === studentId || !t.userId));
-  } else {
-    res.json([]);
-  }
+  res.json(db.tasks);
 });
 
 app.post('/api/tasks', (req: Request, res: Response) => {
@@ -2097,15 +1801,9 @@ app.post('/api/tasks', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Title and Subject are required' });
     }
 
-    const studentId = getStudentId(req);
-    if (!studentId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
     const db = readDb();
     const newTask: Task = {
       id: Math.random().toString(36).substring(2, 9),
-      userId: studentId,
       title: body.title,
       completed: false,
       subject: body.subject,
@@ -2126,13 +1824,9 @@ app.patch('/api/tasks/:id', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const body = req.body;
-    const studentId = getStudentId(req);
-    if (!studentId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
     const db = readDb();
-    const taskIndex = db.tasks.findIndex(t => t.id === id && (t.userId === studentId || !t.userId));
+    
+    const taskIndex = db.tasks.findIndex(t => t.id === id);
     if (taskIndex === -1) {
       return res.status(404).json({ error: 'Task not found' });
     }
@@ -2154,13 +1848,9 @@ app.patch('/api/tasks/:id', (req: Request, res: Response) => {
 app.delete('/api/tasks/:id', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const studentId = getStudentId(req);
-    if (!studentId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
     const db = readDb();
-    const taskIndex = db.tasks.findIndex(t => t.id === id && (t.userId === studentId || !t.userId));
+    
+    const taskIndex = db.tasks.findIndex(t => t.id === id);
     if (taskIndex === -1) {
       return res.status(404).json({ error: 'Task not found' });
     }

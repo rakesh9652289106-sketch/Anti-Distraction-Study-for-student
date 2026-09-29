@@ -36,3 +36,9 @@ backend/.env*
 
 # uploads
 /backend/uploads/faculty/
+
+# build artifacts
+.latex-update/
+.ppt-build/
+latex-output/
+presentation-output/

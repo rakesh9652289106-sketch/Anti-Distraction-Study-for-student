@@ -1,30 +1,22 @@
 import type { NextConfig } from "next";
 
-const isProd = process.env.NODE_ENV === 'production';
+const rawBackendUrl = process.env.BACKEND_URL || `http://127.0.0.1:${process.env.BACKEND_PORT || '5002'}`;
+const BACKEND_URL = rawBackendUrl.startsWith('http') ? rawBackendUrl : `https://${rawBackendUrl}`;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  ...(isProd
-    ? {
-        output: 'export',
-        images: {
-          unoptimized: true,
-        },
-      }
-    : {
-        async rewrites() {
-          return [
-            {
-              source: '/api/:path*',
-              destination: 'http://127.0.0.1:5000/api/:path*',
-            },
-            {
-              source: '/uploads/:path*',
-              destination: 'http://127.0.0.1:5000/uploads/:path*',
-            },
-          ];
-        },
-      }),
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${BACKEND_URL}/api/:path*`,
+      },
+      {
+        source: '/uploads/:path*',
+        destination: `${BACKEND_URL}/uploads/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

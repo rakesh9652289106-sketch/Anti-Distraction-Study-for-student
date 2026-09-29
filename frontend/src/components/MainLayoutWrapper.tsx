@@ -16,7 +16,9 @@ export default function MainLayoutWrapper({ children }: { children: React.ReactN
 
   useEffect(() => {
     if (!isBypassShell) {
-      const isAuthenticated = sessionStorage.getItem('student_authenticated') === 'true';
+      const isAuthenticated = 
+        sessionStorage.getItem('student_authenticated') === 'true' ||
+        localStorage.getItem('student_authenticated') === 'true';
       if (!isAuthenticated) {
         router.push('/login');
       } else {

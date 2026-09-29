@@ -2,19 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useApp } from '@/context/AppContext';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, signup } = useApp();
-
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -90,57 +82,59 @@ export default function LoginPage() {
     };
   }, []);
 
+  const [showPassword, setShowPassword] = useState(false);
+
+  const fillStudent = () => {
+    setEmailOrPhone('alex@student.edu');
+    setPassword('student123');
+    setError('');
+  };
+
+  const fillAdmin = () => {
+    setEmailOrPhone('admin@focusflow.ai');
+    setPassword('admin123');
+    setError('');
+  };
+
+  const handleSocialLogin = () => {
+    sessionStorage.setItem('student_authenticated', 'true');
+    localStorage.setItem('student_authenticated', 'true');
+    router.push('/');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    // Check fields
-    if (isRegisterMode) {
-      if (!name.trim() || !email.trim() || !phone.trim() || !password.trim()) {
-        setError('Please fill in all registration fields.');
-        return;
-      }
-    } else {
-      if (!emailOrPhone.trim() || !password.trim()) {
-        setError('Please fill in all credentials.');
-        return;
-      }
+    if (!emailOrPhone.trim() || !password.trim()) {
+      setError('Please fill in all credentials.');
+      return;
     }
 
     setIsSubmitting(true);
+    setError('');
 
     try {
-      // Admin bypass
-      const isInputAdmin = emailOrPhone.toLowerCase().includes('admin') || email.toLowerCase().includes('admin');
-      if (isInputAdmin || password === 'admin123') {
+      // If input contains 'admin' or password is the admin key, authenticate as Admin
+      if (emailOrPhone.toLowerCase().includes('admin') || password === 'admin123') {
         const res = await fetch('/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password })
         });
         if (res.ok) {
+          sessionStorage.setItem('student_authenticated', 'true');
+          localStorage.setItem('student_authenticated', 'true');
           router.push('/admin/pulse');
         } else {
           const data = await res.json();
-          setError(data.error || 'Incorrect administrator password.');
-        }
-        return;
-      }
-
-      if (isRegisterMode) {
-        const res = await signup(name.trim(), email.trim(), phone.trim(), password);
-        if (res.success) {
-          router.push('/');
-        } else {
-          setError(res.error || 'Registration failed.');
+          setError(data.error || 'Incorrect administrator password (default is: admin123).');
         }
       } else {
-        const res = await login(emailOrPhone.trim(), password);
-        if (res.success) {
+        // Standard Student mock authentication
+        sessionStorage.setItem('student_authenticated', 'true');
+        localStorage.setItem('student_authenticated', 'true');
+        setTimeout(() => {
           router.push('/');
-        } else {
-          setError(res.error || 'Incorrect phone number/email or password.');
-        }
+        }, 400);
       }
     } catch {
       setError('Connection failure. Check network infrastructure.');
@@ -187,109 +181,74 @@ export default function LoginPage() {
 
       {/* Main Form Center */}
       <main className="flex-grow flex items-center justify-center pt-xl pb-lg px-gutter relative z-10">
-        <section className="w-full max-w-[440px]">
+        <section className="w-full max-w-[460px]">
           <div className="glass-card rounded-xl p-lg">
             {/* Header */}
-            <div className="text-center mb-lg">
-              <h1 className="font-headline-lg text-headline-lg text-primary mb-xs">
-                {isRegisterMode ? 'Join FocusFlow' : 'Login to Learn'}
-              </h1>
-              <p className="font-body-md text-body-md text-on-surface-variant">
-                {isRegisterMode ? 'Register your personal productivity hub.' : 'Access your digital sanctuary for deep work.'}
-              </p>
+            <div className="text-center mb-md">
+              <h1 className="font-headline-lg text-headline-lg text-primary mb-xs">Login to Learn</h1>
+              <p className="font-body-md text-body-md text-on-surface-variant">Access your digital sanctuary for deep work.</p>
             </div>
 
-            {/* Login / Register Form */}
+            {/* Quick Demo Credentials Bar */}
+            <div className="mb-md p-3 bg-slate-50/90 border border-slate-200 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 font-bold text-slate-700 text-[11px]">
+                  <span className="material-symbols-outlined text-[15px] text-secondary">vpn_key</span>
+                  Sample Credentials
+                </span>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Tap to Auto-fill</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={fillStudent}
+                  className="p-2 rounded-lg border border-emerald-300/80 bg-emerald-50/80 hover:bg-emerald-100 text-left transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between font-bold text-emerald-900 text-[11px]">
+                    <span>Student / User</span>
+                    <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-800 group-hover:bg-emerald-300">Fill</span>
+                  </div>
+                  <div className="text-[10px] text-emerald-800 font-mono mt-0.5 truncate">alex@student.edu</div>
+                  <div className="text-[10px] text-emerald-600 font-mono">Pass: student123</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={fillAdmin}
+                  className="p-2 rounded-lg border border-blue-300/80 bg-blue-50/80 hover:bg-blue-100 text-left transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between font-bold text-blue-900 text-[11px]">
+                    <span>Admin Panel</span>
+                    <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-blue-200 text-blue-800 group-hover:bg-blue-300">Fill</span>
+                  </div>
+                  <div className="text-[10px] text-blue-800 font-mono mt-0.5 truncate">admin@focusflow.ai</div>
+                  <div className="text-[10px] text-blue-600 font-mono">Pass: admin123</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-md">
-              {isRegisterMode && (
-                <>
-                  {/* Name Field */}
-                  <div className="space-y-xs">
-                    <label className="font-label-md text-label-md text-on-surface" htmlFor="name">
-                      Full Name
-                    </label>
-                    <div className="relative group">
-                      <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
-                        person
-                      </span>
-                      <input
-                        id="name"
-                        type="text"
-                        required
-                        value={name}
-                        onChange={e => setName(e.target.value)}
-                        placeholder="John Doe"
-                        className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Email Field */}
-                  <div className="space-y-xs">
-                    <label className="font-label-md text-label-md text-on-surface" htmlFor="email">
-                      Email Address
-                    </label>
-                    <div className="relative group">
-                      <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
-                        mail
-                      </span>
-                      <input
-                        id="email"
-                        type="email"
-                        required
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        placeholder="john@example.com"
-                        className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Phone Field */}
-                  <div className="space-y-xs">
-                    <label className="font-label-md text-label-md text-on-surface" htmlFor="phone">
-                      Phone Number
-                    </label>
-                    <div className="relative group">
-                      <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
-                        phone
-                      </span>
-                      <input
-                        id="phone"
-                        type="tel"
-                        required
-                        value={phone}
-                        onChange={e => setPhone(e.target.value)}
-                        placeholder="+1 (555) 000-0000"
-                        className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {!isRegisterMode && (
-                /* Phone / Email Field */
-                <div className="space-y-xs">
-                  <label className="font-label-md text-label-md text-on-surface" htmlFor="phoneOrEmail">
-                    Phone Number or Email
-                  </label>
-                  <div className="relative group">
-                    <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
-                      contact_mail
-                    </span>
-                    <input
-                      id="phoneOrEmail"
-                      type="text"
-                      required
-                      value={emailOrPhone}
-                      onChange={e => setEmailOrPhone(e.target.value)}
-                      placeholder="Enter phone or email address"
-                      className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
-                    />
-                  </div>
+              {/* Email / Username Field */}
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface" htmlFor="emailOrPhone">
+                  Email or Username
+                </label>
+                <div className="relative group">
+                  <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-secondary transition-colors">
+                    mail
+                  </span>
+                  <input
+                    id="emailOrPhone"
+                    type="text"
+                    required
+                    value={emailOrPhone}
+                    onChange={e => setEmailOrPhone(e.target.value)}
+                    placeholder="alex@student.edu or admin@focusflow.ai"
+                    className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
+                  />
                 </div>
-              )}
+              </div>
 
               {/* Password Field */}
               <div className="space-y-xs">
@@ -302,33 +261,46 @@ export default function LoginPage() {
                   </span>
                   <input
                     id="password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-[44px] pr-md py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
+                    className="w-full pl-[44px] pr-10 py-sm bg-surface-container-lowest border border-outline-variant/60 rounded-lg font-body-md text-body-md outline-none transition-all focus:border-secondary focus:ring-4 focus:ring-secondary/10 text-slate-900"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(p => !p)}
+                    className="absolute right-sm top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer flex items-center justify-center"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {showPassword ? 'visibility' : 'visibility_off'}
+                    </span>
+                  </button>
                 </div>
               </div>
 
               {/* Options */}
-              {!isRegisterMode && (
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-xs cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 rounded border-outline-variant text-secondary focus:ring-secondary cursor-pointer"
-                    />
-                    <span className="font-label-md text-label-md text-on-surface-variant group-hover:text-on-surface transition-colors select-none">
-                      Remember Me
-                    </span>
-                  </label>
-                  <a className="font-label-md text-label-md text-secondary font-semibold hover:underline" href="#">
-                    Forgot Password?
-                  </a>
-                </div>
-              )}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-xs cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    defaultChecked
+                    className="w-4 h-4 rounded border-outline-variant text-secondary focus:ring-secondary cursor-pointer"
+                  />
+                  <span className="font-label-md text-label-md text-on-surface-variant group-hover:text-on-surface transition-colors select-none">
+                    Remember Me
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => alert('Demo Passwords:\n• Student: student123 (or any password)\n• Admin: admin123')}
+                  className="font-label-md text-label-md text-secondary font-semibold hover:underline cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
+              </div>
 
               {error && (
                 <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-3 flex gap-2">
@@ -341,27 +313,27 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-secondary text-white font-label-md text-label-md py-sm rounded-lg hover:brightness-110 transition-all duration-200 transform active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full bg-secondary text-white font-label-md text-label-md py-sm rounded-lg hover:brightness-110 transition-all duration-200 transform active:scale-[0.98] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer font-bold"
               >
-                {isSubmitting ? 'Verifying Credentials...' : (isRegisterMode ? 'Create Account' : 'Enter Portal')}
+                {isSubmitting ? 'Verifying Credentials...' : 'Enter Portal'}
               </button>
             </form>
 
             {/* Social logins option */}
-            <div className="relative my-6">
+            <div className="relative my-5">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-slate-200"></div>
               </div>
               <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                <span className="px-3 bg-white">Or continue with</span>
+                <span className="px-3 bg-white">Or 1-click continue with</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => { router.push('/'); }}
-                className="flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-lg bg-white/40 hover:bg-white/60 text-xs font-semibold transition-colors cursor-pointer text-slate-700"
+                onClick={handleSocialLogin}
+                className="flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-lg bg-white/60 hover:bg-slate-50 text-xs font-semibold transition-colors cursor-pointer text-slate-700 shadow-2xs"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
@@ -373,8 +345,8 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => { router.push('/'); }}
-                className="flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-lg bg-white/40 hover:bg-white/60 text-xs font-semibold transition-colors cursor-pointer text-slate-700"
+                onClick={handleSocialLogin}
+                className="flex items-center justify-center gap-1.5 py-2 border border-slate-200 rounded-lg bg-white/60 hover:bg-slate-50 text-xs font-semibold transition-colors cursor-pointer text-slate-700 shadow-2xs"
               >
                 <svg className="w-4 h-4" viewBox="0 0 23 23">
                   <path d="M0 0h23v23H0z" fill="#f3f3f3"></path>
@@ -390,29 +362,10 @@ export default function LoginPage() {
             {/* Footer Link */}
             <div className="mt-lg text-center">
               <p className="font-body-md text-body-md text-on-surface-variant">
-                {isRegisterMode ? (
-                  <>
-                    Already registered?{' '}
-                    <button
-                      type="button"
-                      onClick={() => { setIsRegisterMode(false); setError(''); }}
-                      className="text-secondary font-semibold hover:underline bg-transparent border-none cursor-pointer"
-                    >
-                      Login here
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    New student?{' '}
-                    <button
-                      type="button"
-                      onClick={() => { setIsRegisterMode(true); setError(''); }}
-                      className="text-secondary font-semibold hover:underline bg-transparent border-none cursor-pointer"
-                    >
-                      Create an account
-                    </button>
-                  </>
-                )}
+                New student?{' '}
+                <a className="text-secondary font-semibold hover:underline" href="#">
+                  Create an account
+                </a>
               </p>
             </div>
           </div>
@@ -448,3 +401,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
