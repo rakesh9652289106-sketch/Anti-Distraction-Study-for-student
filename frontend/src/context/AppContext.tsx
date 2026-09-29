@@ -75,7 +75,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     pomodoroWorkTime: 25,
     pomodoroBreakTime: 5,
     currentStreak: 5,
-    focusCoins: 120
+    focusCoins: 120,
+    cameraEnabled: true
   });
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [rooms, setRooms] = useState<StudyRoom[]>([]);

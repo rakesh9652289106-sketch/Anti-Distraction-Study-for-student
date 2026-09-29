@@ -1599,6 +1599,7 @@ app.patch('/api/settings', (req: Request, res: Response) => {
     if (body.pomodoroBreakTime !== undefined) db.settings.pomodoroBreakTime = body.pomodoroBreakTime;
     if (body.currentStreak !== undefined) db.settings.currentStreak = body.currentStreak;
     if (body.focusCoins !== undefined) db.settings.focusCoins = body.focusCoins;
+    if (body.cameraEnabled !== undefined) db.settings.cameraEnabled = body.cameraEnabled;
     if (body.uiConfig !== undefined) db.settings.uiConfig = body.uiConfig;
     if (body.aiConfig !== undefined) db.settings.aiConfig = body.aiConfig;
     if (body.groupConfig !== undefined) db.settings.groupConfig = body.groupConfig;

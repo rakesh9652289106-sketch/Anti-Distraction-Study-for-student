@@ -72,6 +72,7 @@ export interface GlobalSettings {
   pomodoroBreakTime: number; // in minutes
   currentStreak: number;
   focusCoins: number;
+  cameraEnabled?: boolean;
   uiConfig?: {
     theme: string;
     density: string;
@@ -268,6 +269,7 @@ function getInitialData(): DbSchema {
       pomodoroBreakTime: 5,
       currentStreak: 5,
       focusCoins: 120,
+      cameraEnabled: true,
       groupConfig: {
         maxUsersPerGroup: 8,
         allowScreenShare: true,

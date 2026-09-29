@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 
 export default function AdminAiConfigPage() {
-  const { fetchData } = useApp();
+  const { fetchData, settings, updateSettings } = useApp();
   const [aiConfig, setAiConfig] = useState({
     personality: 'academic',
     temperature: 0.7,
@@ -63,6 +63,28 @@ export default function AdminAiConfigPage() {
     handleSaveConfig(updated);
   };
 
+  const toggleCameraMaster = async () => {
+    const nextVal = settings.cameraEnabled === false ? true : false;
+    setIsUpdating(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cameraEnabled: nextVal })
+      });
+      if (res.ok) {
+        updateSettings({ cameraEnabled: nextVal });
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+        await fetchData();
+      }
+    } catch (err) {
+      console.error('Failed to toggle camera master:', err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <div className="space-y-lg relative">
       
@@ -70,7 +92,7 @@ export default function AdminAiConfigPage() {
       {showToast && (
         <div className="fixed bottom-6 right-6 bg-[#0D1527] border border-emerald-500/30 text-emerald-450 px-md py-sm rounded-lg shadow-2xl flex items-center gap-xs z-50 animate-bounce">
           <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
-          <span className="text-xs font-semibold">AI Agent prompts and parameter updates synchronized!</span>
+          <span className="text-xs font-semibold">Settings and Camera permissions synchronized!</span>
         </div>
       )}
 
@@ -79,8 +101,62 @@ export default function AdminAiConfigPage() {
         <div>
           <h2 className="font-bold text-headline-lg text-primary text-white">Panel Configuration: AI Engine Settings</h2>
           <p className="text-body-md text-slate-400 font-medium">
-            Tweak LLM temperatures, tutor personality prompts, and Attention Guard checks frequency.
+            Tweak LLM temperatures, tutor personality prompts, and master camera permissions.
           </p>
+        </div>
+      </div>
+
+      {/* Master Camera & Attention Guard Access Control Card */}
+      <div className={`p-5 rounded-2xl border transition-all ${
+        settings?.cameraEnabled !== false
+          ? 'bg-gradient-to-r from-[#0d1e18] to-[#0a1424] border-emerald-500/30'
+          : 'bg-gradient-to-r from-[#241313] to-[#1a0f1c] border-red-500/40'
+      }`}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className={`p-3 rounded-xl ${
+              settings?.cameraEnabled !== false ? 'bg-emerald-500/10 text-emerald-450' : 'bg-red-500/10 text-red-400'
+            }`}>
+              <span className="material-symbols-outlined text-2xl">
+                {settings?.cameraEnabled !== false ? 'videocam' : 'videocam_off'}
+              </span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white">
+                  Student Webcam Monitoring (Master Switch)
+                </h3>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border ${
+                  settings?.cameraEnabled !== false
+                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                    : 'bg-red-500/20 border-red-500/40 text-red-300'
+                }`}>
+                  {settings?.cameraEnabled !== false ? '● ACTIVE SYSTEM-WIDE' : '■ STOPPED BY ADMIN'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                {settings?.cameraEnabled !== false
+                  ? 'Webcam Attention Guard is active for students during study sessions. Eye-tracking and gaze detection are operational.'
+                  : 'Webcam Attention Guard is disabled across all student clients. Camera streams are immediately terminated and hardware permissions released.'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleCameraMaster}
+            disabled={isUpdating}
+            className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg active:scale-95 disabled:opacity-50 whitespace-nowrap ${
+              settings?.cameraEnabled !== false
+                ? 'bg-red-600/90 hover:bg-red-600 text-white border border-red-500/50 shadow-red-900/30'
+                : 'bg-emerald-600/90 hover:bg-emerald-600 text-white border border-emerald-500/50 shadow-emerald-900/30'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">
+              {settings?.cameraEnabled !== false ? 'pause_circle' : 'play_circle'}
+            </span>
+            {settings?.cameraEnabled !== false ? 'Stop Camera for All Users' : 'Enable Camera System-Wide'}
+          </button>
         </div>
       </div>
 

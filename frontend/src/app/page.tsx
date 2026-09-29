@@ -147,14 +147,25 @@ export default function DashboardPage() {
           {settings.studyMode ? 'Study Mode: ON' : 'Study Mode: OFF'}
         </button>
 
-        <button
-          onClick={() => setIsAssistantOpen(true)}
-          className="px-md py-sm bg-surface-container-high border border-outline-variant/30 text-primary font-semibold rounded-lg flex items-center gap-xs cursor-pointer hover:bg-surface-variant transition-all active:scale-95"
-          title="Open AI Attention Camera Monitor"
-        >
-          <span className="material-symbols-outlined text-secondary text-lg">videocam</span>
-          Camera Check
-        </button>
+        {settings.cameraEnabled !== false ? (
+          <button
+            onClick={() => setIsAssistantOpen(true)}
+            className="px-md py-sm bg-surface-container-high border border-outline-variant/30 text-primary font-semibold rounded-lg flex items-center gap-xs cursor-pointer hover:bg-surface-variant transition-all active:scale-95"
+            title="Open AI Attention Camera Monitor"
+          >
+            <span className="material-symbols-outlined text-secondary text-lg">videocam</span>
+            Camera Check
+          </button>
+        ) : (
+          <button
+            disabled
+            className="px-md py-sm bg-slate-100 dark:bg-slate-800/40 border border-amber-500/20 text-slate-400 font-semibold rounded-lg flex items-center gap-xs cursor-not-allowed opacity-75"
+            title="Webcam monitoring has been disabled by Administrator"
+          >
+            <span className="material-symbols-outlined text-amber-500 text-lg">videocam_off</span>
+            Camera Disabled
+          </button>
+        )}
 
         <button
           onClick={resetTimer}

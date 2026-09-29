@@ -41,19 +41,25 @@ export default function AdminPulsePage() {
   const [insights, setInsights] = useState<AiInsight[]>([]);
   const [events, setEvents] = useState<SystemEvent[]>([]);
   const [safeModeActive, setSafeModeActive] = useState(false);
+  const [cameraEnabled, setCameraEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDashboardData = async () => {
     try {
-      const [resMetrics, resInsights, resEvents] = await Promise.all([
+      const [resMetrics, resInsights, resEvents, resSettings] = await Promise.all([
         fetch('/api/admin/metrics'),
         fetch('/api/admin/ai-insights'),
-        fetch('/api/admin/system-events')
+        fetch('/api/admin/system-events'),
+        fetch('/api/settings')
       ]);
 
       if (resMetrics.ok) setMetrics(await resMetrics.json());
       if (resInsights.ok) setInsights(await resInsights.json());
       if (resEvents.ok) setEvents(await resEvents.json());
+      if (resSettings.ok) {
+        const s = await resSettings.json();
+        setCameraEnabled(s.cameraEnabled !== false);
+      }
     } catch (err) {
       console.error('Failed to load admin metrics:', err);
     } finally {
@@ -94,6 +100,23 @@ export default function AdminPulsePage() {
       }
     } catch {
       alert('Report generation failed.');
+    }
+  };
+
+  const toggleMasterCamera = async () => {
+    const nextState = !cameraEnabled;
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cameraEnabled: nextState })
+      });
+      if (res.ok) {
+        setCameraEnabled(nextState);
+        alert(nextState ? 'Webcam monitoring restored system-wide for students.' : '🚨 Student webcams stopped and locked down system-wide.');
+      }
+    } catch {
+      alert('Failed to update camera master switch.');
     }
   };
 
@@ -221,6 +244,19 @@ export default function AdminPulsePage() {
               }`}
             >
               {safeModeActive ? '🔴 SAFE MODE ENGAGED (Halt System)' : 'Lock Student Shells'}
+            </button>
+            <button
+              onClick={toggleMasterCamera}
+              className={`px-4 py-2.5 font-bold text-xs rounded-lg cursor-pointer transition-all border flex items-center gap-1.5 ${
+                cameraEnabled
+                  ? 'bg-amber-950/40 border-amber-600/50 hover:bg-amber-900/50 text-amber-300'
+                  : 'bg-emerald-950/40 border-emerald-600/50 hover:bg-emerald-900/50 text-emerald-300'
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">
+                {cameraEnabled ? 'videocam_off' : 'videocam'}
+              </span>
+              {cameraEnabled ? 'Stop Camera (All Students)' : 'Restore Camera Stream'}
             </button>
           </div>
         </div>

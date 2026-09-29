@@ -68,6 +68,7 @@ export interface GlobalSettings {
   pomodoroBreakTime: number;
   currentStreak: number;
   focusCoins: number;
+  cameraEnabled?: boolean;
   uiConfig?: {
     theme: string;
     density: string;

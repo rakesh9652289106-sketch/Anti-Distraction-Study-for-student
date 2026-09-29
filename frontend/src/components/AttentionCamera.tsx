@@ -245,6 +245,10 @@ export default function AttentionCamera() {
 
   // Start Camera
   const startCamera = async (deviceIdToUse?: string) => {
+    if (settings?.cameraEnabled === false) {
+      console.warn('Camera is disabled by administrator');
+      return;
+    }
     setCameraError(null);
 
     // Stop any existing stream
@@ -327,8 +331,17 @@ export default function AttentionCamera() {
     }
   };
 
-  // Active when Study Mode + Timer is on, OR when manual test check is running
-  const shouldBeActive = (settings.studyMode && isTimerRunning) || manualCheckActive;
+  // Active when camera is enabled by admin AND (Study Mode + Timer is on, OR when manual test check is running)
+  const isCameraAllowed = settings?.cameraEnabled !== false;
+  const shouldBeActive = isCameraAllowed && ((settings?.studyMode && isTimerRunning) || manualCheckActive);
+
+  // Stop camera immediately if camera is disabled by admin
+  useEffect(() => {
+    if (settings?.cameraEnabled === false) {
+      setManualCheckActive(false);
+      stopCamera();
+    }
+  }, [settings?.cameraEnabled]);
 
   // Toggle based on Focus Mode setting or manual check
   useEffect(() => {
@@ -343,6 +356,7 @@ export default function AttentionCamera() {
 
   // Restart camera when device changes
   useEffect(() => {
+    if (settings?.cameraEnabled === false) return;
     if (isCameraActive && selectedDeviceId) {
       // Check if selectedDeviceId matches the active stream's device ID
       if (activeDeviceIdRef.current === selectedDeviceId) {
@@ -812,6 +826,24 @@ export default function AttentionCamera() {
 
     return () => clearInterval(timer);
   }, [isCameraActive]);
+
+  if (settings?.cameraEnabled === false) {
+    return (
+      <div className="bg-slate-50 dark:bg-slate-900 border border-amber-500/30 rounded-xl p-4 text-center space-y-2.5">
+        <div className="flex items-center justify-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold text-xs uppercase tracking-wide">
+          <span className="material-symbols-outlined text-lg">videocam_off</span>
+          Webcam Disabled by Admin
+        </div>
+        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+          The administrator has turned off webcam monitoring system-wide. Camera features and gaze tracking are disabled.
+        </p>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-[11px] font-medium text-amber-700 dark:text-amber-300">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+          Privacy Protection Active
+        </div>
+      </div>
+    );
+  }
 
   if (!shouldBeActive) {
     return (
