@@ -198,6 +198,25 @@ export default function AdminResourcesPage() {
     }
   };
 
+  const handleDeleteMaterial = async (id: string, name: string) => {
+    if (!confirm(`Delete material "${name}"? It will also be removed from all rooms.`)) return;
+    try {
+      const res = await fetch(`/api/teacher/resources/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        setHistory(prev => prev.filter(item => item.id !== id));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to delete material');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete material');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-400 font-mono">
@@ -390,6 +409,7 @@ export default function AdminResourcesPage() {
                     <th className="px-5 py-3">Status</th>
                     <th className="px-5 py-3">Views</th>
                     <th className="px-5 py-3">Downloads</th>
+                    <th className="px-5 py-3 text-right">Delete</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-900 font-semibold text-slate-300">
@@ -415,11 +435,21 @@ export default function AdminResourcesPage() {
                       </td>
                       <td className="px-5 py-4 font-bold text-slate-400">{item.views}</td>
                       <td className="px-5 py-4 font-bold text-slate-400">{item.downloads}</td>
+                      <td className="px-5 py-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMaterial(item.id, item.name)}
+                          className="p-1.5 bg-red-950/30 border border-red-900/40 text-red-400 hover:bg-red-900 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center justify-center"
+                          title={`Delete ${item.name}`}
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {history.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="text-center py-8 text-slate-500 italic">
+                      <td colSpan={7} className="text-center py-8 text-slate-500 italic">
                         No materials shared yet.
                       </td>
                     </tr>

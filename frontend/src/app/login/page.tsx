@@ -25,8 +25,8 @@ export default function LoginPage() {
   const [studentName, setStudentName] = useState('');
   const [studentPhone, setStudentPhone] = useState('');
   const [hasGoogleVerifiedBefore, setHasGoogleVerifiedBefore] = useState(false);
-  const [emailOrPhone, setEmailOrPhone] = useState('staff@focusflow.ai');
-  const [password, setPassword] = useState('staff123');
+  const [emailOrPhone, setEmailOrPhone] = useState('admin@focusflow.ai');
+  const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
@@ -34,11 +34,11 @@ export default function LoginPage() {
   const [showForgotModal, setShowForgotModal] = useState(false);
 
   useEffect(() => {
-    const savedVerifiedEmail = localStorage.getItem('student_google_verified_email');
-    if (savedVerifiedEmail) {
-      setHasGoogleVerifiedBefore(true);
-    }
+    const storageKey = role === 'staff' ? 'staff_google_verified_email' : 'student_google_verified_email';
+    setHasGoogleVerifiedBefore(Boolean(localStorage.getItem(storageKey)));
+  }, [role]);
 
+  useEffect(() => {
     // Load Google Identity Services script
     if (!document.getElementById('google-gsi-script')) {
       const script = document.createElement('script');
@@ -54,10 +54,7 @@ export default function LoginPage() {
   const handleRoleChange = (newRole: 'student' | 'staff' | 'admin') => {
     setRole(newRole);
     setError('');
-    if (newRole === 'staff') {
-      setEmailOrPhone('staff@focusflow.ai');
-      setPassword('staff123');
-    } else if (newRole === 'admin') {
+    if (newRole === 'admin') {
       setEmailOrPhone('admin@focusflow.ai');
       setPassword('admin123');
     }
@@ -115,14 +112,17 @@ export default function LoginPage() {
             return;
           }
 
-          const authRes = await fetch('/api/student/google-auth', {
+          const endpoint = role === 'staff' ? '/api/staff/google-auth' : '/api/student/google-auth';
+          const authRes = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
               googleEmail: profile.email,
               googleName: profile.name,
               name: studentName.trim(),
-              phone: studentPhone.trim()
+              phone: studentPhone.trim(),
+              mode: hasGoogleVerifiedBefore ? 'login' : 'register'
             })
           });
 
@@ -131,22 +131,39 @@ export default function LoginPage() {
             if (authData.needsProfile) {
               setHasGoogleVerifiedBefore(false);
             }
+            if (authData.alreadyExists) {
+              setHasGoogleVerifiedBefore(true);
+            }
             setError(authData.error || 'Google login failed.');
             setIsSubmitting(false);
             return;
           }
 
-          const user = authData.user;
-          localStorage.removeItem('staff_authenticated');
-          sessionStorage.removeItem('staff_authenticated');
-          sessionStorage.setItem('student_authenticated', 'true');
-          localStorage.setItem('student_authenticated', 'true');
-          localStorage.setItem('student_user_id', user.id);
-          localStorage.setItem('student_user_name', user.name);
-          localStorage.setItem('student_user_email', user.email);
-          if (user.phone) localStorage.setItem('student_user_phone', user.phone);
-          localStorage.setItem('student_google_verified_email', user.email);
-          router.push('/');
+          if (role === 'staff') {
+            const staff = authData.staff;
+            sessionStorage.setItem('staff_authenticated', 'true');
+            localStorage.setItem('staff_authenticated', 'true');
+            localStorage.setItem('staff_user_id', staff.id);
+            localStorage.setItem('staff_user_name', staff.name);
+            localStorage.setItem('staff_user_email', staff.email);
+            if (staff.phone) localStorage.setItem('staff_user_phone', staff.phone);
+            localStorage.setItem('staff_google_verified_email', staff.email);
+            sessionStorage.setItem('student_authenticated', 'true');
+            localStorage.setItem('student_authenticated', 'true');
+            router.push('/staff');
+          } else {
+            const user = authData.user;
+            localStorage.removeItem('staff_authenticated');
+            sessionStorage.removeItem('staff_authenticated');
+            sessionStorage.setItem('student_authenticated', 'true');
+            localStorage.setItem('student_authenticated', 'true');
+            localStorage.setItem('student_user_id', user.id);
+            localStorage.setItem('student_user_name', user.name);
+            localStorage.setItem('student_user_email', user.email);
+            if (user.phone) localStorage.setItem('student_user_phone', user.phone);
+            localStorage.setItem('student_google_verified_email', user.email);
+            router.push('/');
+          }
         } catch {
           setError('Failed to verify Google account with server.');
           setIsSubmitting(false);
@@ -346,8 +363,8 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Student Login (Name & Phone + Compulsory Google Verification) */}
-            {role === 'student' ? (
+            {/* Student & Staff Login (Name & 10-digit Phone + Compulsory Google Verification) */}
+            {(role === 'student' || role === 'staff') ? (
               <div className="space-y-4">
                 {!hasGoogleVerifiedBefore ? (
                   <>

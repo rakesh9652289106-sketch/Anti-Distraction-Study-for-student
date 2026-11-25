@@ -160,38 +160,118 @@ app.post('/api/staff/logout', (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
-// Student Google Verification Sign-In / Registration
-// - Returning users (already registered with Google) only need Google to log in.
-// - First-time users must provide Name and Phone Number + Google verification.
-app.post('/api/student/google-auth', (req: Request, res: Response) => {
+// Staff Google Verification Sign-In / Registration
+// - Returning staff (mode !== 'register') only need Google to log in.
+// - First-time staff (mode === 'register') must not already exist, and must provide Name + 10-digit Phone.
+app.post('/api/staff/google-auth', (req: Request, res: Response) => {
   try {
-    const { googleEmail, googleName, name, phone } = req.body;
+    const { googleEmail, googleName, name, phone, mode } = req.body;
     if (!googleEmail) {
       return res.status(400).json({ error: 'Google account verification is required.' });
     }
 
     const cleanEmail = String(googleEmail).trim().toLowerCase();
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    const db = readDb();
+    if (!Array.isArray(db.staff)) db.staff = [];
+
+    let staffMember = db.staff.find(s => s.email.toLowerCase() === cleanEmail);
+    const phoneExists = cleanPhone.length === 10 && db.staff.some(s => s.phone === cleanPhone);
+
+    if (mode === 'register' && (staffMember || phoneExists)) {
+      return res.status(409).json({
+        alreadyExists: true,
+        error: 'Staff account already exists. Please use "Sign in with Google" instead.'
+      });
+    }
+
+    if (staffMember) {
+      if (name && !staffMember.name) staffMember.name = String(name).trim();
+      if (cleanPhone.length === 10 && !staffMember.phone) staffMember.phone = cleanPhone;
+      writeDb(db);
+    } else {
+      if (!name || !String(name).trim() || !/^\d{10}$/.test(cleanPhone)) {
+        return res.status(400).json({
+          needsProfile: true,
+          error: 'First-time Staff sign-in requires your Name and a 10-digit Phone Number.'
+        });
+      }
+
+      staffMember = {
+        id: 'staff-' + Math.random().toString(36).substring(2, 9),
+        name: String(name).trim() || String(googleName || 'Staff Member'),
+        email: cleanEmail,
+        phone: cleanPhone,
+        department: 'General',
+        createdAt: new Date().toISOString()
+      };
+      db.staff.push(staffMember);
+      writeDb(db);
+    }
+
+    res.cookie('focusflow_staff_auth', staffMember.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 86400 * 1000
+    });
+
+    return res.json({
+      success: true,
+      staff: {
+        id: staffMember.id,
+        name: staffMember.name,
+        email: staffMember.email,
+        phone: staffMember.phone || '',
+        department: staffMember.department
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Student Google Verification Sign-In / Registration
+// - Returning users (mode !== 'register') only need Google to log in.
+// - First-time users (mode === 'register') must not already exist, and must provide Name + 10-digit Phone.
+app.post('/api/student/google-auth', (req: Request, res: Response) => {
+  try {
+    const { googleEmail, googleName, name, phone, mode } = req.body;
+    if (!googleEmail) {
+      return res.status(400).json({ error: 'Google account verification is required.' });
+    }
+
+    const cleanEmail = String(googleEmail).trim().toLowerCase();
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
     const db = readDb();
     if (!Array.isArray(db.users)) db.users = [];
 
-    let user = db.users.find(u => u.email.toLowerCase() === cleanEmail);
+    const user = db.users.find(u => u.email.toLowerCase() === cleanEmail);
+    const phoneExists = cleanPhone.length === 10 && db.users.some(u => u.phone === cleanPhone);
+
+    if (mode === 'register' && (user || phoneExists)) {
+      return res.status(409).json({
+        alreadyExists: true,
+        error: 'Account already exists with this Google email or phone number. Please use "Sign in with Google" instead.'
+      });
+    }
 
     if (user) {
       // Returning user: Google verification alone is enough
       user.status = 'active';
       user.lastActive = 'Just now';
       if (name && !user.name) user.name = String(name).trim();
-      if (phone && !user.phone) user.phone = String(phone).trim();
+      if (cleanPhone.length === 10 && !user.phone) user.phone = cleanPhone;
       writeDb(db);
       return res.json({ success: true, isNewUser: false, user });
     }
 
     // First-time user: require Name and 10-digit Phone Number
-    const cleanPhone = String(phone || '').replace(/\D/g, '');
     if (!name || !String(name).trim() || !/^\d{10}$/.test(cleanPhone)) {
       return res.status(400).json({
         needsProfile: true,
-        error: 'First-time Google sign-in requires your Name and a 10-digit Phone Number.'
+        error: 'No account found for this Google email. Please enter your Name and a 10-digit Phone Number to register.'
       });
     }
 
@@ -231,9 +311,9 @@ app.post('/api/admin/staff', (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   try {
-    const { name, email, password, department } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required' });
+    const { name, email, phone, password, department } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and Google email are required' });
     }
     const db = readDb();
     if (!Array.isArray(db.staff)) db.staff = [];
@@ -245,7 +325,8 @@ app.post('/api/admin/staff', (req: Request, res: Response) => {
       id: 'staff-' + Math.random().toString(36).substring(2, 9),
       name: String(name).trim(),
       email: cleanEmail,
-      password: String(password),
+      phone: phone ? String(phone).replace(/\D/g, '').slice(0, 10) : '',
+      password: password ? String(password) : '',
       department: String(department || 'General').trim(),
       createdAt: new Date().toISOString()
     };
@@ -1512,6 +1593,36 @@ app.get('/api/teacher/resources/shared-history', (req: Request, res: Response) =
       downloads: s.stats.downloads
     };
   }));
+});
+
+// DELETE /api/teacher/resources/:id - Delete a shared study material
+app.delete('/api/teacher/resources/:id', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { id } = req.params;
+    const resources = readResourcesDb();
+    const idx = resources.findIndex(r => r.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Material not found' });
+    }
+
+    const [removed] = resources.splice(idx, 1);
+    writeResourcesDb(resources);
+
+    // Clean up local disk file if present
+    if (removed?.url?.startsWith('/uploads/')) {
+      const localPath = path.join(__dirname, '..', removed.url.substring(1));
+      if (fs.existsSync(localPath)) {
+        fs.unlinkSync(localPath);
+      }
+    }
+
+    res.json({ success: true, message: 'Material deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // -------------------------------------------------------------

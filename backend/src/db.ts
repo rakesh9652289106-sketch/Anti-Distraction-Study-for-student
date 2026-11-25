@@ -188,7 +188,8 @@ export interface StaffMember {
   id: string;
   name: string;
   email: string;
-  password: string;
+  phone?: string;
+  password?: string;
   department: string;
   createdAt: string;
 }

@@ -41,7 +41,7 @@ export default function AdminCreateRoomPage() {
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [newStaffName, setNewStaffName] = useState('');
   const [newStaffEmail, setNewStaffEmail] = useState('');
-  const [newStaffPassword, setNewStaffPassword] = useState('staff123');
+  const [newStaffPhone, setNewStaffPhone] = useState('');
   const [newStaffDept, setNewStaffDept] = useState('General');
 
   const loadStaff = async () => {
@@ -62,7 +62,7 @@ export default function AdminCreateRoomPage() {
 
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStaffName.trim() || !newStaffEmail.trim() || !newStaffPassword.trim()) return;
+    if (!newStaffName.trim() || !newStaffEmail.trim()) return;
     try {
       const res = await fetch('/api/admin/staff', {
         method: 'POST',
@@ -71,7 +71,7 @@ export default function AdminCreateRoomPage() {
         body: JSON.stringify({
           name: newStaffName.trim(),
           email: newStaffEmail.trim(),
-          password: newStaffPassword,
+          phone: newStaffPhone.trim(),
           department: newStaffDept.trim() || 'General'
         })
       });
@@ -81,7 +81,7 @@ export default function AdminCreateRoomPage() {
         setSelectedRoomHeadId(created.id);
         setNewStaffName('');
         setNewStaffEmail('');
-        setNewStaffPassword('staff123');
+        setNewStaffPhone('');
         setShowAddStaff(false);
         triggerToast(`Staff account created for ${created.name}!`);
       } else {
@@ -622,10 +622,12 @@ export default function AdminCreateRoomPage() {
                             className="bg-[#0d1527] border border-[#1E2E4E] rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
                           />
                           <input
-                            type="text"
-                            placeholder="Password"
-                            value={newStaffPassword}
-                            onChange={e => setNewStaffPassword(e.target.value)}
+                            type="tel"
+                            inputMode="numeric"
+                            maxLength={10}
+                            placeholder="10-digit Phone"
+                            value={newStaffPhone}
+                            onChange={e => setNewStaffPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                             className="bg-[#0d1527] border border-[#1E2E4E] rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
                           />
                           <input

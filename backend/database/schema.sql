@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS staff_members (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
+  phone TEXT,
+  password TEXT DEFAULT '',
   department TEXT NOT NULL DEFAULT 'General',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
