@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import ZenModeModal from '@/components/ZenModeModal';
 
 export default function DashboardPage() {
   const {
@@ -29,7 +28,6 @@ export default function DashboardPage() {
   const [simSite, setSimSite] = useState('');
   const [quickTaskTitle, setQuickTaskTitle] = useState('');
   const [quickTaskSubject, setQuickTaskSubject] = useState('Core Subject');
-  const [isZenModeOpen, setIsZenModeOpen] = useState(false);
   const [shieldAlerts, setShieldAlerts] = useState<Array<{ site: string; time: string }>>([
     { site: 'instagram.com', time: '10 mins ago' },
     { site: 'tiktok.com', time: '25 mins ago' }
@@ -260,31 +258,6 @@ export default function DashboardPage() {
             {isTimerRunning ? 'Pause Session' : 'Start Focus Session'}
           </button>
 
-          <button
-            onClick={() => updateSettings({ studyMode: !settings.studyMode })}
-            className={`px-4 py-2.5 font-bold text-xs rounded-xl flex items-center gap-2 cursor-pointer border transition-all active:scale-95 ${
-              settings.studyMode
-                ? 'bg-secondary text-on-secondary border-secondary shadow-md shadow-secondary/20'
-                : 'bg-surface-container-high border-outline-variant/30 text-primary hover:bg-surface-variant'
-            }`}
-            title="Toggle Study Shield Mode"
-          >
-            <span className="material-symbols-outlined text-base">
-              {settings.studyMode ? 'shield' : 'shield_with_heart'}
-            </span>
-            {settings.studyMode ? 'Study Shield ON' : 'Study Shield OFF'}
-          </button>
-
-          {/* Zen Immersion Mode Button */}
-          <button
-            onClick={() => setIsZenModeOpen(true)}
-            className="px-4 py-2.5 bg-secondary/10 hover:bg-secondary/20 border border-secondary/30 text-secondary font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-            title="Enter distraction-free fullscreen Zen mode"
-          >
-            <span className="material-symbols-outlined text-base">fullscreen</span>
-            Zen Mode
-          </button>
-
           {/* Camera Check or Lockout Button */}
           {settings.cameraEnabled !== false ? (
             <button
@@ -483,12 +456,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-
-      {/* Fullscreen Zen Mode Overlay */}
-      <ZenModeModal
-        isOpen={isZenModeOpen}
-        onClose={() => setIsZenModeOpen(false)}
-      />
     </div>
   );
 }

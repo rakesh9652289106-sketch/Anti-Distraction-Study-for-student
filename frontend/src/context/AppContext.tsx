@@ -10,6 +10,8 @@ interface AppContextType {
   rooms: StudyRoom[];
   tickets: SupportTicket[];
   activeRoom: StudyRoom | null;
+  joinedRooms: StudyRoom[];
+  showNotification: (message: string, type?: 'success' | 'error' | 'info') => void;
   
   // Timer State
   timerMinutes: number;
@@ -45,7 +47,7 @@ interface AppContextType {
   incrementDistractionShield: () => void;
   buyRewardItem: (itemId: string) => Promise<{ success: boolean; message: string }>;
   joinStudyRoom: (roomId: string) => Promise<{ success: boolean; message?: string }>;
-  leaveStudyRoom: () => Promise<void>;
+  leaveStudyRoom: (roomId?: string) => Promise<void>;
   sendChatMessage: (text: string) => Promise<void>;
   submitSupportTicket: (subject: string, message: string) => Promise<void>;
 }
@@ -97,6 +99,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [rooms, setRooms] = useState<StudyRoom[]>([]);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [activeRoom, setActiveRoom] = useState<StudyRoom | null>(null);
+  const [joinedRooms, setJoinedRooms] = useState<StudyRoom[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('focusflow_joined_rooms');
+        return saved ? JSON.parse(saved) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+  const [notifications, setNotifications] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('focusflow_joined_rooms', JSON.stringify(joinedRooms));
+        if (joinedRooms.length > 0 && !activeRoom) {
+          setActiveRoom(joinedRooms[joinedRooms.length - 1]);
+        }
+      } catch {
+        // ignore storage quota errors
+      }
+    }
+  }, [joinedRooms, activeRoom]);
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = 'notif-' + Math.random().toString(36).substring(2, 9);
+    setNotifications(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 4000);
+  };
 
   // Timer states
   const [timerMinutes, setTimerMinutes] = useState(25);
@@ -174,6 +209,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('focus', handleWindowFocus);
     };
   }, []);
+
+  // Sync live tabSwitchCount & focusScore telemetry to all joined rooms
+  useEffect(() => {
+    if (joinedRooms.length === 0) return;
+    const userId = localStorage.getItem('student_user_id') || 'u1';
+    const userName = localStorage.getItem('student_user_name') || 'Alex Rivera';
+    const userEmail = localStorage.getItem('student_user_email') || 'alex@student.edu';
+    joinedRooms.forEach(room => {
+      fetch(`/api/rooms/${room.id}/telemetry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          userName,
+          userEmail,
+          tabSwitchCount,
+          focusScore: settings.focusScore
+        })
+      }).catch(() => {});
+    });
+  }, [tabSwitchCount, joinedRooms, settings.focusScore]);
 
   const resumeAfterTabSwitch = () => {
     wasTimerRunningBeforeTabSwitchRef.current = false;
@@ -460,39 +516,63 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Study rooms methods
+  // Study rooms methods (supports joining multiple rooms simultaneously)
   const joinStudyRoom = async (roomId: string) => {
+    const existing = joinedRooms.find(r => r.id === roomId);
+    if (existing) {
+      setActiveRoom(existing);
+      showNotification(`Already in Study Hall: ${existing.name}`, 'info');
+      return { success: true };
+    }
+
     try {
+      const userId = localStorage.getItem('student_user_id') || 'u1';
+      const userName = localStorage.getItem('student_user_name') || 'Alex Rivera';
+      const userEmail = localStorage.getItem('student_user_email') || 'alex@student.edu';
       const response = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'join', roomId })
+        body: JSON.stringify({ action: 'join', roomId, userId, userName, userEmail })
       });
       if (response.ok) {
-        const room = await response.json();
+        const room: StudyRoom = await response.json();
+        setJoinedRooms(prev => (prev.some(r => r.id === room.id) ? prev : [...prev, room]));
         setActiveRoom(room);
+        showNotification(`Joined Study Hall: ${room.name}`, 'success');
         await fetchData();
         return { success: true };
       } else {
         const errData = await response.json();
-        return { success: false, message: errData.error || 'Failed to join room' };
+        const msg = errData.error || 'Failed to join room';
+        showNotification(msg, 'error');
+        return { success: false, message: msg };
       }
     } catch (err) {
       console.error(err);
-      return { success: false, message: 'Failed to join room due to network error' };
+      const msg = 'Failed to join room due to network error';
+      showNotification(msg, 'error');
+      return { success: false, message: msg };
     }
   };
 
-  const leaveStudyRoom = async () => {
-    if (!activeRoom) return;
+  const leaveStudyRoom = async (roomId?: string) => {
+    const targetId = roomId || activeRoom?.id;
+    if (!targetId) return;
     try {
+      const userId = localStorage.getItem('student_user_id') || 'u1';
       const response = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'leave', roomId: activeRoom.id })
+        body: JSON.stringify({ action: 'leave', roomId: targetId, userId })
       });
       if (response.ok) {
-        setActiveRoom(null);
+        const leftRoom = joinedRooms.find(r => r.id === targetId);
+        const remaining = joinedRooms.filter(r => r.id !== targetId);
+        setJoinedRooms(remaining);
+        if (activeRoom?.id === targetId) {
+          setActiveRoom(remaining.length > 0 ? remaining[remaining.length - 1] : null);
+        }
+        showNotification(`Left Study Hall${leftRoom ? `: ${leftRoom.name}` : ''}`, 'info');
         await fetchData();
       }
     } catch (err) {
@@ -539,6 +619,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         rooms,
         tickets,
         activeRoom,
+        joinedRooms,
+        showNotification,
         timerMinutes,
         timerSeconds,
         isTimerRunning,
@@ -572,6 +654,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+
+      {/* In-app Website Notifications (never triggers browser alert/window blur) */}
+      {notifications.length > 0 && (
+        <div className="fixed top-5 right-5 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+          {notifications.map(n => (
+            <div
+              key={n.id}
+              className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-xl shadow-xl border backdrop-blur-md text-xs font-semibold animate-fade-in ${
+                n.type === 'success'
+                  ? 'bg-emerald-950/95 border-emerald-500/40 text-emerald-100'
+                  : n.type === 'error'
+                  ? 'bg-red-950/95 border-red-500/40 text-red-100'
+                  : 'bg-slate-900/95 border-slate-700 text-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className={`material-symbols-outlined text-[18px] shrink-0 ${
+                    n.type === 'success'
+                      ? 'text-emerald-400'
+                      : n.type === 'error'
+                      ? 'text-red-400'
+                      : 'text-sky-400'
+                  }`}
+                >
+                  {n.type === 'success' ? 'check_circle' : n.type === 'error' ? 'error' : 'notifications'}
+                </span>
+                <span className="truncate">{n.message}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotifications(prev => prev.filter(item => item.id !== n.id))}
+                className="text-slate-400 hover:text-white cursor-pointer shrink-0"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </AppContext.Provider>
   );
 }

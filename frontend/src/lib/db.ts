@@ -33,6 +33,26 @@ export interface RewardItem {
   purchased: boolean;
 }
 
+export interface RoomParticipantStats {
+  userId: string;
+  name: string;
+  email?: string;
+  joinedAt: string;
+  gazeStatus: string;
+  gazeAlerts: number;
+  tabSwitchCount: number;
+  focusScore: number;
+  lastUpdated: string;
+}
+
+export interface StaffMember {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  createdAt: string;
+}
+
 export interface StudyRoom {
   id: string;
   name: string;
@@ -57,6 +77,13 @@ export interface StudyRoom {
   censorWords?: string[];
   coinsLimit?: number;
   bonusCoins?: number;
+  allowMaterialDownloads?: boolean;
+  roomHead?: {
+    userId: string;
+    name: string;
+    email: string;
+  } | null;
+  joinedStudents?: RoomParticipantStats[];
 }
 
 export interface GlobalSettings {

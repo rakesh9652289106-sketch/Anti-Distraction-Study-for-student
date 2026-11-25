@@ -10,6 +10,8 @@ import {
   writeResourcesDb,
   readGroupsDb,
   writeGroupsDb,
+  saveUploadedFileContent,
+  getUploadedFileContent,
   Task,
   StudySession,
   AnalyticsSummary,
@@ -105,6 +107,170 @@ app.post('/api/admin/logout', (req: Request, res: Response) => {
     maxAge: 0
   });
   res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// -------------------------------------------------------------
+// Staff Auth & Admin Staff Management API Endpoints
+// -------------------------------------------------------------
+
+app.post('/api/staff/login', (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Staff email and password are required' });
+    }
+    const db = readDb();
+    const staffMember = (db.staff || []).find(
+      s => s.email.toLowerCase() === String(email).trim().toLowerCase() && s.password === password
+    );
+    if (!staffMember) {
+      return res.status(401).json({ error: 'Invalid staff email or password' });
+    }
+
+    res.cookie('focusflow_staff_auth', staffMember.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 86400 * 1000
+    });
+
+    return res.json({
+      success: true,
+      staff: {
+        id: staffMember.id,
+        name: staffMember.name,
+        email: staffMember.email,
+        department: staffMember.department
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/staff/logout', (req: Request, res: Response) => {
+  res.cookie('focusflow_staff_auth', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0
+  });
+  res.json({ success: true });
+});
+
+// Student Google Verification Sign-In / Registration
+// - Returning users (already registered with Google) only need Google to log in.
+// - First-time users must provide Name and Phone Number + Google verification.
+app.post('/api/student/google-auth', (req: Request, res: Response) => {
+  try {
+    const { googleEmail, googleName, name, phone } = req.body;
+    if (!googleEmail) {
+      return res.status(400).json({ error: 'Google account verification is required.' });
+    }
+
+    const cleanEmail = String(googleEmail).trim().toLowerCase();
+    const db = readDb();
+    if (!Array.isArray(db.users)) db.users = [];
+
+    let user = db.users.find(u => u.email.toLowerCase() === cleanEmail);
+
+    if (user) {
+      // Returning user: Google verification alone is enough
+      user.status = 'active';
+      user.lastActive = 'Just now';
+      if (name && !user.name) user.name = String(name).trim();
+      if (phone && !user.phone) user.phone = String(phone).trim();
+      writeDb(db);
+      return res.json({ success: true, isNewUser: false, user });
+    }
+
+    // First-time user: require Name and Phone Number
+    if (!name || !String(name).trim() || !phone || !String(phone).trim()) {
+      return res.status(400).json({
+        needsProfile: true,
+        error: 'First-time Google sign-in requires your Name and Phone Number.'
+      });
+    }
+
+    const newUser: StudentUser = {
+      id: 'u-' + Math.random().toString(36).substring(2, 9),
+      name: String(name).trim() || String(googleName || 'Student'),
+      email: cleanEmail,
+      phone: String(phone).trim(),
+      focusScore: 90,
+      focusCoins: 120,
+      currentStreak: 1,
+      status: 'active',
+      lastActive: 'Just now',
+      chatMuted: false
+    };
+
+    db.users.push(newUser);
+    writeDb(db);
+    return res.status(201).json({ success: true, isNewUser: true, user: newUser });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/staff', (req: Request, res: Response) => {
+  try {
+    const db = readDb();
+    const safeList = (db.staff || []).map(({ password: _pw, ...rest }) => rest);
+    res.json(safeList);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/staff', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { name, email, password, department } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required' });
+    }
+    const db = readDb();
+    if (!Array.isArray(db.staff)) db.staff = [];
+    const cleanEmail = String(email).trim().toLowerCase();
+    if (db.staff.some(s => s.email.toLowerCase() === cleanEmail)) {
+      return res.status(409).json({ error: 'A staff member with this email already exists' });
+    }
+    const newStaff = {
+      id: 'staff-' + Math.random().toString(36).substring(2, 9),
+      name: String(name).trim(),
+      email: cleanEmail,
+      password: String(password),
+      department: String(department || 'General').trim(),
+      createdAt: new Date().toISOString()
+    };
+    db.staff.push(newStaff);
+    writeDb(db);
+    const { password: _pw, ...safeStaff } = newStaff;
+    res.status(201).json(safeStaff);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/staff', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const id = req.query.id as string;
+    if (!id) return res.status(400).json({ error: 'Staff ID is required' });
+    const db = readDb();
+    db.staff = (db.staff || []).filter(s => s.id !== id);
+    writeDb(db);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // -------------------------------------------------------------
@@ -695,7 +861,7 @@ app.get('/api/student/rooms', (req: Request, res: Response) => {
 
 // POST /api/student/rooms/join
 app.post('/api/student/rooms/join', (req: Request, res: Response) => {
-  const { roomCode, roomId } = req.body;
+  const { roomCode, roomId, userId, userName, userEmail } = req.body;
   const db = readDb();
   const room = db.rooms.find(r => r.id === roomId || r.id === roomCode);
   if (!room) return res.status(404).json({ error: "Focus Room not found" });
@@ -710,6 +876,21 @@ app.post('/api/student/rooms/join', (req: Request, res: Response) => {
   }
 
   room.activeUsers += 1;
+  if (!Array.isArray(room.joinedStudents)) room.joinedStudents = [];
+  const studentId = userId || userEmail || 'u1';
+  if (!room.joinedStudents.some(s => s.userId === studentId)) {
+    room.joinedStudents.push({
+      userId: studentId,
+      name: userName || 'Alex Rivera',
+      email: userEmail || 'alex@student.edu',
+      joinedAt: new Date().toISOString(),
+      gazeStatus: 'Focused',
+      gazeAlerts: 0,
+      tabSwitchCount: 0,
+      focusScore: db.settings.focusScore || 92,
+      lastUpdated: new Date().toISOString()
+    });
+  }
   if (room.bonusCoins !== undefined && room.bonusCoins > 0) {
     db.settings.focusCoins += room.bonusCoins;
   }
@@ -757,33 +938,60 @@ app.get('/api/student/rooms/:roomId', (req: Request, res: Response) => {
       onlineCount: room.activeUsers,
       maxSeats: room.maxCapacity || 20,
       focusIndex: db.settings.focusScore,
-      coinsLimit: room.coinsLimit || 0
+      coinsLimit: room.coinsLimit || 0,
+      allowMaterialDownloads: room.allowMaterialDownloads ?? true,
+      roomHead: room.roomHead || null
     },
     environment: {
       focusMode: room.focusMode || "Hard Lock",
       allowedApps: room.allowedApps || ["Notion", "Google Docs"],
       durationFormat: room.sessionDurationFormat || "90m Focus / 15m Insight Exchange"
     },
-    participants: [
-      { name: "Alex Rivera", status: "focusing", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" },
-      { name: "Sara Chen", status: "focusing", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80" },
-      { name: "Julian D.", status: "break", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" }
-    ],
-    curatedResources: roomResources.map(r => ({
-      id: r.id,
-      title: r.title,
-      type: r.fileType,
-      size: r.size || "Unknown Size",
-      url: r.url,
-      downloads: r.stats?.downloads || 0,
-      createdAt: r.createdAt,
-      aiSummary: r.aiSummarySnippet || ""
-    }))
+    joinedStudents: room.joinedStudents || [],
+    participants: (room.joinedStudents && room.joinedStudents.length > 0)
+      ? room.joinedStudents.map(s => ({
+          name: s.name,
+          status: s.gazeStatus === 'Focused' ? 'focusing' : 'break',
+          avatar: ''
+        }))
+      : [
+          { name: "Alex Rivera", status: "focusing", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" },
+          { name: "Sara Chen", status: "focusing", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80" },
+          { name: "Julian D.", status: "break", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80" }
+        ],
+    curatedResources: roomResources.map(r => {
+      const groupShare = r.sharedWithGroups?.find(
+        g => g.groupId === roomId || g.groupId === targetId || g.groupId === 'all'
+      );
+      const roomAllowsDownloads = room.allowMaterialDownloads ?? true;
+      const basePerms = groupShare?.permissions || {
+        viewOnly: false,
+        canDownload: true,
+        allowAiSummarization: true
+      };
+      return {
+        id: r.id,
+        title: r.title,
+        type: r.fileType,
+        size: r.size || "Unknown Size",
+        url: r.url,
+        downloads: r.stats?.downloads || 0,
+        createdAt: r.createdAt,
+        aiSummary: r.aiSummarySnippet || "",
+        ownerId: r.ownerId,
+        permissions: roomAllowsDownloads
+          ? basePerms
+          : { ...basePerms, canDownload: false, viewOnly: true }
+      };
+    })
   });
 });
 
-// POST /api/student/rooms/:roomId/files - Upload actual study files for students in this room
+// POST /api/student/rooms/:roomId/files - Admin-only endpoint (user uploads disabled)
 app.post('/api/student/rooms/:roomId/files', (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(403).json({ error: 'Only administrators can upload study materials for rooms.' });
+  }
   try {
     const { roomId } = req.params;
     const { title, filename, fileData, fileType, size, description } = req.body;
@@ -880,8 +1088,8 @@ app.post('/api/student/rooms/:roomId/files', (req: Request, res: Response) => {
   }
 });
 
-// GET /api/resources/:id/download - Direct student file download with stats tracking & database persistence
-app.get('/api/resources/:id/download', (req: Request, res: Response) => {
+// Helper to serve a resource either inline (view) or as attachment (download)
+async function serveResourceFile(req: Request, res: Response, disposition: 'inline' | 'attachment') {
   try {
     const { id } = req.params;
     const resources = readResourcesDb();
@@ -891,8 +1099,12 @@ app.get('/api/resources/:id/download', (req: Request, res: Response) => {
       return res.status(404).json({ error: "Resource not found" });
     }
 
-    // Increment download count and update Firestore
-    resource.stats.downloads = (resource.stats.downloads || 0) + 1;
+    // Track views or downloads
+    if (disposition === 'attachment') {
+      resource.stats.downloads = (resource.stats.downloads || 0) + 1;
+    } else {
+      resource.stats.views = (resource.stats.views || 0) + 1;
+    }
     writeResourcesDb(resources);
 
     // If external link, redirect
@@ -900,28 +1112,55 @@ app.get('/api/resources/:id/download', (req: Request, res: Response) => {
       return res.redirect(resource.url);
     }
 
-    // Local file path
-    const relativePath = resource.url.startsWith('/') ? resource.url.substring(1) : resource.url;
-    const localFilePath = path.join(__dirname, '..', relativePath);
-
-    if (fs.existsSync(localFilePath)) {
-      const ext = path.extname(localFilePath);
-      const safeTitle = resource.title.endsWith(ext) ? resource.title : `${resource.title}${ext}`;
-      return res.download(localFilePath, safeTitle);
+    // 1. Check local disk if resource.url points to /uploads/...
+    if (resource.url.startsWith('/uploads/')) {
+      const relativePath = resource.url.substring(1);
+      const localFilePath = path.join(__dirname, '..', relativePath);
+      if (fs.existsSync(localFilePath)) {
+        const ext = path.extname(localFilePath);
+        const safeTitle = resource.title.endsWith(ext) ? resource.title : `${resource.title}${ext}`;
+        if (disposition === 'attachment') {
+          return res.download(localFilePath, safeTitle);
+        }
+        return res.sendFile(localFilePath);
+      }
     }
 
-    // If template file fallback
+    // 2. Fallback to Firestore stored binary (survives ephemeral server restarts/redeploys)
+    const storedFile = await getUploadedFileContent(resource.id);
+    if (storedFile) {
+      const buffer = Buffer.from(storedFile.base64Content, 'base64');
+      res.setHeader('Content-Type', storedFile.mimeType || 'application/octet-stream');
+      const safeTitle = resource.title || storedFile.filename;
+      res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(safeTitle)}"`);
+      return res.send(buffer);
+    }
+
+    // 3. Template fallback for legacy/sample PDFs
     const uploadsBase = path.join(__dirname, '../uploads');
     const templatePath = path.join(uploadsBase, 'QM_Lecture_Notes_W4.pdf');
     if (fs.existsSync(templatePath)) {
-      return res.download(templatePath, `${resource.title}.pdf`);
+      if (disposition === 'attachment') {
+        return res.download(templatePath, `${resource.title}.pdf`);
+      }
+      return res.sendFile(templatePath);
     }
 
-    return res.status(404).json({ error: "Physical file not found on server disk" });
+    return res.status(404).json({ error: "Physical file not found on server disk or cloud storage" });
   } catch (err: any) {
-    console.error('Error downloading resource:', err);
+    console.error(`Error serving resource (${disposition}):`, err);
     res.status(500).json({ error: err.message });
   }
+}
+
+// GET /api/resources/:id/view - Inline preview without relying on ephemeral /uploads path
+app.get('/api/resources/:id/view', (req: Request, res: Response) => {
+  serveResourceFile(req, res, 'inline');
+});
+
+// GET /api/resources/:id/download - Direct student file download with stats tracking & database persistence
+app.get('/api/resources/:id/download', (req: Request, res: Response) => {
+  serveResourceFile(req, res, 'attachment');
 });
 
 // POST /api/student/rooms/:roomId/resources/suggest
@@ -1165,19 +1404,24 @@ app.post('/api/teacher/resources/upload', (req: Request, res: Response) => {
 });
 
 // POST /api/teacher/resources/share
-app.post('/api/teacher/resources/share', (req: Request, res: Response) => {
+app.post('/api/teacher/resources/share', async (req: Request, res: Response) => {
   try {
     const { tempId, title, fileType, tags, groupSettings, fileData, size } = req.body;
     const resources = readResourcesDb();
     
-    const sharedWithGroups = groupSettings?.map((gs: any) => ({
-      groupId: gs.groupId,
-      permissions: {
-        viewOnly: gs.permissions?.viewOnly ?? true,
-        canDownload: gs.permissions?.canDownload ?? true,
-        allowAiSummarization: gs.permissions?.allowAiSummarization ?? true
-      }
-    })) || [];
+    const sharedWithGroups = (groupSettings && groupSettings.length > 0)
+      ? groupSettings.map((gs: any) => ({
+          groupId: gs.groupId,
+          permissions: {
+            viewOnly: gs.permissions?.viewOnly ?? false,
+            canDownload: gs.permissions?.canDownload ?? true,
+            allowAiSummarization: gs.permissions?.allowAiSummarization ?? true
+          }
+        }))
+      : [{
+          groupId: 'all',
+          permissions: { viewOnly: false, canDownload: true, allowAiSummarization: true }
+        }];
 
     const uploadsDir = path.join(__dirname, '../uploads');
     const facultyDir = path.join(uploadsDir, 'faculty');
@@ -1185,22 +1429,28 @@ app.post('/api/teacher/resources/share', (req: Request, res: Response) => {
       fs.mkdirSync(facultyDir, { recursive: true });
     }
 
-    let resourceUrl = `/uploads/faculty/${tempId}.pdf`;
+    const resourceId = 'doc-' + Math.random().toString(36).substring(2, 9);
+    let resourceUrl = `/api/resources/${resourceId}/view`;
     let calculatedSize = size || "2.4 MB";
 
     if (fileData) {
-      const ext = path.extname(title) || (fileType === 'pdf' ? '.pdf' : '.bin');
+      const ext = path.extname(title || '') || (fileType === 'pdf' ? '.pdf' : '.bin');
       const safeName = `${tempId || Date.now()}${ext}`;
       const destPath = path.join(facultyDir, safeName);
       
+      let mimeType = 'application/octet-stream';
       let base64Content = fileData;
       if (fileData.includes(';base64,')) {
-        base64Content = fileData.split(';base64,')[1];
+        const parts = fileData.split(';base64,');
+        mimeType = parts[0].replace('data:', '') || mimeType;
+        base64Content = parts[1];
       }
       const buffer = Buffer.from(base64Content, 'base64');
       fs.writeFileSync(destPath, buffer);
-      resourceUrl = `/uploads/faculty/${safeName}`;
-      calculatedSize = `${(buffer.length / (1024 * 1024)).toFixed(1)} MB`;
+      // Persist binary to Firestore so it survives Render/server restarts
+      await saveUploadedFileContent(resourceId, title || safeName, mimeType, base64Content);
+      resourceUrl = `/api/resources/${resourceId}/view`;
+      calculatedSize = `${(buffer.length / (1024 * 1024)).toFixed(2)} MB`;
     } else if (fileType === 'video') {
       resourceUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
     } else if (fileType === 'link') {
@@ -1216,7 +1466,7 @@ app.post('/api/teacher/resources/share', (req: Request, res: Response) => {
     }
 
     const newResource: SharedResource = {
-      id: 'doc-' + Math.random().toString(36).substring(2, 9),
+      id: resourceId,
       title: title || `Lecture_Doc_${tempId?.substring(4)}.pdf`,
       fileType: fileType || 'pdf',
       url: resourceUrl,
@@ -1470,6 +1720,23 @@ app.post('/api/rooms', (req: Request, res: Response) => {
       }
 
       room.activeUsers += 1;
+      if (!Array.isArray(room.joinedStudents)) room.joinedStudents = [];
+      const studentId = body.userId || body.userEmail || 'u1';
+      const studentName = body.userName || 'Alex Rivera';
+      const studentEmail = body.userEmail || 'alex@student.edu';
+      if (!room.joinedStudents.some(s => s.userId === studentId)) {
+        room.joinedStudents.push({
+          userId: studentId,
+          name: studentName,
+          email: studentEmail,
+          joinedAt: new Date().toISOString(),
+          gazeStatus: 'Focused',
+          gazeAlerts: 0,
+          tabSwitchCount: 0,
+          focusScore: db.settings.focusScore || 92,
+          lastUpdated: new Date().toISOString()
+        });
+      }
       if (room.bonusCoins !== undefined && room.bonusCoins > 0) {
         db.settings.focusCoins += room.bonusCoins;
       }
@@ -1481,6 +1748,10 @@ app.post('/api/rooms', (req: Request, res: Response) => {
       const room = db.rooms.find(r => r.id === body.roomId);
       if (!room) return res.status(404).json({ error: 'Room not found' });
       if (room.activeUsers > 0) room.activeUsers -= 1;
+      if (Array.isArray(room.joinedStudents)) {
+        const studentId = body.userId || body.userEmail || 'u1';
+        room.joinedStudents = room.joinedStudents.filter(s => s.userId !== studentId);
+      }
       writeDb(db);
       return res.json(room);
     }
@@ -1507,7 +1778,10 @@ app.post('/api/rooms', (req: Request, res: Response) => {
       chatModerationFilter: body.chatModerationFilter !== undefined ? body.chatModerationFilter : true,
       censorWords: body.censorWords || ['spam', 'cheat', 'abuse', 'slack', 'tiktok'],
       coinsLimit: body.coinsLimit !== undefined ? parseInt(body.coinsLimit) : 0,
-      bonusCoins: body.bonusCoins !== undefined ? parseInt(body.bonusCoins) : 0
+      bonusCoins: body.bonusCoins !== undefined ? parseInt(body.bonusCoins) : 0,
+      allowMaterialDownloads: body.allowMaterialDownloads !== undefined ? Boolean(body.allowMaterialDownloads) : true,
+      roomHead: body.roomHead || null,
+      joinedStudents: []
     };
 
     db.rooms.push(newRoom);
@@ -1528,6 +1802,95 @@ app.post('/api/rooms', (req: Request, res: Response) => {
     writeGroupsDb(groups);
 
     res.status(201).json(newRoom);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Edit an existing Study Room (including Room Head assignment)
+app.patch('/api/rooms', (req: Request, res: Response) => {
+  try {
+    const body = req.body;
+    const roomId = body.roomId || body.id;
+    if (!roomId) {
+      return res.status(400).json({ error: 'Room ID is required' });
+    }
+
+    const db = readDb();
+    const room = db.rooms.find(r => r.id === roomId);
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    if (body.name !== undefined) room.name = body.name;
+    if (body.tags !== undefined) room.tags = body.tags;
+    if (body.ambientSound !== undefined) room.ambientSound = body.ambientSound;
+    if (body.hostName !== undefined) room.hostName = body.hostName;
+    if (body.maxCapacity !== undefined) room.maxCapacity = parseInt(body.maxCapacity) || 20;
+    if (body.allowedApps !== undefined) room.allowedApps = body.allowedApps;
+    if (body.focusMode !== undefined) room.focusMode = body.focusMode;
+    if (body.sessionDurationFormat !== undefined) room.sessionDurationFormat = body.sessionDurationFormat;
+    if (body.allowScreenShare !== undefined) room.allowScreenShare = Boolean(body.allowScreenShare);
+    if (body.videoStreamRequired !== undefined) room.videoStreamRequired = Boolean(body.videoStreamRequired);
+    if (body.chatModerationFilter !== undefined) room.chatModerationFilter = Boolean(body.chatModerationFilter);
+    if (body.censorWords !== undefined) room.censorWords = body.censorWords;
+    if (body.coinsLimit !== undefined) room.coinsLimit = parseInt(body.coinsLimit) || 0;
+    if (body.bonusCoins !== undefined) room.bonusCoins = parseInt(body.bonusCoins) || 0;
+    if (body.allowMaterialDownloads !== undefined) room.allowMaterialDownloads = Boolean(body.allowMaterialDownloads);
+    if (body.roomHead !== undefined) room.roomHead = body.roomHead;
+
+    writeDb(db);
+
+    // Sync classroom group name if renamed
+    const groups = readGroupsDb();
+    const group = groups.find(g => g.id === roomId);
+    if (group && body.name !== undefined) {
+      group.name = body.name;
+      group.room = body.name;
+      writeGroupsDb(groups);
+    }
+
+    res.json(room);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Report live student telemetry (gaze status, gaze alerts, tabSwitchCount, focusScore) to a room
+app.post('/api/rooms/:id/telemetry', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { userId, userName, userEmail, gazeStatus, gazeAlerts, tabSwitchCount, focusScore } = req.body;
+    const db = readDb();
+    const room = db.rooms.find(r => r.id === id);
+    if (!room) return res.status(404).json({ error: 'Room not found' });
+
+    if (!Array.isArray(room.joinedStudents)) room.joinedStudents = [];
+    const targetId = userId || userEmail || 'u1';
+    let participant = room.joinedStudents.find(s => s.userId === targetId);
+    if (!participant) {
+      participant = {
+        userId: targetId,
+        name: userName || 'Alex Rivera',
+        email: userEmail || 'alex@student.edu',
+        joinedAt: new Date().toISOString(),
+        gazeStatus: gazeStatus || 'Focused',
+        gazeAlerts: gazeAlerts ?? 0,
+        tabSwitchCount: tabSwitchCount ?? 0,
+        focusScore: focusScore ?? db.settings.focusScore ?? 92,
+        lastUpdated: new Date().toISOString()
+      };
+      room.joinedStudents.push(participant);
+    } else {
+      if (gazeStatus !== undefined) participant.gazeStatus = gazeStatus;
+      if (gazeAlerts !== undefined) participant.gazeAlerts = gazeAlerts;
+      if (tabSwitchCount !== undefined) participant.tabSwitchCount = tabSwitchCount;
+      if (focusScore !== undefined) participant.focusScore = focusScore;
+      participant.lastUpdated = new Date().toISOString();
+    }
+
+    writeDb(db);
+    res.json({ success: true, participant });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

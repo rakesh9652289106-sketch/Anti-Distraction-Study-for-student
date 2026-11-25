@@ -5,6 +5,24 @@ import { useApp } from '@/context/AppContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
+interface RoomHeadInfo {
+  userId: string;
+  name: string;
+  email: string;
+}
+
+interface JoinedStudentStat {
+  userId: string;
+  name: string;
+  email?: string;
+  joinedAt: string;
+  gazeStatus: string;
+  gazeAlerts: number;
+  tabSwitchCount: number;
+  focusScore: number;
+  lastUpdated: string;
+}
+
 interface RoomDetails {
   roomId: string;
   title: string;
@@ -15,6 +33,8 @@ interface RoomDetails {
   maxSeats: number;
   focusIndex: number;
   coinsLimit?: number;
+  allowMaterialDownloads?: boolean;
+  roomHead?: RoomHeadInfo | null;
 }
 
 interface Environment {
@@ -38,12 +58,19 @@ interface CuratedResource {
   downloads?: number;
   createdAt?: string;
   aiSummary?: string;
+  ownerId?: string;
+  permissions?: {
+    viewOnly?: boolean;
+    canDownload?: boolean;
+    allowAiSummarization?: boolean;
+  };
 }
 
 interface RoomData {
   roomDetails: RoomDetails;
   environment: Environment;
   participants: Participant[];
+  joinedStudents?: JoinedStudentStat[];
   curatedResources: CuratedResource[];
 }
 
@@ -51,21 +78,13 @@ function RoomPreviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id') || '';
-  const { joinStudyRoom, activeRoom, leaveStudyRoom } = useApp();
+  const { joinStudyRoom, joinedRooms, leaveStudyRoom, showNotification } = useApp();
   const [data, setData] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmails, setInviteEmails] = useState('');
   const [isInviting, setIsInviting] = useState(false);
-
-  // File Upload Modal States
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadDescription, setUploadDescription] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadSuccessMsg, setUploadSuccessMsg] = useState('');
 
   const fetchRoomData = async () => {
     if (!id) return;
@@ -90,10 +109,7 @@ function RoomPreviewContent() {
     if (!id) return;
     setIsJoining(true);
     try {
-      const res = await joinStudyRoom(id);
-      if (res && !res.success) {
-        alert(res.message);
-      }
+      await joinStudyRoom(id);
       setIsJoining(false);
       // Wait briefly, then re-fetch room status
       await fetchRoomData();
@@ -105,87 +121,10 @@ function RoomPreviewContent() {
 
   const handleLeave = async () => {
     try {
-      await leaveStudyRoom();
+      await leaveStudyRoom(id);
       await fetchRoomData();
     } catch (err) {
       console.error(err);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setUploadFile(file);
-      if (!uploadTitle.trim()) {
-        setUploadTitle(file.name);
-      }
-    }
-  };
-
-  const handleRoomFileUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!uploadFile) {
-      alert('Please choose a file to upload');
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadSuccessMsg('');
-
-    try {
-      const reader = new FileReader();
-      reader.readAsDataURL(uploadFile);
-      reader.onload = async () => {
-        try {
-          const base64Data = reader.result as string;
-          const fileExt = uploadFile.name.split('.').pop()?.toLowerCase();
-          let fType = 'pdf';
-          if (fileExt === 'mp4' || fileExt === 'mov') fType = 'video';
-          else if (fileExt === 'txt' || fileExt === 'md') fType = 'note';
-          else if (fileExt === 'doc' || fileExt === 'docx') fType = 'paper';
-
-          const res = await fetch(`/api/student/rooms/${id}/files`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: uploadTitle.trim() || uploadFile.name,
-              filename: uploadFile.name,
-              fileData: base64Data,
-              fileType: fType,
-              size: `${(uploadFile.size / (1024 * 1024)).toFixed(2)} MB`,
-              description: uploadDescription.trim() || `Course material for ${data?.roomDetails.title || 'study room'}`
-            })
-          });
-
-          if (res.ok) {
-            setUploadSuccessMsg('File uploaded and saved to database successfully!');
-            setUploadFile(null);
-            setUploadTitle('');
-            setUploadDescription('');
-            await fetchRoomData();
-            setTimeout(() => {
-              setShowUploadModal(false);
-              setUploadSuccessMsg('');
-            }, 1200);
-          } else {
-            const err = await res.json();
-            alert(err.error || 'Upload failed');
-          }
-        } catch (err: any) {
-          console.error(err);
-          alert('Failed to complete upload');
-        } finally {
-          setIsUploading(false);
-        }
-      };
-      reader.onerror = () => {
-        alert('Failed to read file from disk');
-        setIsUploading(false);
-      };
-    } catch (err: any) {
-      console.error(err);
-      alert('Failed to upload file');
-      setIsUploading(false);
     }
   };
 
@@ -201,7 +140,7 @@ function RoomPreviewContent() {
         body: JSON.stringify({ emails: emailsArr })
       });
       if (res.ok) {
-        alert('Invitations successfully sent to your peers!');
+        showNotification('Invitations successfully sent to your peers!', 'success');
         setInviteEmails('');
         setShowInviteModal(false);
       }
@@ -237,8 +176,30 @@ function RoomPreviewContent() {
     );
   }
 
-  const { roomDetails, environment, participants, curatedResources } = data;
-  const isCurrentlyInThisRoom = activeRoom?.id === id;
+  const { roomDetails, environment, participants, joinedStudents = [], curatedResources } = data;
+  const isCurrentlyInThisRoom = joinedRooms.some(r => r.id === id);
+  const isInspectRulesMode = searchParams.get('mode') === 'rules' || !isCurrentlyInThisRoom;
+
+  const isStaffUser =
+    typeof window !== 'undefined' &&
+    (sessionStorage.getItem('staff_authenticated') === 'true' ||
+      localStorage.getItem('staff_authenticated') === 'true');
+  const currentStaffId = typeof window !== 'undefined' ? (localStorage.getItem('staff_user_id') || '') : '';
+  const currentStaffEmail = typeof window !== 'undefined' ? (localStorage.getItem('staff_user_email') || '').toLowerCase() : '';
+  const isAdminUser = typeof window !== 'undefined' && sessionStorage.getItem('admin_authenticated') === 'true';
+  const isRoomHead =
+    (isStaffUser &&
+      Boolean(roomDetails.roomHead) &&
+      (roomDetails.roomHead?.userId === currentStaffId ||
+        roomDetails.roomHead?.email?.toLowerCase() === currentStaffEmail)) ||
+    isAdminUser;
+
+  const avgFocusScore =
+    joinedStudents.length > 0
+      ? Math.round(joinedStudents.reduce((acc, s) => acc + (s.focusScore || 0), 0) / joinedStudents.length)
+      : roomDetails.focusIndex;
+  const totalGazeAlerts = joinedStudents.reduce((acc, s) => acc + (s.gazeAlerts || 0), 0);
+  const totalTabSwitches = joinedStudents.reduce((acc, s) => acc + (s.tabSwitchCount || 0), 0);
 
   return (
     <div className="w-full text-on-surface font-sans pb-xl pt-2">
@@ -409,6 +370,102 @@ function RoomPreviewContent() {
           </div>
         </div>
 
+        {/* Room Head Overall Stats Panel (Visible when Admin grants Room Head access) */}
+        {roomDetails.roomHead && isRoomHead && (
+          <div className="md:col-span-12 bg-surface border-2 border-primary/40 shadow-md rounded-2xl p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-primary text-on-primary text-[10px] font-bold uppercase tracking-wider">
+                    Room Head Access
+                  </span>
+                  <h3 className="text-lg font-bold text-on-surface">Overall Student Focus &amp; Gaze Stats</h3>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-0.5 font-medium">
+                  Assigned Room Head: <span className="font-bold text-on-surface">{roomDetails.roomHead.name}</span> ({roomDetails.roomHead.email})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={fetchRoomData}
+                className="px-4 py-2 bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 rounded-xl text-xs font-bold text-on-surface flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">refresh</span>
+                Refresh Live Stats
+              </button>
+            </div>
+
+            {/* Summary KPIs */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Joined Students</p>
+                <p className="text-2xl font-extrabold text-on-surface mt-1">{joinedStudents.length}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Avg Focus Score</p>
+                <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{avgFocusScore}%</p>
+              </div>
+              <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Total Gaze Alerts</p>
+                <p className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">{totalGazeAlerts}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Total Tab Switches</p>
+                <p className="text-2xl font-extrabold text-red-600 dark:text-red-400 mt-1">{totalTabSwitches}</p>
+              </div>
+            </div>
+
+            {/* Per-student Telemetry Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-outline-variant/30 text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">
+                    <th className="py-2.5 px-3">Student</th>
+                    <th className="py-2.5 px-3">Gaze Status</th>
+                    <th className="py-2.5 px-3">Gaze Alerts</th>
+                    <th className="py-2.5 px-3">Tab Switch Count</th>
+                    <th className="py-2.5 px-3">Focus Score</th>
+                    <th className="py-2.5 px-3">Joined At</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/20">
+                  {joinedStudents.length > 0 ? (
+                    joinedStudents.map(st => (
+                      <tr key={st.userId} className="hover:bg-surface-container-low/60">
+                        <td className="py-3 px-3">
+                          <div className="font-bold text-on-surface">{st.name}</div>
+                          <div className="text-[10px] text-on-surface-variant">{st.email || st.userId}</div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            st.gazeStatus === 'Focused'
+                              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                          }`}>
+                            {st.gazeStatus || 'Focused'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-bold text-amber-600 dark:text-amber-400">{st.gazeAlerts ?? 0}</td>
+                        <td className="py-3 px-3 font-bold text-red-600 dark:text-red-400">{st.tabSwitchCount ?? 0}</td>
+                        <td className="py-3 px-3 font-bold text-emerald-600 dark:text-emerald-400">{st.focusScore ?? 92}%</td>
+                        <td className="py-3 px-3 text-on-surface-variant text-[11px]">
+                          {new Date(st.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-6 text-center text-on-surface-variant italic">
+                        No students currently active in this room.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Curated materials folder (12 cols) */}
         <div className="md:col-span-12 bg-surface border border-outline-variant/40 shadow-sm rounded-2xl p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -420,18 +477,14 @@ function RoomPreviewContent() {
                 </span>
               </div>
               <p className="text-xs text-on-surface-variant font-medium mt-0.5">
-                Files uploaded for this room are saved to the cloud database and instantly downloadable by all students in this session.
+                {isInspectRulesMode
+                  ? 'Confidential preview — only file names are visible while inspecting rules. Join the room and enter workspace to access files.'
+                  : roomDetails.allowMaterialDownloads === false
+                  ? 'Downloads are disabled for this room — you can view the file names uploaded by the administrator.'
+                  : 'Study materials uploaded by the administrator for this room.'}
               </p>
             </div>
             <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowUploadModal(true)}
-                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-98"
-              >
-                <span className="material-symbols-outlined text-[17px]">upload_file</span>
-                Upload File for Students
-              </button>
               <Link 
                 href="/library" 
                 className="px-3.5 py-2 border border-outline-variant/40 hover:bg-surface-container rounded-xl text-xs font-bold text-on-surface flex items-center gap-1 transition-colors"
@@ -447,217 +500,91 @@ function RoomPreviewContent() {
               <span className="material-symbols-outlined text-4xl text-on-surface-variant/60 mb-2">folder_open</span>
               <p className="text-sm font-bold text-on-surface">No files uploaded yet for this room</p>
               <p className="text-xs text-on-surface-variant mt-1 max-w-md mx-auto">
-                Teachers and scholars can upload lecture notes, assignments, research PDFs, or formula sheets.
+                Materials uploaded by the administrator for this room will appear here.
               </p>
-              <button
-                type="button"
-                onClick={() => setShowUploadModal(true)}
-                className="mt-4 px-4 py-2 bg-primary text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">add</span>
-                Upload First Material
-              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {curatedResources.map((r, idx) => (
-                <div 
-                  key={idx}
-                  className="p-4 bg-surface-container-low border border-outline-variant/30 rounded-2xl flex flex-col justify-between hover:shadow-md hover:border-primary/40 transition-all gap-3 group"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="bg-primary/10 text-primary p-2.5 rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shrink-0">
-                      <span className="material-symbols-outlined block text-[22px]">
-                        {r.type === 'pdf' ? 'picture_as_pdf' : r.type === 'video' ? 'video_library' : r.type === 'note' ? 'edit_note' : 'description'}
-                      </span>
-                    </div>
-                    <div className="overflow-hidden min-w-0 flex-1">
-                      <p className="text-xs font-bold text-on-surface truncate" title={r.title}>{r.title}</p>
-                      <div className="flex items-center gap-2 text-[10.5px] text-on-surface-variant font-semibold mt-1 flex-wrap">
-                        <span className="uppercase">{r.type}</span>
-                        <span>•</span>
-                        <span>{r.size}</span>
-                        <span>•</span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
-                          <span className="material-symbols-outlined text-[12px]">download</span>
-                          {r.downloads || 0}
+              {curatedResources.map((r, idx) => {
+                const canDownload =
+                  !isInspectRulesMode &&
+                  roomDetails.allowMaterialDownloads !== false &&
+                  r.permissions?.canDownload !== false;
+                const viewHref = r.url?.startsWith('http') ? r.url : `/api/resources/${r.id}/view`;
+                return (
+                  <div 
+                    key={idx}
+                    className="p-4 bg-surface-container-low border border-outline-variant/30 rounded-2xl flex flex-col justify-between hover:shadow-md hover:border-primary/40 transition-all gap-3 group"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="bg-primary/10 text-primary p-2.5 rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shrink-0">
+                        <span className="material-symbols-outlined block text-[22px]">
+                          {isInspectRulesMode ? 'lock' : r.type === 'pdf' ? 'picture_as_pdf' : r.type === 'video' ? 'video_library' : r.type === 'note' ? 'edit_note' : 'description'}
                         </span>
                       </div>
-                      {r.aiSummary && (
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-1 font-medium">
-                          {r.aiSummary}
-                        </p>
-                      )}
+                      <div className="overflow-hidden min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-on-surface truncate" title={r.title}>{r.title}</p>
+                          {isInspectRulesMode ? (
+                            <span className="shrink-0 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] font-bold uppercase tracking-wider">
+                              Confidential
+                            </span>
+                          ) : (r.ownerId === 't-aris-thorne' || r.ownerId === 'instructor-admin') && (
+                            <span className="shrink-0 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold uppercase tracking-wider">
+                              Admin
+                            </span>
+                          )}
+                        </div>
+                        {!isInspectRulesMode && (
+                          <>
+                            <div className="flex items-center gap-2 text-[10.5px] text-on-surface-variant font-semibold mt-1 flex-wrap">
+                              <span className="uppercase">{r.type}</span>
+                              <span>•</span>
+                              <span>{r.size}</span>
+                              {canDownload && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
+                                    <span className="material-symbols-outlined text-[12px]">download</span>
+                                    {r.downloads || 0}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Action buttons: Download & View */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-outline-variant/20 mt-auto">
-                    <a
-                      href={`/api/resources/${r.id}/download`}
-                      download={r.title}
-                      className="flex-1 py-1.5 px-3 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-xs active:scale-98"
-                      title="Download file to your device"
-                    >
-                      <span className="material-symbols-outlined text-[15px]">download</span>
-                      Download
-                    </a>
-                    <a
-                      href={r.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-1.5 px-3 bg-surface hover:bg-surface-container border border-outline-variant/40 rounded-lg text-xs font-semibold text-on-surface flex items-center justify-center gap-1 transition-colors"
-                      title="Open and preview in browser"
-                    >
-                      <span className="material-symbols-outlined text-[15px]">visibility</span>
-                      View
-                    </a>
+                    {/* Action button: Download only (hidden in Inspect Rules mode or when room downloads are turned off) */}
+                    {!isInspectRulesMode && (
+                      <div className="flex items-center gap-2 pt-2 border-t border-outline-variant/20 mt-auto">
+                        {canDownload ? (
+                          <a
+                            href={`/api/resources/${r.id}/download`}
+                            download={r.title}
+                            className="flex-1 py-1.5 px-3 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-xs active:scale-98"
+                            title="Download file to your device"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">download</span>
+                            Download
+                          </a>
+                        ) : (
+                          <span className="flex-1 py-1.5 px-3 bg-surface-container text-on-surface-variant font-bold text-[11px] rounded-lg flex items-center justify-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">lock</span>
+                            File Name Only (Downloads Off)
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
-
-              {/* Upload Another Card */}
-              <button 
-                type="button"
-                onClick={() => setShowUploadModal(true)}
-                className="flex flex-col items-center justify-center p-6 bg-surface-container-low/40 border-2 border-dashed border-outline-variant/40 rounded-2xl hover:border-primary/70 hover:bg-surface-container-low transition-all cursor-pointer text-center group min-h-[140px]"
-              >
-                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-2 group-hover:bg-primary group-hover:text-white transition-colors">
-                  <span className="material-symbols-outlined text-xl">add</span>
-                </div>
-                <p className="text-xs font-bold text-on-surface">Upload Another File</p>
-                <p className="text-[10px] text-on-surface-variant font-medium mt-0.5">PDF, Notes, Papers, Docs</p>
-              </button>
+                );
+              })}
             </div>
           )}
         </div>
 
       </div>
-
-      {/* Upload File Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-surface border border-outline-variant rounded-2xl p-6 max-w-lg w-full shadow-2xl relative text-on-surface animate-fade-in">
-            <button 
-              type="button"
-              onClick={() => {
-                setShowUploadModal(false);
-                setUploadSuccessMsg('');
-              }}
-              className="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface cursor-pointer w-8 h-8 rounded-full flex items-center justify-center hover:bg-outline-variant/20 transition-colors"
-            >
-              <span className="material-symbols-outlined text-lg">close</span>
-            </button>
-            
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <span className="material-symbols-outlined text-xl">upload_file</span>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-on-surface leading-tight">Upload Room Study Material</h3>
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Connected to Cloud Firestore Database
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-on-surface-variant mb-4 font-medium leading-relaxed">
-              Upload study files for <span className="font-bold text-on-surface">{data?.roomDetails.title}</span>. All students in this room will immediately see and be able to download the material.
-            </p>
-
-            {uploadSuccessMsg && (
-              <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-2 animate-fade-in">
-                <span className="material-symbols-outlined text-base">check_circle</span>
-                {uploadSuccessMsg}
-              </div>
-            )}
-
-            <form onSubmit={handleRoomFileUpload} className="space-y-4">
-              {/* File Input */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-on-surface uppercase tracking-wider block">
-                  Select File from Computer *
-                </label>
-                <div className="border-2 border-dashed border-outline-variant hover:border-primary rounded-xl p-4 text-center cursor-pointer relative bg-surface-container-low transition-colors">
-                  <input
-                    type="file"
-                    required
-                    onChange={handleFileChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <div className="flex flex-col items-center justify-center pointer-events-none">
-                    <span className="material-symbols-outlined text-2xl text-primary mb-1">attach_file</span>
-                    <p className="text-xs font-bold text-on-surface">
-                      {uploadFile ? uploadFile.name : 'Click or drag file here'}
-                    </p>
-                    <p className="text-[10px] text-on-surface-variant mt-0.5">
-                      {uploadFile ? `${(uploadFile.size / (1024 * 1024)).toFixed(2)} MB` : 'PDF, DOCX, TXT, PPT, Images, Videos, Notes'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Title Input */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-on-surface uppercase tracking-wider block">
-                  Display Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={uploadTitle}
-                  onChange={e => setUploadTitle(e.target.value)}
-                  placeholder="e.g. Chapter 4 Practice Exam & Formula Sheet"
-                  className="w-full bg-surface-container-low text-on-surface border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs outline-none px-3.5 py-2.5"
-                />
-              </div>
-
-              {/* Description */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-on-surface uppercase tracking-wider block">
-                  Instructions or AI Summary Note
-                </label>
-                <textarea
-                  rows={2}
-                  value={uploadDescription}
-                  onChange={e => setUploadDescription(e.target.value)}
-                  placeholder="e.g. Required reading for today's Pomodoro sprint. Key equations on page 3."
-                  className="w-full bg-surface-container-low text-on-surface border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-xs outline-none p-3 resize-none"
-                />
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowUploadModal(false)}
-                  className="flex-1 py-2.5 border border-outline-variant hover:bg-surface-container rounded-xl text-xs font-bold text-on-surface transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUploading}
-                  className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-98 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-                >
-                  {isUploading ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      <span>Uploading to DB...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-[16px]">cloud_upload</span>
-                      <span>Upload &amp; Share with Students</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Invite Modal */}
       {showInviteModal && (

@@ -8,6 +8,7 @@ export default function VirtualRoomsPage() {
   const {
     rooms,
     activeRoom,
+    joinedRooms,
     joinStudyRoom,
     leaveStudyRoom,
     settings
@@ -45,24 +46,13 @@ export default function VirtualRoomsPage() {
     );
 
     const targetId = matched ? matched.id : (rooms[0]?.id || 'room-1');
-    const targetName = matched ? matched.name : (rooms[0]?.name || 'Silent Library');
 
-    const res = await joinStudyRoom(targetId);
-    if (res && !res.success) {
-      alert(res.message);
-    } else {
-      alert(`Joined Study Hall: ${targetName}`);
-    }
+    await joinStudyRoom(targetId);
     setRoomCode('');
   };
 
-  const handleJoinRoomClick = async (roomId: string, roomName: string) => {
-    const res = await joinStudyRoom(roomId);
-    if (res && !res.success) {
-      alert(res.message);
-    } else {
-      alert(`Joined Study Hall: ${roomName}`);
-    }
+  const handleJoinRoomClick = async (roomId: string) => {
+    await joinStudyRoom(roomId);
   };
 
   // Filter logic
@@ -111,44 +101,52 @@ export default function VirtualRoomsPage() {
         </div>
       </section>
 
-      {/* Active Room Sticky Card (If joined) */}
-      {activeRoom && (
-        <div className="max-w-[1200px] mx-auto px-6 mb-8">
-          <div className="bg-surface-container text-on-surface border border-outline-variant rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
-            <div className="absolute right-0 top-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
-            
-            <div className="flex-1 w-full z-10">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary text-on-primary flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[12px] font-bold">check_circle</span>
-                  Joined
-                </span>
-                <span className="text-xs text-on-surface-variant">| Ambient Sound: {activeRoom.ambientSound}</span>
-              </div>
-              <h3 className="text-xl font-bold text-on-surface mb-2">{activeRoom.name}</h3>
-              <p className="text-xs text-on-surface-variant flex items-center gap-1.5 font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                {activeRoom.activeUsers} scholars study-synced
-              </p>
-            </div>
-
-            <div className="flex items-center gap-4 z-10">
-              <Link 
-                href={`/rooms/preview?id=${activeRoom.id}`}
-                className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-on-primary font-semibold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-sm">visibility</span>
-                Enter Workspace
-              </Link>
-              <button
-                onClick={leaveStudyRoom}
-                className="px-5 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-sm">logout</span>
-                Leave Room
-              </button>
-            </div>
+      {/* Active Joined Rooms Section (Supports Multiple Rooms) */}
+      {joinedRooms.length > 0 && (
+        <div className="max-w-[1200px] mx-auto px-6 mb-8 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant">
+              Joined Study Halls ({joinedRooms.length})
+            </h2>
           </div>
+
+          {joinedRooms.map(room => (
+            <div key={room.id} className="bg-surface-container text-on-surface border border-outline-variant rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+              <div className="absolute right-0 top-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+              
+              <div className="flex-1 w-full z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary text-on-primary flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[12px] font-bold">check_circle</span>
+                    Joined
+                  </span>
+                  <span className="text-xs text-on-surface-variant">| Ambient Sound: {room.ambientSound}</span>
+                </div>
+                <h3 className="text-xl font-bold text-on-surface mb-2">{room.name}</h3>
+                <p className="text-xs text-on-surface-variant flex items-center gap-1.5 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  {room.activeUsers} scholars study-synced
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 z-10">
+                <Link 
+                  href={`/rooms/preview?id=${room.id}`}
+                  className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-on-primary font-semibold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-sm">visibility</span>
+                  Enter Workspace
+                </Link>
+                <button
+                  onClick={() => leaveStudyRoom(room.id)}
+                  className="px-5 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-semibold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">logout</span>
+                  Leave Room
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -202,7 +200,7 @@ export default function VirtualRoomsPage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredRooms.map(room => {
-                const isJoined = activeRoom?.id === room.id;
+                const isJoined = joinedRooms.some(jr => jr.id === room.id);
                 return (
                   <div key={room.id} className="bg-surface border border-outline-variant/40 rounded-2xl p-5 flex flex-col justify-between hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-md transition-all">
                     <div>
@@ -259,7 +257,7 @@ export default function VirtualRoomsPage() {
 
                     <div className="flex gap-2">
                       <Link
-                        href={`/rooms/preview?id=${room.id}`}
+                        href={`/rooms/preview?id=${room.id}&mode=rules`}
                         className="flex-1 py-2 border border-outline-variant/40 hover:border-primary/60 text-on-surface text-center font-bold text-xs rounded-xl hover:bg-surface-container transition-colors"
                       >
                         Inspect Rules
@@ -267,15 +265,16 @@ export default function VirtualRoomsPage() {
                       
                       {!isJoined ? (
                         <button
-                          onClick={() => handleJoinRoomClick(room.id, room.name)}
+                          onClick={() => handleJoinRoomClick(room.id)}
                           className="flex-1 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl transition-colors cursor-pointer"
                         >
                           Join Study Hall
                         </button>
                       ) : (
                         <button
-                          disabled
-                          className="flex-1 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs rounded-xl flex items-center justify-center gap-1"
+                          onClick={() => leaveStudyRoom(room.id)}
+                          className="flex-1 py-2 bg-emerald-500/10 hover:bg-red-500/10 border border-emerald-500/20 hover:border-red-500/30 text-emerald-600 dark:text-emerald-400 hover:text-red-500 font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                          title="Click to leave this room"
                         >
                           <span className="material-symbols-outlined text-sm">check_circle</span>
                           In Session

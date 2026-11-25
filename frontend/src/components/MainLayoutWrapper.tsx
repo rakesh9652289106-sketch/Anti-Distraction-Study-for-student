@@ -25,7 +25,7 @@ export default function MainLayoutWrapper({ children }: { children: React.ReactN
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const isBypassShell = pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/teacher');
+  const isBypassShell = pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/teacher') || pathname?.startsWith('/staff');
 
   useEffect(() => {
     if (!isBypassShell) {

@@ -2,12 +2,19 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { settings, startTimer, isTimerRunning, pauseTimer } = useApp();
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('student_authenticated');
+    localStorage.removeItem('student_authenticated');
+    router.push('/login');
+  };
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: 'dashboard', shortcut: '⌘1' },
@@ -144,6 +151,18 @@ export default function Sidebar() {
         })}
       </div>
       
+      {/* Logout Button */}
+      <div className="pt-2 pb-2 px-1">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all cursor-pointer active:scale-98"
+        >
+          <span className="material-symbols-outlined text-[19px]">logout</span>
+          <span>Logout</span>
+        </button>
+      </div>
+
       {/* Footer System Status */}
       <div className="pt-3 border-t border-outline-variant/20 px-2 flex items-center justify-between text-[11px] text-on-surface-variant/60">
         <span className="flex items-center gap-1">

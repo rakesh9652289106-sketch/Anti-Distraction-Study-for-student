@@ -37,6 +37,18 @@ export interface RewardItem {
   purchased: boolean;
 }
 
+export interface RoomParticipantStats {
+  userId: string;
+  name: string;
+  email?: string;
+  joinedAt: string;
+  gazeStatus: 'Focused' | 'Looking Away' | 'Distracted' | 'Offline' | string;
+  gazeAlerts: number;
+  tabSwitchCount: number;
+  focusScore: number;
+  lastUpdated: string;
+}
+
 export interface StudyRoom {
   id: string;
   name: string;
@@ -61,6 +73,13 @@ export interface StudyRoom {
   censorWords?: string[];
   coinsLimit?: number;
   bonusCoins?: number;
+  allowMaterialDownloads?: boolean;
+  roomHead?: {
+    userId: string;
+    name: string;
+    email: string;
+  } | null;
+  joinedStudents?: RoomParticipantStats[];
 }
 
 export interface GlobalSettings {
@@ -124,6 +143,7 @@ export interface StudentUser {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   focusScore: number;
   focusCoins: number;
   currentStreak: number;
@@ -164,6 +184,15 @@ export interface ClassroomGroup {
   activeSessionId?: string | null;
 }
 
+export interface StaffMember {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  department: string;
+  createdAt: string;
+}
+
 export interface TimetableEvent {
   id: string;
   title: string;
@@ -184,6 +213,7 @@ export interface DbSchema {
   tickets: SupportTicket[];
   alerts: AdminAlert[];
   users: StudentUser[];
+  staff: StaffMember[];
   timetable: TimetableEvent[];
 }
 
@@ -315,6 +345,10 @@ function getInitialData(): DbSchema {
       { id: 'u4', name: 'Jessica Vance', email: 'jessica@student.edu', focusScore: 91, focusCoins: 120, currentStreak: 5, status: 'active', lastActive: '15 mins ago', chatMuted: false },
       { id: 'u5', name: 'Emily Watson', email: 'emily@student.edu', focusScore: 45, focusCoins: 10, currentStreak: 0, status: 'suspended', lastActive: '1 day ago', chatMuted: true }
     ],
+    staff: [
+      { id: 'staff-1', name: 'Prof. Alex Rivera', email: 'staff@focusflow.ai', password: 'staff123', department: 'Computer Science', createdAt: new Date().toISOString() },
+      { id: 'staff-2', name: 'Dr. Maya Lin', email: 'maya@focusflow.ai', password: 'staff123', department: 'Physics & STEM', createdAt: new Date().toISOString() }
+    ],
     timetable: [
       { id: 't-1', title: 'Calculus Revision', day: 'Mon', time: '9:00 AM', subject: 'Mathematics', pomodoros: 2 },
       { id: 't-2', title: 'Biology Deep Dive', day: 'Tue', time: '11:00 AM - 2h', subject: 'Biology', pomodoros: 4, isAiSuggested: true },
@@ -350,7 +384,7 @@ const firestoreDb = getFirestore(app);
 export async function syncFromFirestore() {
   console.log("[Firestore Sync] Starting synchronization...");
   try {
-    const docKeys: Array<keyof DbSchema> = ['tasks', 'sessions', 'analytics', 'rewards', 'rooms', 'settings', 'tickets', 'alerts', 'users', 'timetable'];
+    const docKeys: Array<keyof DbSchema> = ['tasks', 'sessions', 'analytics', 'rewards', 'rooms', 'settings', 'tickets', 'alerts', 'users', 'staff', 'timetable'];
     
     for (const key of docKeys) {
       const docRef = doc(firestoreDb, 'focusflow', key);
@@ -401,6 +435,9 @@ export async function syncFromFirestore() {
 }
 
 export function readDb(): DbSchema {
+  if (!Array.isArray(dbCache.staff) || dbCache.staff.length === 0) {
+    dbCache.staff = getInitialData().staff;
+  }
   // Defensive checks to ensure loaded database structure remains correct
   if (dbCache.rooms) {
     const defaults = getInitialData().rooms;
@@ -414,6 +451,24 @@ export function readDb(): DbSchema {
       if (r.sessionDurationFormat === undefined) r.sessionDurationFormat = d.sessionDurationFormat;
       if (r.coinsLimit === undefined) r.coinsLimit = 0;
       if (r.bonusCoins === undefined) r.bonusCoins = 0;
+      if (r.allowMaterialDownloads === undefined) r.allowMaterialDownloads = true;
+      if (r.roomHead === undefined) r.roomHead = null;
+      if (!Array.isArray(r.joinedStudents)) r.joinedStudents = [];
+      // Backfill joinedStudents for rooms with activeUsers recorded before telemetry tracking
+      if (r.activeUsers > 0 && r.joinedStudents.length === 0 && Array.isArray(dbCache.users)) {
+        const count = Math.min(r.activeUsers, dbCache.users.length);
+        r.joinedStudents = dbCache.users.slice(0, count).map(u => ({
+          userId: u.id,
+          name: u.name,
+          email: u.email,
+          joinedAt: new Date().toISOString(),
+          gazeStatus: 'Focused',
+          gazeAlerts: 0,
+          tabSwitchCount: 0,
+          focusScore: u.focusScore || 92,
+          lastUpdated: new Date().toISOString()
+        }));
+      }
     });
   }
   return dbCache;
@@ -427,7 +482,7 @@ export function writeDb(data: DbSchema) {
 
 async function saveDbToFirestore(data: DbSchema) {
   try {
-    const docKeys: Array<keyof DbSchema> = ['tasks', 'sessions', 'analytics', 'rewards', 'rooms', 'settings', 'tickets', 'alerts', 'users', 'timetable'];
+    const docKeys: Array<keyof DbSchema> = ['tasks', 'sessions', 'analytics', 'rewards', 'rooms', 'settings', 'tickets', 'alerts', 'users', 'staff', 'timetable'];
     for (const key of docKeys) {
       const docRef = doc(firestoreDb, 'focusflow', key);
       if (key === 'settings') {
@@ -461,4 +516,46 @@ export function writeGroupsDb(data: ClassroomGroup[]) {
   setDoc(doc(firestoreDb, 'focusflow', 'groups'), { list: data }).catch(err => {
     console.error("[Firestore Save] Error saving groups:", err);
   });
+}
+
+export async function saveUploadedFileContent(
+  resourceId: string,
+  filename: string,
+  mimeType: string,
+  base64Content: string
+) {
+  try {
+    // Firestore single-doc limit is 1MB; store files up to ~700KB base64 directly in Firestore
+    if (base64Content.length <= 900_000) {
+      await setDoc(doc(firestoreDb, 'focusflow_files', resourceId), {
+        filename,
+        mimeType,
+        base64Content,
+        updatedAt: new Date().toISOString()
+      });
+    }
+  } catch (err) {
+    console.error('[Firestore Save] Error saving file binary:', err);
+  }
+}
+
+export async function getUploadedFileContent(resourceId: string): Promise<{
+  filename: string;
+  mimeType: string;
+  base64Content: string;
+} | null> {
+  try {
+    const snap = await getDoc(doc(firestoreDb, 'focusflow_files', resourceId));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    if (!data?.base64Content) return null;
+    return {
+      filename: data.filename || 'file',
+      mimeType: data.mimeType || 'application/octet-stream',
+      base64Content: data.base64Content
+    };
+  } catch (err) {
+    console.error('[Firestore Read] Error reading file binary:', err);
+    return null;
+  }
 }

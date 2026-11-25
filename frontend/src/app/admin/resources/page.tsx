@@ -22,6 +22,9 @@ export default function AdminResourcesPage() {
   // Upload States
   const [uploadedTitle, setUploadedTitle] = useState('');
   const [uploadedType, setUploadedType] = useState('pdf');
+  const [uploadedFileData, setUploadedFileData] = useState<string>('');
+  const [uploadedSize, setUploadedSize] = useState<string>('');
+  const [isSharing, setIsSharing] = useState(false);
   const [suggestedTags, setSuggestedTags] = useState<string[]>(['Quantum Mechanics', 'Advanced Physics', 'Particle Theory']);
   const [newTagInput, setNewTagInput] = useState('');
   const [tempFileId, setTempFileId] = useState('');
@@ -46,7 +49,7 @@ export default function AdminResourcesPage() {
         const initialPerms: Record<string, { viewOnly: boolean; canDownload: boolean; allowAiSummarization: boolean }> = {};
         roomsData.forEach((r, idx) => {
           initialSelected[r.id] = idx === 0; // Check the first room by default
-          initialPerms[r.id] = { viewOnly: true, canDownload: false, allowAiSummarization: true };
+          initialPerms[r.id] = { viewOnly: false, canDownload: true, allowAiSummarization: true };
         });
         setSelectedRooms(initialSelected);
         setRoomPermissions(initialPerms);
@@ -71,11 +74,24 @@ export default function AdminResourcesPage() {
     if (!file) return;
 
     setUploadedTitle(file.name);
+    setUploadedSize(`${(file.size / (1024 * 1024)).toFixed(2)} MB`);
+
     // Determine type from extension
     const ext = file.name.split('.').pop()?.toLowerCase();
-    if (ext === 'mp4' || ext === 'mov') setUploadedType('video');
+    if (ext === 'mp4' || ext === 'mov' || ext === 'webm') setUploadedType('video');
     else if (ext === 'url' || ext === 'link') setUploadedType('link');
+    else if (ext === 'txt' || ext === 'md') setUploadedType('note');
+    else if (ext === 'doc' || ext === 'docx') setUploadedType('paper');
     else setUploadedType('pdf');
+
+    // Read actual file bytes as base64 Data URL so it is persisted on the backend
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setUploadedFileData(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
 
     try {
       const res = await fetch('/api/teacher/resources/upload', {
@@ -134,7 +150,7 @@ export default function AdminResourcesPage() {
       .filter(([, isSelected]) => isSelected)
       .map(([roomId]) => ({
         groupId: roomId,
-        permissions: roomPermissions[roomId]
+        permissions: roomPermissions[roomId] || { viewOnly: false, canDownload: true, allowAiSummarization: true }
       }));
 
     if (groupSettings.length === 0) {
@@ -142,32 +158,43 @@ export default function AdminResourcesPage() {
       return;
     }
 
+    setIsSharing(true);
     try {
       const res = await fetch('/api/teacher/resources/share', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tempId: tempFileId || 'tmp-manual',
+          tempId: tempFileId || `tmp-${Date.now()}`,
           title: uploadedTitle,
           fileType: uploadedType,
+          fileData: uploadedFileData || undefined,
+          size: uploadedSize || undefined,
           tags: suggestedTags,
           groupSettings
         })
       });
 
       if (res.ok) {
-        alert('Material successfully shared and distributed!');
+        alert('Material successfully shared and deployed to selected rooms!');
         // Reset upload form state
         setUploadedTitle('');
+        setUploadedFileData('');
+        setUploadedSize('');
         setTempFileId('');
         // Reload shared items log list
         const resHistory = await fetch('/api/teacher/resources/shared-history');
         if (resHistory.ok) {
           setHistory(await resHistory.json());
         }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to share material.');
       }
     } catch (err) {
       console.error(err);
+      alert('Failed to share material.');
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -271,7 +298,21 @@ export default function AdminResourcesPage() {
         {/* Right Column: Settings & Room check toggles (5 cols) */}
         <div className="lg:col-span-5 glass-panel rounded-2xl p-5 border border-[#1E2E4E] bg-[#0d1527]/90 text-slate-200 flex flex-col justify-between">
           <div>
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Distribution Target Rooms</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Distribution Target Rooms</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  const allSelected = rooms.length > 0 && rooms.every(r => selectedRooms[r.id]);
+                  const next: Record<string, boolean> = {};
+                  rooms.forEach(r => { next[r.id] = !allSelected; });
+                  setSelectedRooms(next);
+                }}
+                className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 cursor-pointer"
+              >
+                {rooms.length > 0 && rooms.every(r => selectedRooms[r.id]) ? 'Deselect All' : 'Select All Rooms'}
+              </button>
+            </div>
             
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-xs">
               {rooms.map(room => {
@@ -299,21 +340,9 @@ export default function AdminResourcesPage() {
                       />
                     </div>
 
-                    {/* Sub toggles for permissions */}
+                    {/* Sub toggle for download permission */}
                     {isChecked && (
                       <div className="grid grid-cols-1 gap-2 pt-2 border-t border-slate-900 text-[11px] font-semibold text-slate-400">
-                        
-                        <label className="flex items-center justify-between cursor-pointer group select-none">
-                          <span className="group-hover:text-white transition-colors">View Only (Strict Read Lock)</span>
-                          <input 
-                            type="checkbox" 
-                            checked={perms.viewOnly}
-                            onChange={() => handlePermissionChange(room.id, 'viewOnly')}
-                            className="sr-only peer"
-                          />
-                          <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500 relative inline-flex items-center"></div>
-                        </label>
-
                         <label className="flex items-center justify-between cursor-pointer group select-none">
                           <span className="group-hover:text-white transition-colors">Allow Local Download</span>
                           <input 
@@ -324,20 +353,6 @@ export default function AdminResourcesPage() {
                           />
                           <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500 relative inline-flex items-center"></div>
                         </label>
-
-                        <label className="flex items-center justify-between cursor-pointer group select-none">
-                          <span className="group-hover:text-white transition-colors flex items-center gap-0.5">
-                            Enable AI Summarizer Nudges
-                          </span>
-                          <input 
-                            type="checkbox" 
-                            checked={perms.allowAiSummarization}
-                            onChange={() => handlePermissionChange(room.id, 'allowAiSummarization')}
-                            className="sr-only peer"
-                          />
-                          <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500 relative inline-flex items-center"></div>
-                        </label>
-
                       </div>
                     )}
                   </div>
@@ -349,10 +364,11 @@ export default function AdminResourcesPage() {
           <div className="pt-5 mt-5 border-t border-slate-800">
             <button 
               onClick={handleShareSubmit}
-              className="w-full bg-[#5FE29C] hover:bg-[#4CD08A] text-[#0A101D] py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-lg transition-transform active:scale-[0.98]"
+              disabled={isSharing}
+              className="w-full bg-[#5FE29C] hover:bg-[#4CD08A] disabled:opacity-50 text-[#0A101D] py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-lg transition-transform active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-sm font-bold">send</span>
-              Share and Deploy to Selected Rooms
+              {isSharing ? 'Deploying to Rooms...' : 'Share and Deploy to Selected Rooms'}
             </button>
           </div>
         </div>

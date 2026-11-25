@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { StudyRoom, StaffMember } from '@/lib/db';
 import Link from 'next/link';
 
 export default function AdminCreateRoomPage() {
@@ -19,6 +20,7 @@ export default function AdminCreateRoomPage() {
   const [sessionDuration, setSessionDuration] = useState('90m Focus / 15m Insight Exchange');
   const [allowScreenShare, setAllowScreenShare] = useState(true);
   const [videoStreamRequired, setVideoStreamRequired] = useState(false);
+  const [allowMaterialDownloads, setAllowMaterialDownloads] = useState(true);
   const [chatModerationFilter, setChatModerationFilter] = useState(true);
   const [censorWords, setCensorWords] = useState<string[]>(['spam', 'cheat', 'abuse', 'slack', 'tiktok']);
   const [newCensorWord, setNewCensorWord] = useState('');
@@ -30,6 +32,131 @@ export default function AdminCreateRoomPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  // Edit Room, Room Head (Staff Only) & Joined Students States
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [selectedRoomHeadId, setSelectedRoomHeadId] = useState<string>('');
+  const [inspectingRoom, setInspectingRoom] = useState<StudyRoom | null>(null);
+  const [showAddStaff, setShowAddStaff] = useState(false);
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffEmail, setNewStaffEmail] = useState('');
+  const [newStaffPassword, setNewStaffPassword] = useState('staff123');
+  const [newStaffDept, setNewStaffDept] = useState('General');
+
+  const loadStaff = async () => {
+    try {
+      const res = await fetch('/api/admin/staff', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) setStaffList(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch staff:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadStaff();
+  }, []);
+
+  const handleCreateStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStaffName.trim() || !newStaffEmail.trim() || !newStaffPassword.trim()) return;
+    try {
+      const res = await fetch('/api/admin/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: newStaffName.trim(),
+          email: newStaffEmail.trim(),
+          password: newStaffPassword,
+          department: newStaffDept.trim() || 'General'
+        })
+      });
+      if (res.ok) {
+        const created: StaffMember = await res.json();
+        setStaffList(prev => [...prev, created]);
+        setSelectedRoomHeadId(created.id);
+        setNewStaffName('');
+        setNewStaffEmail('');
+        setNewStaffPassword('staff123');
+        setShowAddStaff(false);
+        triggerToast(`Staff account created for ${created.name}!`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to create staff account');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const resetForm = () => {
+    setEditingRoomId(null);
+    setRoomName('');
+    setRoomTags('');
+    setRoomSound('Silence');
+    setHostName('Prof. Alex Rivera');
+    setMaxCapacity(20);
+    setFocusMode('Standard Lock');
+    setSessionDuration('90m Focus / 15m Insight Exchange');
+    setAllowScreenShare(true);
+    setVideoStreamRequired(false);
+    setAllowMaterialDownloads(true);
+    setChatModerationFilter(true);
+    setCensorWords(['spam', 'cheat', 'abuse', 'slack', 'tiktok']);
+    setAllowedApps(['notion', 'gdocs']);
+    setCoinsLimit(0);
+    setBonusCoins(0);
+    setSelectedRoomHeadId('');
+    setError('');
+  };
+
+  const handleEditRoomClick = (room: StudyRoom) => {
+    setEditingRoomId(room.id);
+    setRoomName(room.name);
+    setRoomTags((room.tags || []).join(', '));
+    setRoomSound(room.ambientSound || 'Silence');
+    setHostName(room.hostName || 'Prof. Alex Rivera');
+    setMaxCapacity(room.maxCapacity || 20);
+    setFocusMode(room.focusMode || 'Standard Lock');
+    setSessionDuration(room.sessionDurationFormat || '90m Focus / 15m Insight Exchange');
+    setAllowScreenShare(room.allowScreenShare !== false);
+    setVideoStreamRequired(Boolean(room.videoStreamRequired));
+    setAllowMaterialDownloads(room.allowMaterialDownloads !== false);
+    setChatModerationFilter(room.chatModerationFilter !== false);
+    setCensorWords(room.censorWords || ['spam', 'cheat', 'abuse', 'slack', 'tiktok']);
+    setAllowedApps(room.allowedApps || ['notion', 'gdocs']);
+    setCoinsLimit(room.coinsLimit || 0);
+    setBonusCoins(room.bonusCoins || 0);
+    setSelectedRoomHeadId(room.roomHead?.userId || '');
+    setError('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAssignRoomHead = async (room: StudyRoom, student: { userId: string; name: string; email: string } | null) => {
+    try {
+      const res = await fetch('/api/rooms', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: room.id, roomHead: student })
+      });
+      if (res.ok) {
+        const updated: StudyRoom = await res.json();
+        setInspectingRoom(updated);
+        triggerToast(
+          student
+            ? `Granted Room Head access to ${student.name} for "${room.name}"`
+            : `Removed Room Head access for "${room.name}"`
+        );
+        await fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -80,49 +207,48 @@ export default function AdminCreateRoomPage() {
     setError('');
 
     try {
+      const headStaff = staffList.find(u => u.id === selectedRoomHeadId);
+      const roomHeadPayload = headStaff
+        ? { userId: headStaff.id, name: headStaff.name, email: headStaff.email }
+        : null;
+
+      const isEditing = Boolean(editingRoomId);
       const res = await fetch('/api/rooms', {
-        method: 'POST',
+        method: isEditing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          ...(isEditing ? { roomId: editingRoomId } : { activeUsers: 0 }),
           name: roomName.trim(),
           tags: roomTags.split(',').map(t => t.trim()).filter(Boolean),
           ambientSound: roomSound,
           hostName: hostName.trim(),
-          activeUsers: 0,
           maxCapacity,
           focusMode,
           sessionDurationFormat: sessionDuration,
           allowScreenShare,
           videoStreamRequired,
+          allowMaterialDownloads,
           chatModerationFilter,
           censorWords,
           allowedApps,
           coinsLimit,
-          bonusCoins
+          bonusCoins,
+          roomHead: roomHeadPayload
         })
       });
 
       if (res.ok) {
-        setRoomName('');
-        setRoomTags('');
-        setRoomSound('Silence');
-        setHostName('Prof. Alex Rivera');
-        setMaxCapacity(20);
-        setFocusMode('Standard Lock');
-        setSessionDuration('90m Focus / 15m Insight Exchange');
-        setAllowScreenShare(true);
-        setVideoStreamRequired(false);
-        setChatModerationFilter(true);
-        setCensorWords(['spam', 'cheat', 'abuse', 'slack', 'tiktok']);
-        setAllowedApps(['notion', 'gdocs']);
-        setCoinsLimit(0);
-        setBonusCoins(0);
-        
-        triggerToast(`Virtual Study Sanctuary "${roomName.trim()}" has been deployed!`);
+        const savedName = roomName.trim();
+        resetForm();
+        triggerToast(
+          isEditing
+            ? `Virtual Study Sanctuary "${savedName}" has been updated!`
+            : `Virtual Study Sanctuary "${savedName}" has been deployed!`
+        );
         await fetchData();
       } else {
         const data = await res.json();
-        setError(data.error || 'Failed to deploy room');
+        setError(data.error || `Failed to ${isEditing ? 'update' : 'deploy'} room`);
       }
     } catch (err: any) {
       setError(err.message || 'Network error encountered during deployment');
@@ -428,6 +554,98 @@ export default function AdminCreateRoomPage() {
                       <span className="font-semibold text-slate-300">Mandatory Camera Feed</span>
                     </label>
                   </div>
+
+                  {/* Dedicated Room Study Materials & Downloads Toggle */}
+                  <div className="p-3 rounded-xl bg-[#131D33]/70 border border-[#1E2E4E] flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold text-white">Room Study Materials &amp; Downloads</p>
+                      <p className="text-[10.5px] text-slate-400 mt-0.5">
+                        {allowMaterialDownloads
+                          ? 'ON: Anyone in this room can view & download admin-uploaded files.'
+                          : 'OFF: Users can only view the file names (downloads & previews disabled).'}
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={allowMaterialDownloads}
+                        onChange={() => setAllowMaterialDownloads(!allowMaterialDownloads)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                  </div>
+
+                  {/* Room Head Access Selector (Staff Only) */}
+                  <div className="space-y-xs md:col-span-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest">
+                        Assign Room Head — Staff Login Only (Monitor Gaze, Tab Switches &amp; Stats)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddStaff(prev => !prev)}
+                        className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 cursor-pointer"
+                      >
+                        {showAddStaff ? 'Close' : '+ Create Staff Account'}
+                      </button>
+                    </div>
+                    <select
+                      value={selectedRoomHeadId}
+                      onChange={e => setSelectedRoomHeadId(e.target.value)}
+                      className="w-full bg-[#131D33] border border-[#1E2E4E] focus:border-emerald-500/50 rounded-lg py-2 px-sm text-slate-200 outline-none text-xs font-semibold cursor-pointer"
+                    >
+                      <option value="">No Room Head Assigned</option>
+                      {staffList.map(st => (
+                        <option key={st.id} value={st.id}>
+                          {st.name} ({st.email}) — {st.department}
+                        </option>
+                      ))}
+                    </select>
+
+                    {showAddStaff && (
+                      <div className="p-3 rounded-xl bg-[#131D33] border border-[#1E2E4E] space-y-2 mt-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">New Staff Account</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            placeholder="Staff Name"
+                            value={newStaffName}
+                            onChange={e => setNewStaffName(e.target.value)}
+                            className="bg-[#0d1527] border border-[#1E2E4E] rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
+                          />
+                          <input
+                            type="email"
+                            placeholder="Staff Email"
+                            value={newStaffEmail}
+                            onChange={e => setNewStaffEmail(e.target.value)}
+                            className="bg-[#0d1527] border border-[#1E2E4E] rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Password"
+                            value={newStaffPassword}
+                            onChange={e => setNewStaffPassword(e.target.value)}
+                            className="bg-[#0d1527] border border-[#1E2E4E] rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Department"
+                            value={newStaffDept}
+                            onChange={e => setNewStaffDept(e.target.value)}
+                            className="bg-[#0d1527] border border-[#1E2E4E] rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCreateStaff}
+                          className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg cursor-pointer"
+                        >
+                          Save Staff &amp; Select
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -534,23 +752,34 @@ export default function AdminCreateRoomPage() {
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-3 mt-sm bg-[#5FE29C] hover:bg-[#4CD08A] text-[#0A101D] font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed font-sans"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-[#0A101D]/20 border-t-[#0A101D] rounded-full animate-spin"></div>
-                    Deploying virtual room...
-                  </>
-                ) : (
-                  <>
-                    Deploy &amp; Launch Room
-                    <span className="material-symbols-outlined text-[16px] font-bold">arrow_forward</span>
-                  </>
+              <div className="flex gap-2 mt-sm">
+                {editingRoomId && (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs cursor-pointer transition-all"
+                  >
+                    Cancel Edit
+                  </button>
                 )}
-              </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 py-3 bg-[#5FE29C] hover:bg-[#4CD08A] text-[#0A101D] font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed font-sans"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-[#0A101D]/20 border-t-[#0A101D] rounded-full animate-spin"></div>
+                      {editingRoomId ? 'Saving changes...' : 'Deploying virtual room...'}
+                    </>
+                  ) : (
+                    <>
+                      {editingRoomId ? 'Save Room Changes' : 'Deploy & Launch Room'}
+                      <span className="material-symbols-outlined text-[16px] font-bold">arrow_forward</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -570,7 +799,7 @@ export default function AdminCreateRoomPage() {
                   <th className="pb-sm">Room Policies</th>
                   <th className="pb-sm text-center">Screen / Cam</th>
                   <th className="pb-sm">Apps Ecosystem</th>
-                  <th className="pb-sm pr-xs text-right">Delete</th>
+                  <th className="pb-sm pr-xs text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -635,13 +864,34 @@ export default function AdminCreateRoomPage() {
                       </div>
                     </td>
                     <td className="py-sm pr-xs text-right">
-                      <button
-                        onClick={() => handleDeleteRoom(room.id, room.name)}
-                        className="p-1.5 bg-red-950/20 border border-red-900/30 text-red-400 hover:bg-red-900 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center justify-center"
-                        title="Delete Room"
-                      >
-                        <span className="material-symbols-outlined text-sm">delete</span>
-                      </button>
+                      <div className="inline-flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setInspectingRoom(room);
+                            await fetchData();
+                          }}
+                          className="p-1.5 bg-sky-950/30 border border-sky-700/40 text-sky-400 hover:bg-sky-700 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center justify-center"
+                          title="Check Joined Users & Room Head"
+                        >
+                          <span className="material-symbols-outlined text-sm">group</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleEditRoomClick(room)}
+                          className="p-1.5 bg-emerald-950/30 border border-emerald-700/40 text-emerald-400 hover:bg-emerald-700 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center justify-center"
+                          title="Edit Room"
+                        >
+                          <span className="material-symbols-outlined text-sm">edit</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRoom(room.id, room.name)}
+                          className="p-1.5 bg-red-950/20 border border-red-900/30 text-red-400 hover:bg-red-900 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center justify-center"
+                          title="Delete Room"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -658,6 +908,96 @@ export default function AdminCreateRoomPage() {
         </div>
 
       </div>
+
+      {/* Inspect Joined Students & Room Head Modal */}
+      {inspectingRoom && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#FDF6ED] border border-[#E2CEB9] rounded-2xl p-6 max-w-2xl w-full shadow-2xl relative text-black max-h-[85vh] overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setInspectingRoom(null)}
+              className="absolute top-4 right-4 text-slate-700 hover:text-black cursor-pointer"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+
+            <h3 className="text-lg font-extrabold mb-1 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#590907]">group</span>
+              Joined Students — {inspectingRoom.name}
+            </h3>
+            <p className="text-xs text-slate-700 mb-4 font-semibold">
+              Active Seats: {inspectingRoom.activeUsers} / {inspectingRoom.maxCapacity || 20} •{' '}
+              Room Head:{' '}
+              {inspectingRoom.roomHead ? (
+                <span className="font-extrabold text-[#590907]">
+                  {inspectingRoom.roomHead.name} ({inspectingRoom.roomHead.email})
+                </span>
+              ) : (
+                'None Assigned'
+              )}
+            </p>
+
+            {inspectingRoom.roomHead && (
+              <div className="mb-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => handleAssignRoomHead(inspectingRoom, null)}
+                  className="px-3 py-1.5 bg-red-100 hover:bg-red-200 border border-red-300 text-red-800 rounded-lg text-xs font-bold cursor-pointer"
+                >
+                  Revoke Room Head Access
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {(inspectingRoom.joinedStudents && inspectingRoom.joinedStudents.length > 0) ? (
+                inspectingRoom.joinedStudents.map(student => {
+                  const isHead = inspectingRoom.roomHead?.userId === student.userId;
+                  return (
+                    <div
+                      key={student.userId}
+                      className="p-3 bg-white border border-[#E2CEB9] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-extrabold">{student.name}</span>
+                          {isHead && (
+                            <span className="px-2 py-0.5 rounded-full bg-[#590907] text-white text-[9px] font-bold uppercase">
+                              Room Head
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-600 font-semibold">
+                          {student.email || student.userId} • Joined {new Date(student.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                        <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-900">
+                          Gaze: {student.gazeStatus || 'Focused'}
+                        </span>
+                        <span className="px-2 py-1 rounded bg-amber-100 text-amber-900">
+                          Gaze Alerts: {student.gazeAlerts ?? 0}
+                        </span>
+                        <span className="px-2 py-1 rounded bg-red-100 text-red-900">
+                          Tab Switches: {student.tabSwitchCount ?? 0}
+                        </span>
+                        <span className="px-2 py-1 rounded bg-sky-100 text-sky-900">
+                          Focus: {student.focusScore ?? 92}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 bg-white/70 border border-dashed border-[#D5BFA7] rounded-xl text-xs font-semibold text-slate-700">
+                  No students have joined this room yet. You can still assign a Room Head from the Edit Room form.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
