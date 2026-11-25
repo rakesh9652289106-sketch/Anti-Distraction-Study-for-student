@@ -1,10 +1,63 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 
 export default function SettingsPage() {
-  const { settings, updateSettings } = useApp();
+  const { settings, updateSettings, showNotification } = useApp();
+
+  // User Profile States
+  const [profileName, setProfileName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  useEffect(() => {
+    setProfileName(localStorage.getItem('student_user_name') || '');
+    setProfilePhone(localStorage.getItem('student_user_phone') || '');
+    setProfileEmail(localStorage.getItem('student_user_email') || '');
+  }, []);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profileName.trim()) {
+      showNotification('Name cannot be empty.', 'error');
+      return;
+    }
+    if (profilePhone && !/^\d{10}$/.test(profilePhone)) {
+      showNotification('Phone number must be exactly 10 digits.', 'error');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      const userId = localStorage.getItem('student_user_id') || '';
+      const res = await fetch('/api/student/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          email: profileEmail,
+          name: profileName.trim(),
+          phone: profilePhone
+        })
+      });
+
+      if (res.ok) {
+        localStorage.setItem('student_user_name', profileName.trim());
+        if (profilePhone) localStorage.setItem('student_user_phone', profilePhone);
+        window.dispatchEvent(new CustomEvent('focusflow-profile-updated'));
+        showNotification('Profile updated successfully!', 'success');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showNotification(err.error || 'Failed to update profile.', 'error');
+      }
+    } catch {
+      showNotification('Network error while updating profile.', 'error');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   const [activeSubTab, setActiveSubTab] = useState<'platform' | 'lock'>('platform');
   const [sensitivity, setSensitivity] = useState(65);
@@ -69,6 +122,65 @@ export default function SettingsPage() {
           Manage focus configurations, security protocols, and system-wide preferences.
         </p>
       </div>
+
+      {/* My Profile Card (Change Name & 10-digit Phone) */}
+      <form
+        onSubmit={handleSaveProfile}
+        className="bg-surface border border-outline-variant/40 rounded-2xl p-6 shadow-sm space-y-4"
+      >
+        <div className="flex items-center justify-between border-b border-outline-variant/20 pb-3">
+          <div>
+            <h3 className="text-base font-bold text-primary flex items-center gap-2">
+              <span className="material-symbols-outlined text-secondary">account_circle</span>
+              My Profile Details
+            </h3>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              Update your display name (shown on your Dashboard) and 10-digit phone number.
+            </p>
+          </div>
+          {profileEmail && (
+            <span className="text-[11px] font-mono bg-surface-container px-2.5 py-1 rounded-lg text-on-surface-variant border border-outline-variant/30">
+              {profileEmail}
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-on-surface">Full Name</label>
+            <input
+              type="text"
+              required
+              value={profileName}
+              onChange={e => setProfileName(e.target.value)}
+              placeholder="Your Name"
+              className="w-full px-3.5 py-2 rounded-xl bg-surface-container-low border border-outline-variant/40 text-xs font-semibold text-on-surface outline-none focus:border-primary"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-on-surface">10-Digit Phone Number</label>
+            <input
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              value={profilePhone}
+              onChange={e => setProfilePhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="9876543210"
+              className="w-full px-3.5 py-2 rounded-xl bg-surface-container-low border border-outline-variant/40 text-xs font-semibold text-on-surface outline-none focus:border-primary"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={isSavingProfile}
+            className="px-5 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl cursor-pointer transition-all disabled:opacity-50"
+          >
+            {isSavingProfile ? 'Saving...' : 'Save Profile Changes'}
+          </button>
+        </div>
+      </form>
 
       {/* Settings Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">

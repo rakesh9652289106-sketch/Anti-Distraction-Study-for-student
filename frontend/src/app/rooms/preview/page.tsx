@@ -447,7 +447,7 @@ function RoomPreviewContent() {
                         </td>
                         <td className="py-3 px-3 font-bold text-amber-600 dark:text-amber-400">{st.gazeAlerts ?? 0}</td>
                         <td className="py-3 px-3 font-bold text-red-600 dark:text-red-400">{st.tabSwitchCount ?? 0}</td>
-                        <td className="py-3 px-3 font-bold text-emerald-600 dark:text-emerald-400">{st.focusScore ?? 92}%</td>
+                        <td className="py-3 px-3 font-bold text-emerald-600 dark:text-emerald-400">{st.focusScore ?? 0}%</td>
                         <td className="py-3 px-3 text-on-surface-variant text-[11px]">
                           {new Date(st.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </td>

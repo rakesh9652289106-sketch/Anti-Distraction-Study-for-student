@@ -33,13 +33,22 @@ export default function DashboardPage() {
     { site: 'tiktok.com', time: '25 mins ago' }
   ]);
 
-  // Greeting based on current time
+  // Greeting based on current time & signed-in user's name
   const [greeting, setGreeting] = useState('Good day');
+  const [userName, setUserName] = useState('Scholar');
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting('Good morning');
     else if (hour < 18) setGreeting('Good afternoon');
     else setGreeting('Good evening');
+
+    const loadName = () => {
+      const stored = localStorage.getItem('student_user_name');
+      if (stored && stored.trim()) setUserName(stored.trim());
+    };
+    loadName();
+    window.addEventListener('focusflow-profile-updated', loadName);
+    return () => window.removeEventListener('focusflow-profile-updated', loadName);
   }, []);
 
   // Calculate daily goal progress
@@ -115,7 +124,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-            {greeting}, Alex! 🚀
+            {greeting}, {userName}! 🚀
           </h2>
         </div>
 

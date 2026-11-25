@@ -280,19 +280,202 @@ app.post('/api/student/google-auth', (req: Request, res: Response) => {
       name: String(name).trim() || String(googleName || 'Student'),
       email: cleanEmail,
       phone: cleanPhone,
-      focusScore: 90,
-      focusCoins: 120,
-      currentStreak: 1,
+      focusScore: 0,
+      focusCoins: 0,
+      currentStreak: 0,
       status: 'active',
       lastActive: 'Just now',
       chatMuted: false
     };
 
     db.users.push(newUser);
+    // Reset workspace stats to 0 for the newly registered user so they grow gradually
+    db.settings.focusScore = 0;
+    db.settings.focusCoins = 0;
+    db.settings.currentStreak = 0;
+    db.sessions = [];
+    db.analytics = [];
     writeDb(db);
     return res.status(201).json({ success: true, isNewUser: true, user: newUser });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Student Profile (Name & 10-digit Phone)
+app.patch('/api/student/profile', (req: Request, res: Response) => {
+  try {
+    const { userId, email, name, phone } = req.body;
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ error: 'Name is required.' });
+    }
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (phone !== undefined && phone !== '' && !/^\d{10}$/.test(cleanPhone)) {
+      return res.status(400).json({ error: 'Phone number must be exactly 10 digits.' });
+    }
+
+    const db = readDb();
+    if (!Array.isArray(db.users)) db.users = [];
+    const user = db.users.find(
+      u => (userId && u.id === userId) || (email && u.email.toLowerCase() === String(email).toLowerCase())
+    );
+    if (!user) {
+      return res.status(404).json({ error: 'Student account not found.' });
+    }
+
+    user.name = String(name).trim();
+    if (cleanPhone.length === 10) user.phone = cleanPhone;
+    writeDb(db);
+
+    res.json({ success: true, user });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Staff Profile (Name, 10-digit Phone & Department)
+app.patch('/api/staff/profile', (req: Request, res: Response) => {
+  try {
+    const { staffId, email, name, phone, department } = req.body;
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ error: 'Name is required.' });
+    }
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (phone !== undefined && phone !== '' && !/^\d{10}$/.test(cleanPhone)) {
+      return res.status(400).json({ error: 'Phone number must be exactly 10 digits.' });
+    }
+
+    const db = readDb();
+    if (!Array.isArray(db.staff)) db.staff = [];
+    const staffMember = db.staff.find(
+      s => (staffId && s.id === staffId) || (email && s.email.toLowerCase() === String(email).toLowerCase())
+    );
+    if (!staffMember) {
+      return res.status(404).json({ error: 'Staff account not found.' });
+    }
+
+    staffMember.name = String(name).trim();
+    if (cleanPhone.length === 10) staffMember.phone = cleanPhone;
+    if (department !== undefined) staffMember.department = String(department).trim() || 'General';
+
+    // Sync roomHead name if assigned to any rooms
+    (db.rooms || []).forEach(r => {
+      if (r.roomHead && r.roomHead.userId === staffMember.id) {
+        r.roomHead.name = staffMember.name;
+      }
+    });
+
+    writeDb(db);
+    const { password: _pw, ...safeStaff } = staffMember;
+    res.json({ success: true, staff: safeStaff });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff / Room Head: Broadcast Announcement to Room Chat & Alerts
+app.post('/api/staff/rooms/:roomId/announce', (req: Request, res: Response) => {
+  try {
+    const { roomId } = req.params;
+    const { staffName, message } = req.body;
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({ error: 'Announcement message is required.' });
+    }
+
+    const db = readDb();
+    const room = db.rooms.find(r => r.id === roomId);
+    if (!room) return res.status(404).json({ error: 'Room not found.' });
+
+    const newMsg = {
+      id: 'msg-' + Math.random().toString(36).substring(2, 9),
+      user: `${staffName || 'Room Head'} (Room Head)`,
+      text: String(message).trim(),
+      timestamp: new Date().toISOString()
+    };
+    if (!Array.isArray(room.messages)) room.messages = [];
+    room.messages.push(newMsg);
+    if (room.messages.length > 50) room.messages.shift();
+
+    if (!Array.isArray(db.alerts)) db.alerts = [];
+    db.alerts.unshift({
+      id: 'alert-' + Math.random().toString(36).substring(2, 9),
+      title: `Room Head Announcement (${room.name})`,
+      text: String(message).trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type: 'info',
+      region: room.name,
+      source: staffName || 'Room Head'
+    });
+
+    writeDb(db);
+    res.status(201).json({ success: true, message: newMsg });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff / Room Head: Nudge a student in a room
+app.post('/api/staff/rooms/:roomId/students/:userId/nudge', (req: Request, res: Response) => {
+  try {
+    const { roomId, userId } = req.params;
+    const { staffName } = req.body;
+    const db = readDb();
+    const room = db.rooms.find(r => r.id === roomId);
+    if (!room) return res.status(404).json({ error: 'Room not found.' });
+
+    const student = (room.joinedStudents || []).find(s => s.userId === userId);
+    if (!Array.isArray(db.alerts)) db.alerts = [];
+    db.alerts.unshift({
+      id: 'alert-' + Math.random().toString(36).substring(2, 9),
+      title: `Refocus Nudge: ${student?.name || userId}`,
+      text: `${staffName || 'Room Head'} sent a focus nudge in "${room.name}".`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type: 'warning',
+      region: room.name,
+      source: 'Room Head Nudge'
+    });
+    writeDb(db);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff / Room Head: Remove a student from a room
+app.post('/api/staff/rooms/:roomId/students/:userId/remove', (req: Request, res: Response) => {
+  try {
+    const { roomId, userId } = req.params;
+    const db = readDb();
+    const room = db.rooms.find(r => r.id === roomId);
+    if (!room) return res.status(404).json({ error: 'Room not found.' });
+
+    const before = (room.joinedStudents || []).length;
+    room.joinedStudents = (room.joinedStudents || []).filter(s => s.userId !== userId);
+    if (room.joinedStudents.length < before && room.activeUsers > 0) {
+      room.activeUsers -= 1;
+    }
+    writeDb(db);
+    res.json({ success: true, room });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff / Room Head: Update quick room settings (downloads toggle, chat moderation)
+app.patch('/api/staff/rooms/:roomId/settings', (req: Request, res: Response) => {
+  try {
+    const { roomId } = req.params;
+    const { allowMaterialDownloads, chatModerationFilter } = req.body;
+    const db = readDb();
+    const room = db.rooms.find(r => r.id === roomId);
+    if (!room) return res.status(404).json({ error: 'Room not found.' });
+
+    if (allowMaterialDownloads !== undefined) room.allowMaterialDownloads = Boolean(allowMaterialDownloads);
+    if (chatModerationFilter !== undefined) room.chatModerationFilter = Boolean(chatModerationFilter);
+    writeDb(db);
+    res.json({ success: true, room });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -1872,6 +2055,19 @@ app.post('/api/rooms', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Room name is required' });
     }
 
+    let validatedRoomHead: { userId: string; name: string; email: string } | null = null;
+    if (body.roomHead) {
+      const staffMatch = (db.staff || []).find(
+        s =>
+          (body.roomHead.userId && s.id === body.roomHead.userId) ||
+          (body.roomHead.email && s.email.toLowerCase() === String(body.roomHead.email).toLowerCase())
+      );
+      if (!staffMatch) {
+        return res.status(400).json({ error: 'Only Staff members can be assigned as Room Head.' });
+      }
+      validatedRoomHead = { userId: staffMatch.id, name: staffMatch.name, email: staffMatch.email };
+    }
+
     const newRoom: StudyRoom = {
       id: 'room-' + Math.random().toString(36).substring(2, 9),
       name: body.name,
@@ -1892,7 +2088,7 @@ app.post('/api/rooms', (req: Request, res: Response) => {
       coinsLimit: body.coinsLimit !== undefined ? parseInt(body.coinsLimit) : 0,
       bonusCoins: body.bonusCoins !== undefined ? parseInt(body.bonusCoins) : 0,
       allowMaterialDownloads: body.allowMaterialDownloads !== undefined ? Boolean(body.allowMaterialDownloads) : true,
-      roomHead: body.roomHead || null,
+      roomHead: validatedRoomHead,
       joinedStudents: []
     };
 
@@ -1949,7 +2145,21 @@ app.patch('/api/rooms', (req: Request, res: Response) => {
     if (body.coinsLimit !== undefined) room.coinsLimit = parseInt(body.coinsLimit) || 0;
     if (body.bonusCoins !== undefined) room.bonusCoins = parseInt(body.bonusCoins) || 0;
     if (body.allowMaterialDownloads !== undefined) room.allowMaterialDownloads = Boolean(body.allowMaterialDownloads);
-    if (body.roomHead !== undefined) room.roomHead = body.roomHead;
+    if (body.roomHead !== undefined) {
+      if (body.roomHead === null) {
+        room.roomHead = null;
+      } else {
+        const staffMatch = (db.staff || []).find(
+          s =>
+            (body.roomHead.userId && s.id === body.roomHead.userId) ||
+            (body.roomHead.email && s.email.toLowerCase() === String(body.roomHead.email).toLowerCase())
+        );
+        if (!staffMatch) {
+          return res.status(400).json({ error: 'Only Staff members can be assigned as Room Head.' });
+        }
+        room.roomHead = { userId: staffMatch.id, name: staffMatch.name, email: staffMatch.email };
+      }
+    }
 
     writeDb(db);
 
@@ -1989,7 +2199,7 @@ app.post('/api/rooms/:id/telemetry', (req: Request, res: Response) => {
         gazeStatus: gazeStatus || 'Focused',
         gazeAlerts: gazeAlerts ?? 0,
         tabSwitchCount: tabSwitchCount ?? 0,
-        focusScore: focusScore ?? db.settings.focusScore ?? 92,
+        focusScore: focusScore ?? db.settings.focusScore ?? 0,
         lastUpdated: new Date().toISOString()
       };
       room.joinedStudents.push(participant);
@@ -2191,13 +2401,33 @@ app.post('/api/sessions', (req: Request, res: Response) => {
     db.sessions.push(newSession);
 
     const coinReward = 10 + (body.distractionsBlocked || 0) * 2;
-    db.settings.focusCoins += coinReward;
+    db.settings.focusCoins = (db.settings.focusCoins || 0) + coinReward;
+
+    // Gradually increase focusScore from 0 as sessions are completed
+    const currentScore = db.settings.focusScore || 0;
+    const sessionScore = newSession.focusScore || 85;
+    db.settings.focusScore = currentScore === 0
+      ? Math.min(100, Math.round(sessionScore * 0.25))
+      : Math.min(100, Math.round((currentScore * 3 + sessionScore) / 4));
 
     const todayStr = new Date().toISOString().split('T')[0];
     const hasTodayAnalytics = db.analytics.some(a => a.date === todayStr);
     
     if (!hasTodayAnalytics) {
-      db.settings.currentStreak += 1;
+      db.settings.currentStreak = (db.settings.currentStreak || 0) + 1;
+    }
+
+    // Also update the active student's user record if userId/email provided
+    if (body.userId || body.userEmail) {
+      const stUser = (db.users || []).find(
+        u => (body.userId && u.id === body.userId) || (body.userEmail && u.email.toLowerCase() === String(body.userEmail).toLowerCase())
+      );
+      if (stUser) {
+        stUser.focusCoins = db.settings.focusCoins;
+        stUser.focusScore = db.settings.focusScore;
+        stUser.currentStreak = db.settings.currentStreak;
+        stUser.lastActive = 'Just now';
+      }
     }
 
     const dailyLog = db.analytics.find(a => a.date === todayStr);
@@ -2442,8 +2672,29 @@ app.delete('/api/timetable/:id', (req: Request, res: Response) => {
 // Tasks API Endpoints
 // -------------------------------------------------------------
 
+const TASK_AUTO_DELETE_MS = 10 * 60 * 1000; // 10 minutes
+
+function pruneExpiredCompletedTasks(db: ReturnType<typeof readDb>): boolean {
+  if (!Array.isArray(db.tasks)) return false;
+  const now = Date.now();
+  const before = db.tasks.length;
+  db.tasks = db.tasks.filter(t => {
+    if (!t.completed) return true;
+    if (!t.completedAt) {
+      // Backfill completedAt for legacy completed tasks so they also expire in 10 mins
+      t.completedAt = new Date(now).toISOString();
+      return true;
+    }
+    return now - new Date(t.completedAt).getTime() < TASK_AUTO_DELETE_MS;
+  });
+  return db.tasks.length !== before;
+}
+
 app.get('/api/tasks', (req: Request, res: Response) => {
   const db = readDb();
+  if (pruneExpiredCompletedTasks(db)) {
+    writeDb(db);
+  }
   res.json(db.tasks);
 });
 
@@ -2487,7 +2738,10 @@ app.patch('/api/tasks/:id', (req: Request, res: Response) => {
     const task = db.tasks[taskIndex];
     if (body.title !== undefined) task.title = body.title;
     if (body.subject !== undefined) task.subject = body.subject;
-    if (body.completed !== undefined) task.completed = body.completed;
+    if (body.completed !== undefined) {
+      task.completed = body.completed;
+      task.completedAt = body.completed ? new Date().toISOString() : null;
+    }
     if (body.estimatedPomodoros !== undefined) task.estimatedPomodoros = body.estimatedPomodoros;
     if (body.actualPomodoros !== undefined) task.actualPomodoros = body.actualPomodoros;
 

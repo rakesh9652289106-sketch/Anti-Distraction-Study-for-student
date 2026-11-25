@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   completed BOOLEAN NOT NULL DEFAULT FALSE,
+  completed_at TIMESTAMPTZ,
   subject TEXT NOT NULL,
   estimated_pomodoros INTEGER NOT NULL DEFAULT 1,
   actual_pomodoros INTEGER NOT NULL DEFAULT 0,

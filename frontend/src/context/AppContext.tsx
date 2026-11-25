@@ -79,11 +79,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     studyMode: false,
     distractionShield: true,
     blockedWebsites: [],
-    focusScore: 92,
+    focusScore: 0,
     pomodoroWorkTime: 25,
     pomodoroBreakTime: 5,
-    currentStreak: 5,
-    focusCoins: 120,
+    currentStreak: 0,
+    focusCoins: 0,
     cameraEnabled: true,
     aiConfig: {
       personality: 'academic',
@@ -292,6 +292,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            userId: localStorage.getItem('student_user_id') || '',
+            userEmail: localStorage.getItem('student_user_email') || '',
             durationMinutes: settings.pomodoroWorkTime,
             taskTitle: activeTaskTitle,
             distractionsBlocked: distractionsBlockedThisSession,
@@ -307,7 +309,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setTimerMinutes(settings.pomodoroBreakTime);
           setTimerSeconds(0);
           setDistractionsBlockedThisSession(0);
-          alert(`Pomodoro completed! You earned study coins! Starting a ${settings.pomodoroBreakTime}-minute break.`);
+          showNotification(`Pomodoro completed! You earned study coins! Starting a ${settings.pomodoroBreakTime}-minute break.`, 'success');
         }
       } catch (err) {
         console.error('Failed to log completed session:', err);
@@ -404,6 +406,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const incrementDistractionShield = () => {
     setDistractionsBlockedThisSession(prev => prev + 1);
   };
+
+  // Auto-remove completed tasks 10 minutes after completion
+  useEffect(() => {
+    const hasCompleted = tasks.some(t => t.completed);
+    if (!hasCompleted) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const hasExpired = tasks.some(
+        t => t.completed && t.completedAt && now - new Date(t.completedAt).getTime() >= 10 * 60 * 1000
+      );
+      if (hasExpired) {
+        fetchData();
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [tasks]);
 
   // Task methods
   const addTask = async (title: string, subject: string, estimatedPomodoros = 1) => {

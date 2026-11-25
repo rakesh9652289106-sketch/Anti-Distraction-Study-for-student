@@ -8,7 +8,12 @@ import { useApp } from '@/context/AppContext';
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { settings, startTimer, isTimerRunning, pauseTimer } = useApp();
+  const { settings, sessions, startTimer, isTimerRunning, pauseTimer } = useApp();
+
+  const totalXp = (sessions?.length || 0) * 50 + (settings?.focusCoins || 0);
+  const currentLevel = Math.floor(totalXp / 250) + 1;
+  const xpInLevel = totalXp % 250;
+  const xpPercent = Math.min(100, Math.round((xpInLevel / 250) * 100));
 
   const handleLogout = () => {
     sessionStorage.removeItem('student_authenticated');
@@ -78,15 +83,18 @@ export default function Sidebar() {
             {settings.currentStreak} Day Streak
           </span>
           <span className="text-[10px] font-bold text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">
-            Level 3
+            Level {currentLevel}
           </span>
         </div>
         <div className="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
-          <div className="bg-gradient-to-r from-amber-500 to-secondary h-full w-3/4 rounded-full"></div>
+          <div
+            className="bg-gradient-to-r from-amber-500 to-secondary h-full rounded-full transition-all duration-500"
+            style={{ width: `${xpPercent}%` }}
+          ></div>
         </div>
         <div className="flex justify-between items-center mt-1 text-[9.5px] text-on-surface font-bold">
-          <span>750 / 1000 XP</span>
-          <span>Next: Focus Master</span>
+          <span>{xpInLevel} / 250 XP</span>
+          <span>Next: Level {currentLevel + 1}</span>
         </div>
       </div>
 
