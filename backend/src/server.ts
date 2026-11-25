@@ -186,11 +186,12 @@ app.post('/api/student/google-auth', (req: Request, res: Response) => {
       return res.json({ success: true, isNewUser: false, user });
     }
 
-    // First-time user: require Name and Phone Number
-    if (!name || !String(name).trim() || !phone || !String(phone).trim()) {
+    // First-time user: require Name and 10-digit Phone Number
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (!name || !String(name).trim() || !/^\d{10}$/.test(cleanPhone)) {
       return res.status(400).json({
         needsProfile: true,
-        error: 'First-time Google sign-in requires your Name and Phone Number.'
+        error: 'First-time Google sign-in requires your Name and a 10-digit Phone Number.'
       });
     }
 
@@ -198,7 +199,7 @@ app.post('/api/student/google-auth', (req: Request, res: Response) => {
       id: 'u-' + Math.random().toString(36).substring(2, 9),
       name: String(name).trim() || String(googleName || 'Student'),
       email: cleanEmail,
-      phone: String(phone).trim(),
+      phone: cleanPhone,
       focusScore: 90,
       focusCoins: 120,
       currentStreak: 1,

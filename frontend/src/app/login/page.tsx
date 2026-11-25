@@ -72,13 +72,15 @@ export default function LoginPage() {
         setError('Please enter your Full Name before verifying with Google.');
         return;
       }
-      if (!studentPhone.trim() || studentPhone.trim().length < 7) {
-        setError('Please enter a valid Phone Number before verifying with Google.');
+      if (!/^\d{10}$/.test(studentPhone.trim())) {
+        setError('Please enter a valid 10-digit Phone Number (digits only) before verifying with Google.');
         return;
       }
     }
 
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    const clientId =
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+      '1085021351863-fqhvvbqtq50chfcev030kie5p4jmsrsg.apps.googleusercontent.com';
     if (!clientId) {
       setError('Google OAuth Client ID (NEXT_PUBLIC_GOOGLE_CLIENT_ID) is not configured yet. Follow the Google setup steps to connect your Google Client ID.');
       return;
@@ -380,10 +382,13 @@ export default function LoginPage() {
                         <input
                           id="studentPhone"
                           type="tel"
+                          inputMode="numeric"
+                          pattern="[0-9]{10}"
+                          maxLength={10}
                           required
                           value={studentPhone}
-                          onChange={e => setStudentPhone(e.target.value)}
-                          placeholder="+91 98765 43210"
+                          onChange={e => setStudentPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          placeholder="9876543210"
                           className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl text-xs text-slate-900 placeholder:text-slate-400 font-medium outline-none transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
                         />
                       </div>

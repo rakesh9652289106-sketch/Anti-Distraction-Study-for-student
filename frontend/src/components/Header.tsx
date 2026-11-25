@@ -93,8 +93,8 @@ export default function Header() {
             {formattedTime}
           </span>
           <span className="text-outline-variant/60 hidden md:inline">|</span>
-          <span className="hidden md:flex items-center gap-1.5 text-xs text-slate-900 dark:text-slate-100 max-w-[260px] truncate">
-            <span className="text-slate-600 dark:text-slate-400 font-semibold">Focus:</span>
+          <span className="hidden md:flex items-center gap-1.5 text-xs text-on-surface max-w-[260px] truncate">
+            <span className="text-on-surface-variant font-semibold">Focus:</span>
             <strong className="text-primary font-bold truncate">
               {activeTaskTitle || 'Autonomous Study'}
             </strong>

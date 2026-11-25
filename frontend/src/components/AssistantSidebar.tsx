@@ -103,11 +103,11 @@ export default function AssistantSidebar({ isOpen, onClose }: AssistantSidebarPr
         <div className="glass-panel rounded-xl p-3 border border-outline-variant/40 bg-surface-container/60 shadow-xs">
           <div className="flex items-center gap-2 mb-2">
             <div className={`w-2.5 h-2.5 rounded-full ${isTimerRunning ? 'bg-secondary animate-pulse' : 'bg-primary'}`}></div>
-            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+            <span className="text-xs font-bold text-on-surface">
               Status: {isTimerRunning ? 'In Deep Focus' : 'Ready to Start'}
             </span>
           </div>
-          <p className="text-[11.5px] font-medium text-slate-700 dark:text-slate-300 mb-3 leading-relaxed">
+          <p className="text-[11.5px] font-medium text-on-surface-variant mb-3 leading-relaxed">
             {isTimerRunning
               ? `Distraction level: Low. We have blocked ${distractionsBlockedThisSession} attempts during this study block.`
               : 'Get ready for your session. Turn on Study Mode to shield yourself from internet distractions.'}
@@ -116,7 +116,7 @@ export default function AssistantSidebar({ isOpen, onClose }: AssistantSidebarPr
             <button
               onClick={reduceSession}
               type="button"
-              className="flex-1 py-1.5 px-2 border border-outline-variant hover:border-outline rounded-lg font-bold text-xs text-slate-900 dark:text-slate-100 bg-surface hover:bg-surface-variant transition-all cursor-pointer active:scale-98 text-center"
+              className="flex-1 py-1.5 px-2 border border-outline-variant hover:border-outline rounded-lg font-bold text-xs text-on-surface bg-surface hover:bg-surface-variant transition-all cursor-pointer active:scale-98 text-center"
               title="Reduce focus session by 10 minutes"
             >
               Reduce (-10m)
@@ -124,7 +124,7 @@ export default function AssistantSidebar({ isOpen, onClose }: AssistantSidebarPr
             <button
               onClick={extendSession}
               type="button"
-              className="flex-1 py-1.5 px-2 border border-outline-variant hover:border-outline rounded-lg font-bold text-xs text-slate-900 dark:text-slate-100 bg-surface hover:bg-surface-variant transition-all cursor-pointer active:scale-98 text-center"
+              className="flex-1 py-1.5 px-2 border border-outline-variant hover:border-outline rounded-lg font-bold text-xs text-on-surface bg-surface hover:bg-surface-variant transition-all cursor-pointer active:scale-98 text-center"
               title="Extend focus session by 10 minutes"
             >
               Extend (+10m)
@@ -145,7 +145,7 @@ export default function AssistantSidebar({ isOpen, onClose }: AssistantSidebarPr
             className={`flex-1 pb-2 font-bold text-xs text-center transition-all cursor-pointer ${
               activeTab === 'ai'
                 ? 'text-primary border-b-2 border-primary'
-                : 'text-slate-600 dark:text-slate-400 hover:text-primary'
+                : 'text-on-surface-variant hover:text-primary'
             }`}
           >
             AI Study Companion
@@ -156,7 +156,7 @@ export default function AssistantSidebar({ isOpen, onClose }: AssistantSidebarPr
             className={`flex-1 pb-2 font-bold text-xs text-center transition-all cursor-pointer ${
               activeTab === 'notes'
                 ? 'text-primary border-b-2 border-primary'
-                : 'text-slate-600 dark:text-slate-400 hover:text-primary'
+                : 'text-on-surface-variant hover:text-primary'
             }`}
           >
             Quick Scratchpad
@@ -174,14 +174,14 @@ export default function AssistantSidebar({ isOpen, onClose }: AssistantSidebarPr
                     key={index}
                     className={`flex flex-col max-w-[88%] rounded-xl p-2.5 text-xs font-medium ${
                       msg.sender === 'user'
-                        ? 'bg-primary text-white ml-auto rounded-tr-none'
-                        : 'bg-surface-container-high text-slate-900 dark:text-slate-100 mr-auto rounded-tl-none border border-outline-variant/30'
+                        ? 'bg-primary text-on-primary ml-auto rounded-tr-none'
+                        : 'bg-surface-container-high text-on-surface mr-auto rounded-tl-none border border-outline-variant/30'
                     }`}
                   >
                     <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                     <span
                       className={`text-[9px] mt-1 self-end font-bold ${
-                        msg.sender === 'user' ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'
+                        msg.sender === 'user' ? 'opacity-80' : 'text-on-surface-variant'
                       }`}
                     >
                       {msg.time}
@@ -197,11 +197,11 @@ export default function AssistantSidebar({ isOpen, onClose }: AssistantSidebarPr
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
                   placeholder="Ask focus tips, math help..."
-                  className="flex-1 px-3 py-2 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-xs outline-none bg-surface text-slate-900 dark:text-slate-100"
+                  className="flex-1 px-3 py-2 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-xs outline-none bg-surface text-on-surface"
                 />
                 <button
                   type="submit"
-                  className="bg-primary hover:bg-primary/95 text-white px-3 py-2 rounded-lg flex items-center justify-center cursor-pointer transition-colors shadow-xs active:scale-95"
+                  className="bg-primary hover:bg-primary/95 text-on-primary px-3 py-2 rounded-lg flex items-center justify-center cursor-pointer transition-colors shadow-xs active:scale-95"
                 >
                   <span className="material-symbols-outlined text-[17px]">send</span>
                 </button>

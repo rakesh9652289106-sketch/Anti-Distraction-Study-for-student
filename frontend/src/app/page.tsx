@@ -110,7 +110,7 @@ export default function DashboardPage() {
             <span className="text-xs uppercase font-bold tracking-widest text-secondary bg-secondary/10 px-2.5 py-0.5 rounded-full border border-secondary/20">
               Flow State Active
             </span>
-            <span className="text-xs text-slate-800 dark:text-slate-200 font-bold">
+            <span className="text-xs text-on-surface-variant font-bold">
               {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
             </span>
           </div>
@@ -125,7 +125,7 @@ export default function DashboardPage() {
             <span className="material-symbols-outlined text-sm">local_fire_department</span>
             <span>{settings.currentStreak} Day Streak</span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low border border-outline-variant/40 rounded-full text-xs font-bold text-slate-900 dark:text-slate-100 shadow-2xs">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low border border-outline-variant/40 rounded-full text-xs font-bold text-on-surface shadow-2xs">
             <span className="material-symbols-outlined text-sm text-secondary">radar</span>
             <span>Focus Score: {settings.focusScore}%</span>
           </div>
@@ -237,7 +237,7 @@ export default function DashboardPage() {
             <span className="font-bold text-5xl sm:text-6xl text-primary font-mono tracking-tight my-1">
               {timerMinutes.toString().padStart(2, '0')}:{timerSeconds.toString().padStart(2, '0')}
             </span>
-            <span className="font-bold text-xs text-slate-900 dark:text-slate-100 flex items-center gap-1.5 mt-1">
+            <span className="font-bold text-xs text-on-surface flex items-center gap-1.5 mt-1">
               <span className={`w-2 h-2 rounded-full inline-block ${
                 isTimerRunning ? 'bg-secondary animate-pulse' : 'bg-slate-400'
               }`}></span>
@@ -435,7 +435,7 @@ export default function DashboardPage() {
             <div className="flex justify-between items-end mb-2">
               <div>
                 <h3 className="font-bold text-sm text-primary">Daily Deep Work Target</h3>
-                <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 mt-0.5">
+                <p className="text-xs font-semibold text-on-surface mt-0.5">
                   {totalMinutesToday}m of {dailyGoalMinutes}m completed
                 </p>
               </div>
@@ -450,7 +450,7 @@ export default function DashboardPage() {
                 <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
               </div>
             </div>
-            <p className="text-[10.5px] font-bold text-slate-800 dark:text-slate-200 text-right">
+            <p className="text-[10.5px] font-bold text-on-surface-variant text-right">
               {progressPercent >= 100 ? '🎉 Daily goal achieved!' : `${dailyGoalMinutes - totalMinutesToday} mins left to goal`}
             </p>
           </div>

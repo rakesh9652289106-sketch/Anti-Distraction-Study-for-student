@@ -1204,12 +1204,12 @@ export default function AttentionCamera() {
 
   if (settings?.cameraEnabled === false) {
     return (
-      <div className="bg-slate-50 dark:bg-slate-900 border border-amber-500/30 rounded-xl p-4 text-center space-y-2.5">
+      <div className="bg-surface-container-low border border-amber-500/30 rounded-xl p-4 text-center space-y-2.5">
         <div className="flex items-center justify-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold text-xs uppercase tracking-wide">
           <span className="material-symbols-outlined text-lg">videocam_off</span>
           Webcam Disabled by Admin
         </div>
-        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+        <p className="text-xs text-on-surface-variant leading-relaxed">
           The administrator has turned off webcam monitoring system-wide. Camera features and gaze tracking are disabled.
         </p>
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-[11px] font-medium text-amber-700 dark:text-amber-300">
@@ -1222,12 +1222,12 @@ export default function AttentionCamera() {
 
   if (!shouldBeActive) {
     return (
-      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-xl p-3 text-center space-y-2">
-        <div className="flex items-center justify-center gap-1.5 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wide">
+      <div className="bg-surface-container-low border border-outline-variant/40 rounded-xl p-3 text-center space-y-2">
+        <div className="flex items-center justify-center gap-1.5 text-on-surface font-bold text-xs uppercase tracking-wide">
           <span className="material-symbols-outlined text-secondary text-lg">videocam</span>
           AI Attention Guard
         </div>
-        <p className="text-[11px] text-on-surface-variant/80">
+        <p className="text-[11px] text-on-surface-variant">
           Monitors eye blink rate, gaze direction & student focus in real-time.
         </p>
 

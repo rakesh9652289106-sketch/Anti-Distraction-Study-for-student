@@ -84,7 +84,7 @@ export default function Sidebar() {
         <div className="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
           <div className="bg-gradient-to-r from-amber-500 to-secondary h-full w-3/4 rounded-full"></div>
         </div>
-        <div className="flex justify-between items-center mt-1 text-[9.5px] text-slate-800 dark:text-slate-200 font-bold">
+        <div className="flex justify-between items-center mt-1 text-[9.5px] text-on-surface font-bold">
           <span>750 / 1000 XP</span>
           <span>Next: Focus Master</span>
         </div>
@@ -92,7 +92,7 @@ export default function Sidebar() {
 
       {/* Primary Navigation */}
       <div className="flex-1 flex flex-col gap-0.5 mb-4">
-        <span className="text-[10px] uppercase font-black text-slate-900 dark:text-slate-200 px-3 mb-1 tracking-wider">
+        <span className="text-[10px] uppercase font-black text-on-surface-variant px-3 mb-1 tracking-wider">
           Workspace
         </span>
         {navItems.map(item => {
@@ -104,11 +104,11 @@ export default function Sidebar() {
               className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all active:scale-98 text-xs font-bold ${
                 isActive
                   ? 'bg-secondary/15 text-secondary font-black border border-secondary/30 shadow-2xs'
-                  : 'text-slate-900 dark:text-slate-100 hover:text-primary hover:bg-surface-container'
+                  : 'text-on-surface hover:text-primary hover:bg-surface-container'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className={`material-symbols-outlined text-[19px] ${isActive ? 'text-secondary' : 'text-slate-700 dark:text-slate-300'}`}>
+                <span className={`material-symbols-outlined text-[19px] ${isActive ? 'text-secondary' : 'text-on-surface-variant'}`}>
                   {item.icon}
                 </span>
                 <span>{item.name}</span>
@@ -118,7 +118,7 @@ export default function Sidebar() {
                   {item.badge}
                 </span>
               ) : item.shortcut ? (
-                <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 hidden xl:inline">
+                <span className="text-[10px] font-mono font-bold text-on-surface-variant/70 hidden xl:inline">
                   {item.shortcut}
                 </span>
               ) : null}
@@ -127,7 +127,7 @@ export default function Sidebar() {
         })}
 
         {/* System Control Navigation Section */}
-        <span className="text-[10px] uppercase font-black text-slate-900 dark:text-slate-200 px-3 mt-4 mb-1 tracking-wider">
+        <span className="text-[10px] uppercase font-black text-on-surface-variant px-3 mt-4 mb-1 tracking-wider">
           Admin Portal
         </span>
         {adminItems.map(item => {
@@ -139,10 +139,10 @@ export default function Sidebar() {
               className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all active:scale-98 text-xs font-bold ${
                 isActive
                   ? 'bg-secondary/15 text-secondary font-black border border-secondary/30'
-                  : 'text-slate-900 dark:text-slate-100 hover:text-primary hover:bg-surface-container'
+                  : 'text-on-surface hover:text-primary hover:bg-surface-container'
               }`}
             >
-              <span className={`material-symbols-outlined text-[19px] ${isActive ? 'text-secondary' : 'text-slate-700 dark:text-slate-300'}`}>
+              <span className={`material-symbols-outlined text-[19px] ${isActive ? 'text-secondary' : 'text-on-surface-variant'}`}>
                 {item.icon}
               </span>
               <span>{item.name}</span>
