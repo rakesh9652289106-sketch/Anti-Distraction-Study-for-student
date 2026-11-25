@@ -26,10 +26,10 @@ export default function Sidebar() {
   ];
 
   return (
-    <nav className="fixed left-0 top-0 h-screen w-64 flex flex-col py-5 px-3 bg-white/70 dark:bg-[#080d19]/80 backdrop-blur-2xl border-r border-outline-variant/20 shadow-xs z-50 overflow-y-auto">
+    <nav className="fixed left-0 top-0 h-screen w-64 flex flex-col py-5 px-3 bg-surface/85 backdrop-blur-2xl border-r border-outline-variant/30 text-on-surface shadow-xs z-50 overflow-y-auto">
       {/* Brand Header */}
       <div className="flex items-center gap-3 mb-6 px-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-secondary to-emerald-400 text-white flex items-center justify-center shadow-md shadow-secondary/20">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-secondary to-secondary/60 text-on-secondary flex items-center justify-center shadow-md shadow-secondary/20">
           <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
             psychology
           </span>
@@ -39,7 +39,7 @@ export default function Sidebar() {
             {settings?.uiConfig?.brandingName || 'FocusFlow'}
           </h1>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
             <span className="text-[11px] font-semibold text-secondary tracking-wide uppercase">AI Study Guard</span>
           </div>
         </div>
@@ -52,7 +52,7 @@ export default function Sidebar() {
         className={`w-full font-bold text-xs py-2.5 px-3 rounded-xl mb-5 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-98 ${
           isTimerRunning
             ? 'bg-amber-500/15 border border-amber-500/30 text-amber-500 hover:bg-amber-500/25 shadow-amber-500/10'
-            : 'bg-primary hover:bg-primary/90 text-white shadow-primary/20'
+            : 'bg-primary hover:bg-primary/90 text-on-primary shadow-primary/20'
         }`}
       >
         <span className="material-symbols-outlined text-base">
@@ -75,9 +75,9 @@ export default function Sidebar() {
           </span>
         </div>
         <div className="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
-          <div className="bg-gradient-to-r from-amber-500 to-emerald-500 h-full w-3/4 rounded-full"></div>
+          <div className="bg-gradient-to-r from-amber-500 to-secondary h-full w-3/4 rounded-full"></div>
         </div>
-        <div className="flex justify-between items-center mt-1 text-[9px] text-on-surface-variant/70">
+        <div className="flex justify-between items-center mt-1 text-[9.5px] text-slate-800 dark:text-slate-200 font-bold">
           <span>750 / 1000 XP</span>
           <span>Next: Focus Master</span>
         </div>
@@ -85,7 +85,7 @@ export default function Sidebar() {
 
       {/* Primary Navigation */}
       <div className="flex-1 flex flex-col gap-0.5 mb-4">
-        <span className="text-[10px] uppercase font-bold text-on-surface-variant/50 px-3 mb-1 tracking-wider">
+        <span className="text-[10px] uppercase font-black text-slate-900 dark:text-slate-200 px-3 mb-1 tracking-wider">
           Workspace
         </span>
         {navItems.map(item => {
@@ -94,24 +94,24 @@ export default function Sidebar() {
             <Link
               key={item.path}
               href={item.path}
-              className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all active:scale-98 text-xs font-semibold ${
+              className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all active:scale-98 text-xs font-bold ${
                 isActive
-                  ? 'bg-secondary/10 text-secondary font-bold border border-secondary/25 shadow-2xs'
-                  : 'text-on-surface-variant hover:text-primary hover:bg-surface-container-low/60'
+                  ? 'bg-secondary/15 text-secondary font-black border border-secondary/30 shadow-2xs'
+                  : 'text-slate-900 dark:text-slate-100 hover:text-primary hover:bg-surface-container'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className={`material-symbols-outlined text-[19px] ${isActive ? 'text-secondary' : 'text-outline'}`}>
+                <span className={`material-symbols-outlined text-[19px] ${isActive ? 'text-secondary' : 'text-slate-700 dark:text-slate-300'}`}>
                   {item.icon}
                 </span>
                 <span>{item.name}</span>
               </div>
               {item.badge ? (
-                <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-600 px-1.5 py-0.5 rounded-full animate-pulse">
+                <span className="text-[9px] font-black uppercase tracking-wider bg-secondary/20 text-secondary px-1.5 py-0.5 rounded-full animate-pulse">
                   {item.badge}
                 </span>
               ) : item.shortcut ? (
-                <span className="text-[10px] font-mono text-outline-variant/60 hidden xl:inline">
+                <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 hidden xl:inline">
                   {item.shortcut}
                 </span>
               ) : null}
@@ -120,7 +120,7 @@ export default function Sidebar() {
         })}
 
         {/* System Control Navigation Section */}
-        <span className="text-[10px] uppercase font-bold text-on-surface-variant/50 px-3 mt-4 mb-1 tracking-wider">
+        <span className="text-[10px] uppercase font-black text-slate-900 dark:text-slate-200 px-3 mt-4 mb-1 tracking-wider">
           Admin Portal
         </span>
         {adminItems.map(item => {
@@ -129,13 +129,13 @@ export default function Sidebar() {
             <Link
               key={item.path}
               href={item.path}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all active:scale-98 text-xs font-semibold ${
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all active:scale-98 text-xs font-bold ${
                 isActive
-                  ? 'bg-secondary/10 text-secondary font-bold border border-secondary/25'
-                  : 'text-on-surface-variant hover:text-primary hover:bg-surface-container-low/60'
+                  ? 'bg-secondary/15 text-secondary font-black border border-secondary/30'
+                  : 'text-slate-900 dark:text-slate-100 hover:text-primary hover:bg-surface-container'
               }`}
             >
-              <span className={`material-symbols-outlined text-[19px] ${isActive ? 'text-secondary' : 'text-outline'}`}>
+              <span className={`material-symbols-outlined text-[19px] ${isActive ? 'text-secondary' : 'text-slate-700 dark:text-slate-300'}`}>
                 {item.icon}
               </span>
               <span>{item.name}</span>
@@ -147,7 +147,7 @@ export default function Sidebar() {
       {/* Footer System Status */}
       <div className="pt-3 border-t border-outline-variant/20 px-2 flex items-center justify-between text-[11px] text-on-surface-variant/60">
         <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
           FocusFlow v2.5 Pro
         </span>
         <button

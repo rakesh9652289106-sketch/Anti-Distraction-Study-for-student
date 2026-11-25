@@ -79,8 +79,8 @@ export default function SettingsPage() {
             onClick={() => setActiveSubTab('platform')}
             className={`w-full flex items-center justify-between px-md py-sm rounded-xl text-left font-bold transition-all border ${
               activeSubTab === 'platform'
-                ? 'bg-white border-outline-variant/30 text-primary shadow-sm'
-                : 'bg-transparent border-transparent text-on-surface-variant hover:bg-surface-container-low/50'
+                ? 'bg-surface border-outline-variant text-primary shadow-sm'
+                : 'bg-transparent border-transparent text-on-surface-variant hover:bg-surface-container-low'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -96,8 +96,8 @@ export default function SettingsPage() {
             onClick={() => setActiveSubTab('lock')}
             className={`w-full flex items-center justify-between px-md py-sm rounded-xl text-left font-bold transition-all border ${
               activeSubTab === 'lock'
-                ? 'bg-white border-outline-variant/30 text-primary shadow-sm'
-                : 'bg-transparent border-transparent text-on-surface-variant hover:bg-surface-container-low/50'
+                ? 'bg-surface border-outline-variant text-primary shadow-sm'
+                : 'bg-transparent border-transparent text-on-surface-variant hover:bg-surface-container-low'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -115,9 +115,9 @@ export default function SettingsPage() {
           
           {/* Sub-tab 1: Platform Configurations */}
           {activeSubTab === 'platform' && (
-            <section className="bg-white rounded-2xl border border-outline-variant/30 p-md lg:p-lg space-y-lg shadow-sm">
+            <section className="bg-surface rounded-2xl border border-outline-variant p-md lg:p-lg space-y-lg shadow-sm">
               <div className="flex items-center gap-sm border-b border-outline-variant/10 pb-md">
-                <div className="p-2.5 bg-sky-50 text-sky-600 rounded-lg">
+                <div className="p-2.5 bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 rounded-lg">
                   <span className="material-symbols-outlined">tune</span>
                 </div>
                 <div>
@@ -131,7 +131,7 @@ export default function SettingsPage() {
                 <div className="space-y-sm">
                   <div className="flex justify-between items-center">
                     <label className="block font-bold text-label-md text-primary">Global Focus Score Sensitivity</label>
-                    <span className="text-xs text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded font-mono">
+                    <span className="text-xs text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded font-mono border border-outline-variant/30">
                       Moderate (0.{sensitivity})
                     </span>
                   </div>
@@ -142,9 +142,9 @@ export default function SettingsPage() {
                     max="100"
                     value={sensitivity}
                     onChange={e => setSensitivity(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                    className="w-full h-2 bg-surface-variant rounded-lg appearance-none cursor-pointer accent-primary"
                   />
-                  <div className="flex justify-between text-xs text-slate-400 font-semibold">
+                  <div className="flex justify-between text-xs text-on-surface-variant/70 font-semibold">
                     <span>Forgiving</span>
                     <span>Strict</span>
                   </div>
@@ -158,7 +158,7 @@ export default function SettingsPage() {
                     <select
                       value={settings.pomodoroWorkTime}
                       onChange={e => handlePomodoroTimeChange(Number(e.target.value))}
-                      className="w-full px-sm py-2 border border-outline-variant/50 rounded-lg text-label-sm outline-none bg-surface-variant/20"
+                      className="w-full px-sm py-2 border border-outline-variant rounded-lg text-label-sm outline-none bg-surface-container-low text-on-surface cursor-pointer"
                     >
                       <option value="15">15 Minutes</option>
                       <option value="25">25 Minutes</option>
@@ -173,7 +173,7 @@ export default function SettingsPage() {
                     <select
                       value={settings.pomodoroBreakTime}
                       onChange={e => handleBreakTimeChange(Number(e.target.value))}
-                      className="w-full px-sm py-2 border border-outline-variant/50 rounded-lg text-label-sm outline-none bg-surface-variant/20"
+                      className="w-full px-sm py-2 border border-outline-variant rounded-lg text-label-sm outline-none bg-surface-container-low text-on-surface cursor-pointer"
                     >
                       <option value="5">5 Minutes</option>
                       <option value="10">10 Minutes</option>
@@ -191,12 +191,12 @@ export default function SettingsPage() {
                     defaultValue={settings.blockedWebsites.join(', ')}
                     onBlur={e => handleBlocklistChange(e.target.value)}
                     placeholder="instagram.com, facebook.com..."
-                    className="w-full px-sm py-2 border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-label-sm outline-none bg-surface/30 font-mono"
+                    className="w-full px-sm py-2 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-label-sm outline-none bg-surface-container-low text-on-surface font-mono"
                   />
                 </div>
 
                 {/* Setting: Experimental Features Toggle */}
-                <label className="flex items-start bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-outline-variant/20 cursor-pointer select-none">
+                <label className="flex items-start bg-surface-container-low p-4 rounded-xl border border-outline-variant cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={experimentalFeatures}
@@ -213,7 +213,7 @@ export default function SettingsPage() {
                 <div className="pt-md border-t border-outline-variant/10 flex justify-end gap-sm">
                   <button
                     type="button"
-                    className="px-md py-2 border border-outline-variant rounded-lg text-label-sm font-semibold hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="px-md py-2 border border-outline-variant rounded-lg text-label-sm font-semibold hover:bg-surface-container transition-colors cursor-pointer"
                   >
                     Discard Changes
                   </button>
@@ -233,9 +233,9 @@ export default function SettingsPage() {
             <div className="space-y-md">
               
               {/* Lockdown settings pane */}
-              <section className="bg-white rounded-2xl border border-outline-variant/30 p-md lg:p-lg space-y-md shadow-sm">
+              <section className="bg-surface rounded-2xl border border-outline-variant p-md lg:p-lg space-y-md shadow-sm">
                 <div className="flex items-center gap-sm border-b border-outline-variant/10 pb-md">
-                  <div className="p-2.5 bg-red-50 text-red-600 rounded-lg">
+                  <div className="p-2.5 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-lg">
                     <span className="material-symbols-outlined">security</span>
                   </div>
                   <div>
@@ -245,17 +245,17 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Status bar warnings */}
-                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200/50 rounded-xl p-md flex items-start gap-sm">
+                <div className="bg-red-50 dark:bg-red-950/30 border border-red-200/60 dark:border-red-900/50 rounded-xl p-md flex items-start gap-sm">
                   <span className="material-symbols-outlined text-red-600 font-bold">warning</span>
                   <div className="text-label-sm">
-                    <strong className="text-red-700 block font-bold">Lockdown enforcement enabled!</strong>
-                    <span className="text-red-600/90 font-medium">Once initiated, exiting settings or disabling blocks will require your Admin PIN ({pinValue}).</span>
+                    <strong className="text-red-700 dark:text-red-300 block font-bold">Lockdown enforcement enabled!</strong>
+                    <span className="text-red-600/90 dark:text-red-400 font-medium">Once initiated, exiting settings or disabling blocks will require your Admin PIN ({pinValue}).</span>
                   </div>
                 </div>
 
                 {/* Lock Modifier Items list */}
                 <div className="space-y-sm pt-sm">
-                  <div className="flex justify-between items-center p-sm hover:bg-slate-50 rounded-lg transition-colors">
+                  <div className="flex justify-between items-center p-sm hover:bg-surface-container-low rounded-lg transition-colors">
                     <div>
                       <h4 className="text-label-md font-bold text-primary flex items-center gap-xs">
                         <span className="material-symbols-outlined text-lg">app_blocking</span>
@@ -267,11 +267,11 @@ export default function SettingsPage() {
                       type="checkbox"
                       checked={appBlock}
                       onChange={e => setAppBlock(e.target.checked)}
-                      className="w-10 h-5 rounded-full appearance-none bg-slate-300 checked:bg-red-600 relative after:content-[''] after:absolute after:w-4 after:h-4 after:bg-white after:rounded-full after:top-0.5 after:left-0.5 checked:after:left-5.5 after:transition-all cursor-pointer"
+                      className="w-10 h-5 rounded-full appearance-none bg-surface-container-highest checked:bg-red-600 relative after:content-[''] after:absolute after:w-4 after:h-4 after:bg-white after:rounded-full after:top-0.5 after:left-0.5 checked:after:left-5.5 after:transition-all cursor-pointer"
                     />
                   </div>
 
-                  <div className="flex justify-between items-center p-sm hover:bg-slate-50 rounded-lg transition-colors">
+                  <div className="flex justify-between items-center p-sm hover:bg-surface-container-low rounded-lg transition-colors">
                     <div>
                       <h4 className="text-label-md font-bold text-primary flex items-center gap-xs">
                         <span className="material-symbols-outlined text-lg">wifi_off</span>
@@ -283,11 +283,11 @@ export default function SettingsPage() {
                       type="checkbox"
                       checked={netBlock}
                       onChange={e => setNetBlock(e.target.checked)}
-                      className="w-10 h-5 rounded-full appearance-none bg-slate-300 checked:bg-red-600 relative after:content-[''] after:absolute after:w-4 after:h-4 after:bg-white after:rounded-full after:top-0.5 after:left-0.5 checked:after:left-5.5 after:transition-all cursor-pointer"
+                      className="w-10 h-5 rounded-full appearance-none bg-surface-container-highest checked:bg-red-600 relative after:content-[''] after:absolute after:w-4 after:h-4 after:bg-white after:rounded-full after:top-0.5 after:left-0.5 checked:after:left-5.5 after:transition-all cursor-pointer"
                     />
                   </div>
 
-                  <div className="flex justify-between items-center p-sm hover:bg-slate-50 rounded-lg transition-colors">
+                  <div className="flex justify-between items-center p-sm hover:bg-surface-container-low rounded-lg transition-colors">
                     <div>
                       <h4 className="text-label-md font-bold text-primary flex items-center gap-xs">
                         <span className="material-symbols-outlined text-lg">fullscreen</span>
@@ -299,14 +299,14 @@ export default function SettingsPage() {
                       type="checkbox"
                       checked={fsBlock}
                       onChange={e => setFsBlock(e.target.checked)}
-                      className="w-10 h-5 rounded-full appearance-none bg-slate-300 checked:bg-red-600 relative after:content-[''] after:absolute after:w-4 after:h-4 after:bg-white after:rounded-full after:top-0.5 after:left-0.5 checked:after:left-5.5 after:transition-all cursor-pointer"
+                      className="w-10 h-5 rounded-full appearance-none bg-surface-container-highest checked:bg-red-600 relative after:content-[''] after:absolute after:w-4 after:h-4 after:bg-white after:rounded-full after:top-0.5 after:left-0.5 checked:after:left-5.5 after:transition-all cursor-pointer"
                     />
                   </div>
                 </div>
               </section>
 
               {/* Admin Override Card */}
-              <section className="bg-slate-50 border border-outline-variant/30 rounded-xl p-md flex flex-col md:flex-row gap-md shadow-sm">
+              <section className="bg-surface-container-low border border-outline-variant rounded-xl p-md flex flex-col md:flex-row gap-md shadow-sm">
                 <div className="flex-1 space-y-sm">
                   <h3 className="text-label-md font-bold text-primary flex items-center gap-xs">
                     <span className="material-symbols-outlined">admin_panel_settings</span>
@@ -324,18 +324,18 @@ export default function SettingsPage() {
                         value={newPin}
                         onChange={e => setNewPin(e.target.value)}
                         placeholder="4-digit PIN"
-                        className="px-sm py-1.5 border border-outline-variant/50 rounded-lg text-xs outline-none bg-white font-mono w-28"
+                        className="px-sm py-1.5 border border-outline-variant rounded-lg text-xs outline-none bg-surface text-on-surface font-mono w-28"
                       />
                       <button
                         type="submit"
-                        className="px-sm py-1.5 bg-primary text-white text-xs font-bold rounded-lg cursor-pointer"
+                        className="px-sm py-1.5 bg-primary text-on-primary text-xs font-bold rounded-lg cursor-pointer"
                       >
                         Set
                       </button>
                     </form>
                   ) : (
                     <div className="flex items-center gap-sm pt-xs">
-                      <span className="font-mono text-sm tracking-widest bg-white border border-outline-variant/20 px-sm py-1 rounded">
+                      <span className="font-mono text-sm tracking-widest bg-surface text-on-surface border border-outline-variant px-sm py-1 rounded">
                         **** (Active PIN: {pinValue})
                       </span>
                       <button
@@ -350,7 +350,7 @@ export default function SettingsPage() {
               </section>
 
               {/* Scheduled Blocking Rules */}
-              <section className="bg-white rounded-xl border border-outline-variant/30 p-md shadow-sm">
+              <section className="bg-surface rounded-xl border border-outline-variant p-md shadow-sm">
                 <h3 className="font-bold text-label-md text-primary mb-md flex items-center gap-xs">
                   <span className="material-symbols-outlined text-[20px]">calendar_clock</span>
                   Scheduled Lockdown Rules
@@ -362,8 +362,8 @@ export default function SettingsPage() {
                       key={rule.id}
                       className={`p-sm rounded-lg flex items-center justify-between border transition-all ${
                         rule.active
-                          ? 'bg-slate-50 border-outline-variant/20'
-                          : 'bg-transparent border-outline-variant/10 opacity-70'
+                          ? 'bg-surface-container-low border-outline-variant'
+                          : 'bg-transparent border-outline-variant/30 opacity-70'
                       }`}
                     >
                       <div>

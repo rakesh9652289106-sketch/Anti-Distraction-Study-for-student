@@ -75,19 +75,19 @@ export default function SupportPage() {
       </div>
 
       {/* Main Content Layout Grid */}
-      <div className="flex-1 flex overflow-hidden border border-outline-variant/30 rounded-xl bg-white shadow-sm">
+      <div className="flex-1 flex overflow-hidden border border-outline-variant rounded-xl bg-surface shadow-sm">
         
         {/* Inbox Left Column */}
-        <section className="w-80 flex flex-col border-r border-outline-variant/30 bg-slate-50 shrink-0 h-full">
+        <section className="w-80 flex flex-col border-r border-outline-variant bg-surface-container-low shrink-0 h-full">
           {/* Stats Bar */}
           <div className="p-sm border-b border-outline-variant/20 space-y-xs">
             <h3 className="font-bold text-label-md text-primary">Inbox</h3>
             <div className="flex gap-xs">
-              <div className="flex-1 bg-white p-2 rounded border border-outline-variant/10 text-center">
+              <div className="flex-1 bg-surface p-2 rounded border border-outline-variant/30 text-center">
                 <span className="text-[10px] text-on-surface-variant font-bold block uppercase">Open Tickets</span>
                 <span className="text-lg font-bold text-primary">{tickets.length}</span>
               </div>
-              <div className="flex-1 bg-white p-2 rounded border border-outline-variant/10 text-center">
+              <div className="flex-1 bg-surface p-2 rounded border border-outline-variant/30 text-center">
                 <span className="text-[10px] text-on-surface-variant font-bold block uppercase">Avg Response</span>
                 <span className="text-lg font-bold text-secondary">5m</span>
               </div>
@@ -95,7 +95,7 @@ export default function SupportPage() {
           </div>
 
           {/* New Ticket Trigger */}
-          <div className="p-2 border-b border-outline-variant/20 bg-white">
+          <div className="p-2 border-b border-outline-variant/20 bg-surface">
             <button
               onClick={() => setShowSubmitForm(!showSubmitForm)}
               className="w-full py-1.5 bg-primary text-on-primary text-xs font-semibold rounded-lg hover:bg-primary/95 cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-xs"
@@ -108,7 +108,7 @@ export default function SupportPage() {
           {/* Tickets Scroll List */}
           <div className="flex-1 overflow-y-auto p-2 space-y-sm">
             {showSubmitForm ? (
-              <form onSubmit={handleCreateTicket} className="p-2 space-y-sm bg-white rounded border border-outline-variant/25">
+              <form onSubmit={handleCreateTicket} className="p-2 space-y-sm bg-surface rounded border border-outline-variant">
                 <h4 className="text-xs font-bold text-primary uppercase">New Support Ticket</h4>
                 <div>
                   <label className="text-[10px] font-bold text-on-surface-variant block mb-1">Subject</label>
@@ -118,7 +118,7 @@ export default function SupportPage() {
                     value={newTicketSubject}
                     onChange={e => setNewTicketSubject(e.target.value)}
                     placeholder="e.g. Lock screen frozen"
-                    className="w-full px-2 py-1 border border-outline-variant/50 rounded text-xs outline-none focus:border-primary"
+                    className="w-full px-2 py-1 border border-outline-variant rounded text-xs outline-none bg-surface text-on-surface focus:border-primary"
                   />
                 </div>
                 <div>
@@ -128,7 +128,7 @@ export default function SupportPage() {
                     value={newTicketMsg}
                     onChange={e => setNewTicketMsg(e.target.value)}
                     placeholder="Describe the issue..."
-                    className="w-full px-2 py-1 border border-outline-variant/50 rounded text-xs outline-none focus:border-primary h-20 resize-none"
+                    className="w-full px-2 py-1 border border-outline-variant rounded text-xs outline-none bg-surface text-on-surface focus:border-primary h-20 resize-none"
                   />
                 </div>
                 <button
@@ -145,22 +145,22 @@ export default function SupportPage() {
                   <div
                     key={ticket.id}
                     onClick={() => setSelectedTicketId(ticket.id)}
-                    className={`p-sm rounded-lg border cursor-pointer hover:bg-white transition-all relative ${
+                    className={`p-sm rounded-lg border cursor-pointer hover:bg-surface-container transition-all relative ${
                       isActive
-                        ? 'bg-white border-primary shadow-sm'
-                        : 'bg-transparent border-outline-variant/15 opacity-80'
+                        ? 'bg-surface border-primary shadow-sm'
+                        : 'bg-transparent border-outline-variant/20'
                     }`}
                   >
                     {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary rounded-l-lg"></div>}
                     <div className="flex justify-between items-start mb-0.5">
                       <span className="font-bold text-xs text-primary truncate max-w-[120px]">Student User</span>
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[10px] text-on-surface-variant/70">
                         {new Date(ticket.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <h4 className="text-xs font-semibold text-slate-700 truncate">{ticket.subject}</h4>
+                    <h4 className="text-xs font-semibold text-primary truncate">{ticket.subject}</h4>
                     <p className="text-[11px] text-on-surface-variant truncate">{ticket.message}</p>
-                    <span className="mt-2 inline-block text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold uppercase">
+                    <span className="mt-2 inline-block text-[9px] px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 font-bold uppercase">
                       {ticket.status}
                     </span>
                   </div>
@@ -171,18 +171,18 @@ export default function SupportPage() {
         </section>
 
         {/* Conversation View (Right Column) */}
-        <section className="flex-1 flex flex-col h-full bg-slate-50/20">
+        <section className="flex-1 flex flex-col h-full bg-surface-container-lowest">
           {activeTicket ? (
             <>
               {/* Active Conversation Header */}
-              <div className="p-md border-b border-outline-variant/20 flex justify-between items-center bg-white shrink-0">
+              <div className="p-md border-b border-outline-variant/20 flex justify-between items-center bg-surface shrink-0">
                 <div>
                   <h3 className="font-bold text-headline-md text-primary">{activeTicket.subject}</h3>
                   <p className="text-xs text-on-surface-variant font-medium mt-0.5">
                     Ticket ID: #{activeTicket.id} &bull; Student &bull; High Priority
                   </p>
                 </div>
-                <span className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs font-bold uppercase">
+                <span className="px-3 py-1 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-lg text-xs font-bold uppercase">
                   {activeTicket.status}
                 </span>
               </div>
@@ -191,16 +191,16 @@ export default function SupportPage() {
               <div className="flex-1 overflow-y-auto p-md space-y-md">
                 {/* Initial student report */}
                 <div className="flex gap-sm max-w-2xl">
-                  <div className="w-8 h-8 rounded-full bg-slate-200 border border-outline-variant/20 flex items-center justify-center font-bold text-xs text-slate-500 shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center font-bold text-xs text-primary shrink-0">
                     ST
                   </div>
                   <div>
-                    <div className="bg-white p-md rounded-2xl rounded-tl-none border border-outline-variant/30 shadow-sm">
-                      <p className="text-label-sm text-slate-700 leading-relaxed font-semibold">
+                    <div className="bg-surface p-md rounded-2xl rounded-tl-none border border-outline-variant shadow-sm text-on-surface">
+                      <p className="text-label-sm leading-relaxed font-semibold">
                         {activeTicket.message}
                       </p>
                     </div>
-                    <span className="text-[10px] text-slate-400 mt-1 block ml-1">
+                    <span className="text-[10px] text-on-surface-variant/70 mt-1 block ml-1">
                       {new Date(activeTicket.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
@@ -208,7 +208,7 @@ export default function SupportPage() {
 
                 {/* System Assignment Log */}
                 <div className="flex justify-center">
-                  <span className="bg-slate-200/55 text-slate-500 font-bold text-[9px] px-2 py-0.5 rounded-full uppercase">
+                  <span className="bg-surface-container text-on-surface-variant border border-outline-variant/30 font-bold text-[9px] px-2 py-0.5 rounded-full uppercase">
                     System Assigned to Support Representative
                   </span>
                 </div>
@@ -218,18 +218,18 @@ export default function SupportPage() {
                   const isAgent = reply.user === 'Support Agent';
                   return (
                     <div key={index} className={`flex gap-sm max-w-2xl ${isAgent ? 'ml-auto flex-row-reverse' : ''}`}>
-                      <div className="w-8 h-8 rounded-full bg-slate-200 border border-outline-variant/20 flex items-center justify-center font-bold text-xs text-slate-500 shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center font-bold text-xs text-primary shrink-0">
                         {reply.user[0]}
                       </div>
                       <div>
                         <div className={`p-md border rounded-2xl shadow-sm ${
                           isAgent
-                            ? 'bg-primary border-primary text-white rounded-tr-none'
-                            : 'bg-white border-outline-variant/30 text-slate-700 rounded-tl-none'
+                            ? 'bg-primary border-primary text-on-primary rounded-tr-none'
+                            : 'bg-surface border-outline-variant text-on-surface rounded-tl-none'
                         }`}>
                           <p className="text-label-sm leading-relaxed font-semibold">{reply.text}</p>
                         </div>
-                        <span className={`text-[10px] text-slate-400 mt-1 block ${isAgent ? 'text-right mr-1' : 'ml-1'}`}>
+                        <span className={`text-[10px] text-on-surface-variant/70 mt-1 block ${isAgent ? 'text-right mr-1' : 'ml-1'}`}>
                           {new Date(reply.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
@@ -239,12 +239,12 @@ export default function SupportPage() {
               </div>
 
               {/* Reply submission form */}
-              <form onSubmit={handleSendReply} className="p-md border-t border-outline-variant/20 bg-white shrink-0 space-y-sm">
+              <form onSubmit={handleSendReply} className="p-md border-t border-outline-variant/20 bg-surface shrink-0 space-y-sm">
                 <textarea
                   value={replyText}
                   onChange={e => setReplyText(e.target.value)}
                   placeholder={`Type your reply to student...`}
-                  className="w-full p-sm border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-label-sm outline-none resize-none bg-surface/20 min-h-[80px]"
+                  className="w-full p-sm border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-label-sm outline-none resize-none bg-surface-container-low text-on-surface min-h-[80px]"
                 />
                 
                 <div className="flex justify-end">
@@ -259,7 +259,7 @@ export default function SupportPage() {
               </form>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+            <div className="flex-1 flex flex-col items-center justify-center text-on-surface-variant/70">
               <span className="material-symbols-outlined text-4xl mb-xs">mail</span>
               <p className="text-label-sm font-semibold">Select a ticket from the Inbox to view details</p>
             </div>

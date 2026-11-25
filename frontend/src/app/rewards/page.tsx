@@ -91,17 +91,17 @@ export default function RewardsPage() {
         <div className="bg-primary text-on-primary rounded-xl border border-primary p-md shadow-sm flex flex-col justify-between relative overflow-hidden">
           <div className="absolute -right-4 -top-4 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
           <div className="flex items-center justify-between mb-4 relative z-10">
-            <span className="text-label-sm font-bold text-primary-fixed-dim uppercase tracking-wider">Focus Level</span>
+            <span className="text-label-sm font-bold text-white/80 uppercase tracking-wider">Focus Level</span>
             <span className="material-symbols-outlined text-on-primary font-bold">psychology</span>
           </div>
           <div className="flex items-baseline gap-2 relative z-10">
             <span className="font-bold text-headline-xl">{focusLevel}</span>
-            <span className="text-label-sm text-primary-fixed-dim font-bold">Master</span>
+            <span className="text-label-sm text-white/80 font-bold">Master</span>
           </div>
-          <div className="w-full bg-primary-container h-1.5 rounded-full mt-4 overflow-hidden relative z-10">
+          <div className="w-full bg-white/20 h-1.5 rounded-full mt-4 overflow-hidden relative z-10">
             <div className="bg-white h-full rounded-full" style={{ width: `${(currentXPProgress / 1000) * 100}%` }}></div>
           </div>
-          <p className="text-label-sm text-primary-fixed-dim mt-2 text-right relative z-10 font-semibold">
+          <p className="text-label-sm text-white/80 mt-2 text-right relative z-10 font-semibold">
             {currentXPProgress} / 1,000 XP
           </p>
         </div>
@@ -218,7 +218,7 @@ export default function RewardsPage() {
             </div>
             
             <h3 className="font-bold text-headline-md mb-2 relative z-10">Store</h3>
-            <p className="text-body-md text-primary-fixed-dim mb-4 relative z-10">
+            <p className="text-body-md text-white/80 mb-4 relative z-10">
               Buy themes and utilities using your focus coins.
             </p>
 
@@ -236,7 +236,7 @@ export default function RewardsPage() {
                       <span className="material-symbols-outlined text-sm font-bold">{item.icon}</span>
                       {item.title}
                     </h4>
-                    <p className="text-[10px] text-primary-fixed-dim mt-0.5">{item.description}</p>
+                    <p className="text-[10px] text-white/70 mt-0.5">{item.description}</p>
                   </div>
                   <button
                     disabled={item.purchased || settings.focusCoins < item.cost}

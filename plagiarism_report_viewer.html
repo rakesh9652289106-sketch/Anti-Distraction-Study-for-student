@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Plagiarism Report - FocusFlow</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 30px;
+      background: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: #f8fafc;
+    }
+    .toolbar {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .btn {
+      background: #10b981;
+      color: #ffffff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: #334155;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    .btn-secondary:hover {
+      background: #475569;
+    }
+    .viewer-container {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      max-width: 850px;
+      width: 100%;
+    }
+    img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <button class="btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    <a href="plagiarism_report.svg" download="FocusFlow_Plagiarism_Report.svg" class="btn btn-secondary">⬇️ Download SVG Vector</a>
+  </div>
+
+  <div class="viewer-container">
+    <img src="plagiarism_report.svg" alt="FocusFlow Plagiarism Report Certificate" />
+  </div>
+
+</body>
+</html>

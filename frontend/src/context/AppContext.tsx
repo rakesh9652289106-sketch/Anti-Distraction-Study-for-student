@@ -25,6 +25,12 @@ interface AppContextType {
   isAssistantOpen: boolean;
   setIsAssistantOpen: (open: boolean) => void;
 
+  // Tab Switch & Site Focus Protection
+  isTabSwitchModalOpen: boolean;
+  tabSwitchCount: number;
+  resumeAfterTabSwitch: () => void;
+  dismissTabSwitchModal: () => void;
+
   // Actions
   fetchData: () => Promise<void>;
   addTask: (title: string, subject: string, estimatedPomodoros?: number) => Promise<void>;
@@ -76,7 +82,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     pomodoroBreakTime: 5,
     currentStreak: 5,
     focusCoins: 120,
-    cameraEnabled: true
+    cameraEnabled: true,
+    aiConfig: {
+      personality: 'academic',
+      temperature: 0.7,
+      systemPrompt: 'You are FocusFlow AI Tutor. Provide structured explanations and advice. Maintain a supportive educational tone. Encourage the student to avoid distraction and use Pomodoro blocks.',
+      attentionGuardSensitivity: 'medium',
+      stareDurationLimit: 7,
+      gazeStatusDuration: 10,
+      lookAtScreenDuration: 10
+    }
   });
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [rooms, setRooms] = useState<StudyRoom[]>([]);
@@ -91,6 +106,85 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [distractionsBlockedThisSession, setDistractionsBlockedThisSession] = useState(0);
   const [isAssistantOpen, setIsAssistantOpen] = useState(true);
+
+  // Tab Switch & Site Focus Protection States
+  const [isTabSwitchModalOpen, setIsTabSwitchModalOpen] = useState(false);
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const wasTimerRunningBeforeTabSwitchRef = useRef(false);
+  const isTimerRunningRef = useRef(isTimerRunning);
+
+  useEffect(() => {
+    isTimerRunningRef.current = isTimerRunning;
+  }, [isTimerRunning]);
+
+  // Tab switch & browser blur listener: Immediately stop session timer if user leaves our site/tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // User switched tab or minimized browser
+        if (isTimerRunningRef.current) {
+          wasTimerRunningBeforeTabSwitchRef.current = true;
+          setIsTimerRunning(false); // Stop session time immediately!
+          setTabSwitchCount(prev => prev + 1);
+          setDistractionsBlockedThisSession(prev => prev + 1);
+
+          fetch('/api/admin/alerts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: 'Tab Switch / Site Exit Detected',
+              text: 'Student navigated away from FocusFlow tab. Study session timer was automatically stopped.',
+              type: 'warning',
+              region: 'Browser Tab Guard',
+              source: 'Anti-Distraction Shield'
+            })
+          }).catch(() => {});
+        }
+      } else if (document.visibilityState === 'visible') {
+        // User returned to our site
+        if (wasTimerRunningBeforeTabSwitchRef.current) {
+          setIsTabSwitchModalOpen(true);
+        }
+      }
+    };
+
+    const handleWindowBlur = () => {
+      // User clicked outside browser window or switched to another application
+      if (isTimerRunningRef.current) {
+        wasTimerRunningBeforeTabSwitchRef.current = true;
+        setIsTimerRunning(false); // Stop session time immediately!
+        setTabSwitchCount(prev => prev + 1);
+        setDistractionsBlockedThisSession(prev => prev + 1);
+      }
+    };
+
+    const handleWindowFocus = () => {
+      if (wasTimerRunningBeforeTabSwitchRef.current) {
+        setIsTabSwitchModalOpen(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, []);
+
+  const resumeAfterTabSwitch = () => {
+    wasTimerRunningBeforeTabSwitchRef.current = false;
+    setIsTabSwitchModalOpen(false);
+    startTimer();
+  };
+
+  const dismissTabSwitchModal = () => {
+    wasTimerRunningBeforeTabSwitchRef.current = false;
+    setIsTabSwitchModalOpen(false);
+  };
 
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -455,6 +549,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         distractionsBlockedThisSession,
         isAssistantOpen,
         setIsAssistantOpen,
+        isTabSwitchModalOpen,
+        tabSwitchCount,
+        resumeAfterTabSwitch,
+        dismissTabSwitchModal,
         fetchData,
         addTask,
         toggleTaskCompleted,

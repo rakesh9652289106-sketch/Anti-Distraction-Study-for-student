@@ -9,7 +9,10 @@ export default function AdminAiConfigPage() {
     personality: 'academic',
     temperature: 0.7,
     systemPrompt: `You are FocusFlow AI Tutor. Provide structured explanations and advice. Maintain a supportive educational tone. Encourage the student to avoid distraction and use Pomodoro blocks.`,
-    attentionGuardSensitivity: 'medium'
+    attentionGuardSensitivity: 'medium',
+    stareDurationLimit: 7,
+    gazeStatusDuration: 10,
+    lookAtScreenDuration: 10
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -59,6 +62,18 @@ export default function AdminAiConfigPage() {
 
   const handleUpdateField = (field: string, value: any) => {
     const updated = { ...aiConfig, [field]: value };
+    setAiConfig(updated);
+    handleSaveConfig(updated);
+  };
+
+  const handleSensitivityChange = (val: string) => {
+    const defaultDuration = val === 'high' ? 10 : val === 'low' ? 60 : 30;
+    const updated = {
+      ...aiConfig,
+      attentionGuardSensitivity: val,
+      gazeStatusDuration: defaultDuration,
+      lookAtScreenDuration: defaultDuration
+    };
     setAiConfig(updated);
     handleSaveConfig(updated);
   };
@@ -249,17 +264,90 @@ export default function AdminAiConfigPage() {
                   Webcam Attention Checks Sensitivity
                 </label>
                 <select
-                  value={aiConfig.attentionGuardSensitivity}
-                  onChange={e => handleUpdateField('attentionGuardSensitivity', e.target.value)}
+                  value={aiConfig.attentionGuardSensitivity || 'medium'}
+                  onChange={e => handleSensitivityChange(e.target.value)}
                   className="w-full bg-[#131D33] border border-[#1E2E4E] focus:border-emerald-500/50 rounded-lg py-2 px-sm text-slate-200 outline-none text-xs font-semibold"
                 >
-                  <option value="low">Low (Check every 60s)</option>
-                  <option value="medium">Medium (Check every 30s)</option>
                   <option value="high">High (Check every 10s)</option>
+                  <option value="medium">Medium (Check every 30s)</option>
+                  <option value="low">Low (Check every 60s)</option>
                 </select>
                 <p className="text-[9px] text-slate-500 leading-tight mt-1">
                   Adjusts how frequently Attention Guard analyzes webcam frames for facial coordinates alignment.
                 </p>
+              </div>
+
+              {/* 3 Configurable Alert Time Controls */}
+              <div className="pt-2 border-t border-[#1E2E4E] space-y-3">
+                <div className="text-[9.5px] font-black uppercase text-amber-300 tracking-wider">
+                  Configurable Alert Durations (3 Metrics)
+                </div>
+
+                {/* 1. Stare Duration Alert Limit (1 to 10s) */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs font-bold text-slate-300">
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px] text-primary">visibility</span>
+                      1. Stare Duration Limit (1 to 10s)
+                    </span>
+                    <span className="text-emerald-400 font-mono font-bold">{aiConfig.stareDurationLimit || 7}s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={aiConfig.stareDurationLimit || 7}
+                    onChange={e => handleUpdateField('stareDurationLimit', parseInt(e.target.value))}
+                    className="w-full accent-emerald-500 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[8px] font-mono text-slate-500 font-bold px-0.5">
+                    <span>1s (Strict)</span>
+                    <span>5s</span>
+                    <span>7s (Default)</span>
+                    <span>10s (Max)</span>
+                  </div>
+                </div>
+
+                {/* 2. Gaze Status Alert Time (10s, 30s, 60s) */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs font-bold text-slate-300">
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px] text-secondary">person</span>
+                      2. Gaze Status Alert Time
+                    </span>
+                    <span className="text-secondary font-mono font-bold">{aiConfig.gazeStatusDuration || 10}s</span>
+                  </div>
+                  <select
+                    value={aiConfig.gazeStatusDuration || 10}
+                    onChange={e => handleUpdateField('gazeStatusDuration', parseInt(e.target.value))}
+                    className="w-full bg-[#131D33] border border-[#1E2E4E] focus:border-emerald-500/50 rounded-lg py-1.5 px-sm text-slate-200 outline-none text-xs font-semibold"
+                  >
+                    <option value={10}>10 Seconds (Strict Alert)</option>
+                    <option value={30}>30 Seconds (Balanced Alert)</option>
+                    <option value={60}>60 Seconds (Relaxed Alert)</option>
+                  </select>
+                </div>
+
+                {/* 3. Look at Screen Alert Time (10s, 30s, 60s) */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs font-bold text-slate-300">
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px] text-emerald-400">desktop_windows</span>
+                      3. Look at Screen Alert Time
+                    </span>
+                    <span className="text-emerald-400 font-mono font-bold">{aiConfig.lookAtScreenDuration || 10}s</span>
+                  </div>
+                  <select
+                    value={aiConfig.lookAtScreenDuration || 10}
+                    onChange={e => handleUpdateField('lookAtScreenDuration', parseInt(e.target.value))}
+                    className="w-full bg-[#131D33] border border-[#1E2E4E] focus:border-emerald-500/50 rounded-lg py-1.5 px-sm text-slate-200 outline-none text-xs font-semibold"
+                  >
+                    <option value={10}>10 Seconds (Strict Focus)</option>
+                    <option value={30}>30 Seconds (Balanced Focus)</option>
+                    <option value={60}>60 Seconds (Relaxed Focus)</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>

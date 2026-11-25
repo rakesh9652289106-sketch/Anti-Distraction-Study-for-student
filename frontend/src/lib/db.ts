@@ -79,6 +79,9 @@ export interface GlobalSettings {
     temperature: number;
     systemPrompt: string;
     attentionGuardSensitivity: string;
+    stareDurationLimit?: number;
+    gazeStatusDuration?: number;
+    lookAtScreenDuration?: number;
   };
   groupConfig?: {
     maxUsersPerGroup: number;

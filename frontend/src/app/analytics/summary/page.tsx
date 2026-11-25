@@ -123,17 +123,17 @@ export default function SessionSummaryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] font-sans pb-xl pt-4">
+    <div className="w-full text-on-surface font-sans pb-xl pt-2">
       {/* Hero Header */}
       <section className="max-w-[1200px] mx-auto px-6 mb-8 mt-6">
-        <div className="relative overflow-hidden rounded-2xl p-6 md:p-8 bg-[#091426] text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="relative overflow-hidden rounded-2xl p-6 md:p-8 bg-slate-900 border border-slate-800 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="absolute inset-0 opacity-10 pointer-events-none">
             <div className="absolute -right-20 -top-20 w-96 h-96 bg-[#4edea3] rounded-full blur-3xl"></div>
             <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-blue-500 rounded-full blur-3xl"></div>
           </div>
           
           <div className="relative z-10 text-center md:text-left">
-            <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1 bg-[#006c49]/20 text-[#4edea3] border border-[#4edea3]/30 rounded-full text-xs font-bold">
+            <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1 bg-[#006c49]/30 text-[#4edea3] border border-[#4edea3]/40 rounded-full text-xs font-bold">
               <span className="material-symbols-outlined text-[16px] font-bold">verified</span>
               <span>SESSION COMPLETE</span>
             </div>
@@ -162,24 +162,23 @@ export default function SessionSummaryPage() {
         <div className="lg:col-span-8 space-y-8">
           
           {/* Productivity Timeline */}
-          <div className="bg-white/80 border border-slate-200/60 shadow-sm rounded-2xl p-5">
+          <div className="bg-surface border border-outline-variant/40 shadow-sm rounded-2xl p-5">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-[#091426]">Productivity Timeline</h3>
+              <h3 className="text-lg font-bold text-on-surface">Productivity Timeline</h3>
               <div className="flex items-center gap-3 text-xs">
                 <div className="flex items-center gap-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#006c49]"></div>
-                  <span className="text-slate-500 font-semibold">High Intensity</span>
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary"></div>
+                  <span className="text-on-surface-variant font-semibold">High Intensity</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
-                  <span className="text-slate-500 font-semibold">Rest</span>
+                  <div className="w-2.5 h-2.5 rounded-full bg-surface-container-high"></div>
+                  <span className="text-on-surface-variant font-semibold">Rest</span>
                 </div>
               </div>
             </div>
 
             <div className="h-60 flex items-end justify-between gap-1.5 mb-4">
               {summary.timeline.map((point, idx) => {
-                // Height percent based on score
                 const heightVal = `${point.score}%`;
                 const isRest = point.score < 30;
                 return (
@@ -188,7 +187,7 @@ export default function SessionSummaryPage() {
                     className="w-full rounded-t transition-all duration-1000"
                     style={{ 
                       height: heightVal, 
-                      backgroundColor: isRest ? '#e2e8f0' : '#006c49' 
+                      backgroundColor: isRest ? 'var(--color-surface-container-high)' : 'var(--color-primary)' 
                     }}
                     title={`Minute ${point.minute}: Score ${point.score}%`}
                   ></div>
@@ -196,7 +195,7 @@ export default function SessionSummaryPage() {
               })}
             </div>
 
-            <div className="flex justify-between text-[10px] font-bold text-slate-450 uppercase tracking-widest">
+            <div className="flex justify-between text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
               <span>0m</span>
               <span>{Math.round(summary.durationMinutes / 3)}m</span>
               <span>{Math.round(summary.durationMinutes * 2 / 3)}m</span>
@@ -206,27 +205,27 @@ export default function SessionSummaryPage() {
 
           {/* AI Study Assistant Recap */}
           {aiSummary && (
-            <div className="bg-blue-50/40 border border-blue-100 rounded-2xl p-5 relative overflow-hidden">
+            <div className="bg-primary/10 border border-primary/25 rounded-2xl p-5 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                 <span className="material-symbols-outlined text-[80px]">smart_toy</span>
               </div>
               <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-3 text-blue-800">
+                <div className="flex items-center gap-2 mb-3 text-primary">
                   <span className="material-symbols-outlined">auto_awesome</span>
-                  <h3 className="text-base font-bold">AI Study Assistant Recap</h3>
+                  <h3 className="text-base font-bold text-primary">AI Study Assistant Recap</h3>
                 </div>
-                <p className="text-sm text-slate-700 leading-relaxed max-w-2xl font-medium mb-5">
+                <p className="text-sm text-on-surface leading-relaxed max-w-2xl font-medium mb-5">
                   "{aiSummary.recapText}"
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <button 
                     onClick={handleSyncCalendar}
                     disabled={calendarSynced}
-                    className="px-4 py-2 bg-[#091426] hover:bg-slate-800 disabled:bg-slate-350 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:bg-surface-container-high text-on-primary rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer"
                   >
                     {calendarSynced ? 'Synced to Calendar' : 'Schedule Tunneling Lesson'}
                   </button>
-                  <button className="px-4 py-2 border border-slate-200 hover:border-slate-300 text-slate-650 bg-white hover:bg-slate-50 rounded-lg text-xs font-semibold transition-colors">
+                  <button className="px-4 py-2 border border-outline-variant hover:border-primary/60 text-on-surface bg-surface hover:bg-surface-container rounded-lg text-xs font-semibold transition-colors">
                     Review Today's Notes
                   </button>
                 </div>
@@ -239,17 +238,17 @@ export default function SessionSummaryPage() {
         <div className="lg:col-span-4 space-y-8">
           
           {/* Milestones */}
-          <div className="bg-white/80 border border-slate-200/60 shadow-sm rounded-2xl p-5">
-            <h3 className="text-md font-bold text-[#091426] mb-4">Milestones</h3>
+          <div className="bg-surface border border-outline-variant/40 shadow-sm rounded-2xl p-5">
+            <h3 className="text-md font-bold text-on-surface mb-4">Milestones</h3>
             <div className="space-y-3">
               {milestones.map((m, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                  <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center">
+                <div key={idx} className="flex items-center gap-3 p-3 bg-surface-container-low border border-outline-variant/30 rounded-xl">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
                     <span className="material-symbols-outlined">{m.icon || 'bolt'}</span>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-[#091426]">{m.name}</p>
-                    <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">{m.reward}</p>
+                    <p className="text-xs font-bold text-on-surface">{m.name}</p>
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">{m.reward}</p>
                   </div>
                 </div>
               ))}
@@ -257,18 +256,18 @@ export default function SessionSummaryPage() {
           </div>
 
           {/* Resources Consulted */}
-          <div className="bg-white/80 border border-slate-200/60 shadow-sm rounded-2xl p-5">
-            <h3 className="text-md font-bold text-[#091426] mb-4">Resources Consulted</h3>
+          <div className="bg-surface border border-outline-variant/40 shadow-sm rounded-2xl p-5">
+            <h3 className="text-md font-bold text-on-surface mb-4">Resources Consulted</h3>
             <div className="space-y-1">
               {resources.map((r, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2.5 hover:bg-slate-50 rounded-xl transition-colors group">
+                <div key={idx} className="flex items-center justify-between p-2.5 hover:bg-surface-container-low rounded-xl transition-colors group">
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <span className="material-symbols-outlined text-slate-400 text-sm">
+                    <span className="material-symbols-outlined text-on-surface-variant text-sm">
                       {r.type === 'pdf' ? 'picture_as_pdf' : r.type === 'link' ? 'language' : 'article'}
                     </span>
-                    <span className="text-xs font-bold text-[#091426] truncate">{r.title}</span>
+                    <span className="text-xs font-bold text-on-surface truncate">{r.title}</span>
                   </div>
-                  <span className="material-symbols-outlined text-slate-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+                  <span className="material-symbols-outlined text-on-surface-variant text-xs opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
                 </div>
               ))}
 
@@ -276,29 +275,29 @@ export default function SessionSummaryPage() {
                 {!showAddResource ? (
                   <button 
                     onClick={() => setShowAddResource(true)}
-                    className="w-full py-2 border border-dashed border-slate-300 hover:border-[#091426] text-slate-500 hover:text-[#091426] text-xs font-bold rounded-xl transition-all cursor-pointer"
+                    className="w-full py-2 border border-dashed border-outline-variant/50 hover:border-primary text-on-surface-variant hover:text-on-surface text-xs font-bold rounded-xl transition-all cursor-pointer"
                   >
                     + Add missing resource
                   </button>
                 ) : (
-                  <form onSubmit={handleAddResource} className="space-y-3 bg-slate-50 p-3 border border-slate-200 rounded-xl mt-2">
+                  <form onSubmit={handleAddResource} className="space-y-3 bg-surface-container-low p-3 border border-outline-variant/40 rounded-xl mt-2">
                     <div className="space-y-1">
-                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest">Document Title</label>
+                      <label className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">Document Title</label>
                       <input
                         required
                         type="text"
                         value={newTitle}
                         onChange={e => setNewTitle(e.target.value)}
                         placeholder="e.g. Chapter 4 review.pdf"
-                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-slate-800"
+                        className="w-full px-2 py-1.5 bg-surface text-on-surface border border-outline-variant rounded-lg text-xs outline-none focus:border-primary"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest">Type</label>
+                      <label className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">Type</label>
                       <select
                         value={newType}
                         onChange={e => setNewType(e.target.value)}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-slate-800"
+                        className="w-full px-2 py-1.5 bg-surface text-on-surface border border-outline-variant rounded-lg text-xs outline-none focus:border-primary cursor-pointer"
                       >
                         <option value="pdf">PDF File</option>
                         <option value="link">Web Link</option>
@@ -309,14 +308,14 @@ export default function SessionSummaryPage() {
                       <button 
                         type="submit"
                         disabled={isAdding}
-                        className="flex-1 py-1.5 bg-[#091426] hover:bg-slate-800 text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer"
+                        className="flex-1 py-1.5 bg-primary hover:bg-primary/90 text-on-primary font-bold text-[10px] rounded-lg transition-colors cursor-pointer"
                       >
                         Add
                       </button>
                       <button 
                         type="button"
                         onClick={() => setShowAddResource(false)}
-                        className="flex-1 py-1.5 bg-slate-200 hover:bg-slate-350 text-slate-650 font-bold text-[10px] rounded-lg transition-colors cursor-pointer"
+                        className="flex-1 py-1.5 bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-[10px] rounded-lg transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -328,15 +327,15 @@ export default function SessionSummaryPage() {
           </div>
 
           {/* Sync to calendar trigger */}
-          <div className="bg-[#006c49]/5 border border-[#006c49]/20 rounded-2xl p-5 flex flex-col items-center text-center">
-            <div className="w-12 h-12 bg-[#6ffbbe]/25 text-[#006c49] rounded-full flex items-center justify-center mb-3">
+          <div className="bg-primary/10 border border-primary/25 rounded-2xl p-5 flex flex-col items-center text-center">
+            <div className="w-12 h-12 bg-primary/20 text-primary rounded-full flex items-center justify-center mb-3">
               <span className="material-symbols-outlined text-[24px]">calendar_today</span>
             </div>
-            <h4 className="text-xs font-bold text-[#091426] mb-1">Ready for more?</h4>
-            <p className="text-[11px] text-slate-500 mb-4 font-medium leading-relaxed">Your next focus block schedule is tomorrow at 10:00 AM.</p>
+            <h4 className="text-xs font-bold text-on-surface mb-1">Ready for more?</h4>
+            <p className="text-[11px] text-on-surface-variant mb-4 font-medium leading-relaxed">Your next focus block schedule is tomorrow at 10:00 AM.</p>
             <button 
               onClick={handleSyncCalendar}
-              className="w-full py-2.5 bg-[#006c49] hover:bg-[#005236] text-white font-bold text-xs rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
+              className="w-full py-2.5 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
             >
               Sync to Calendar
             </button>

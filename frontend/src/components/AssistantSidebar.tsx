@@ -71,152 +71,157 @@ export default function AssistantSidebar({ isOpen, onClose }: AssistantSidebarPr
   };
 
   return (
-    <nav className={`fixed right-0 top-0 h-screen w-80 flex flex-col bg-surface-container-low/95 backdrop-blur-lg border-l border-outline-variant/30 shadow-lg py-md px-sm z-50 overflow-y-auto transition-transform duration-300 ${
+    <aside className={`fixed right-0 top-0 h-screen w-80 sm:w-88 flex flex-col bg-surface/98 backdrop-blur-xl border-l border-outline-variant/40 text-on-surface shadow-2xl z-50 transition-transform duration-300 ${
       isOpen ? 'translate-x-0' : 'translate-x-full'
     }`}>
-      {/* Assistant Logo Area */}
-      <div className="flex items-center justify-between mb-lg px-sm">
-        <div className="flex items-center gap-sm">
-          <div className="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
-            <span className="material-symbols-outlined font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>
+      {/* Sticky Top Header */}
+      <div className="shrink-0 sticky top-0 z-30 px-4 py-3 bg-surface/98 backdrop-blur-xl border-b border-outline-variant/30 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-full bg-secondary/15 text-secondary flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined font-bold text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               smart_toy
             </span>
           </div>
           <div>
-            <h2 className="font-bold text-label-md text-tertiary-container">Smart Assistant</h2>
-            <p className="text-label-sm text-on-surface-variant font-medium">AI-Powered Support</p>
+            <h2 className="font-bold text-sm text-primary leading-tight">Smart Assistant</h2>
+            <p className="text-[11px] text-on-surface-variant font-medium">AI-Powered Support</p>
           </div>
         </div>
         <button
           onClick={onClose}
           type="button"
-          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-outline-variant/20 text-on-surface-variant cursor-pointer transition-colors"
+          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-outline-variant/20 text-on-surface-variant cursor-pointer transition-colors active:scale-95"
           title="Close AI Assistant"
         >
           <span className="material-symbols-outlined text-[20px]">close</span>
         </button>
       </div>
 
-      {/* Assistant Status Card */}
-      <div className="glass-panel rounded-xl p-md mb-md mx-xs">
-        <div className="flex items-center gap-sm mb-sm">
-          <div className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></div>
-          <span className="text-label-md font-bold text-on-surface">
-            Status: {isTimerRunning ? 'In Deep Focus' : 'Ready to Start'}
-          </span>
+      {/* Scrollable Content Body */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 space-y-4 min-h-0 [scrollbar-width:thin]">
+        {/* Assistant Status Card */}
+        <div className="glass-panel rounded-xl p-3 border border-outline-variant/40 bg-surface-container/60 shadow-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-2.5 h-2.5 rounded-full ${isTimerRunning ? 'bg-secondary animate-pulse' : 'bg-primary'}`}></div>
+            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+              Status: {isTimerRunning ? 'In Deep Focus' : 'Ready to Start'}
+            </span>
+          </div>
+          <p className="text-[11.5px] font-medium text-slate-700 dark:text-slate-300 mb-3 leading-relaxed">
+            {isTimerRunning
+              ? `Distraction level: Low. We have blocked ${distractionsBlockedThisSession} attempts during this study block.`
+              : 'Get ready for your session. Turn on Study Mode to shield yourself from internet distractions.'}
+          </p>
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={reduceSession}
+              type="button"
+              className="flex-1 py-1.5 px-2 border border-outline-variant hover:border-outline rounded-lg font-bold text-xs text-slate-900 dark:text-slate-100 bg-surface hover:bg-surface-variant transition-all cursor-pointer active:scale-98 text-center"
+              title="Reduce focus session by 10 minutes"
+            >
+              Reduce (-10m)
+            </button>
+            <button
+              onClick={extendSession}
+              type="button"
+              className="flex-1 py-1.5 px-2 border border-outline-variant hover:border-outline rounded-lg font-bold text-xs text-slate-900 dark:text-slate-100 bg-surface hover:bg-surface-variant transition-all cursor-pointer active:scale-98 text-center"
+              title="Extend focus session by 10 minutes"
+            >
+              Extend (+10m)
+            </button>
+          </div>
         </div>
-        <p className="text-label-sm text-on-surface-variant mb-md leading-relaxed">
-          {isTimerRunning
-            ? `Distraction level: Low. We have blocked ${distractionsBlockedThisSession} attempts during this study block.`
-            : 'Get ready for your session. Turn on Study Mode to shield yourself from internet distractions.'}
-        </p>
-        <div className="flex gap-2 w-full">
+
+        {/* Attention Monitor Camera */}
+        <div>
+          <AttentionCamera />
+        </div>
+
+        {/* Tabs Headers */}
+        <div className="flex border-b border-outline-variant/40 pt-1">
           <button
-            onClick={reduceSession}
             type="button"
-            className="flex-1 py-2 border border-outline-variant/50 hover:border-outline-variant rounded-lg font-semibold text-label-sm text-primary hover:bg-surface-variant transition-all cursor-pointer active:scale-98 text-center"
-            title="Reduce focus session by 10 minutes"
+            onClick={() => setActiveTab('ai')}
+            className={`flex-1 pb-2 font-bold text-xs text-center transition-all cursor-pointer ${
+              activeTab === 'ai'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-slate-600 dark:text-slate-400 hover:text-primary'
+            }`}
           >
-            Reduce (-10m)
+            AI Study Companion
           </button>
           <button
-            onClick={extendSession}
             type="button"
-            className="flex-1 py-2 border border-outline-variant/50 hover:border-outline-variant rounded-lg font-semibold text-label-sm text-primary hover:bg-surface-variant transition-all cursor-pointer active:scale-98 text-center"
-            title="Extend focus session by 10 minutes"
+            onClick={() => setActiveTab('notes')}
+            className={`flex-1 pb-2 font-bold text-xs text-center transition-all cursor-pointer ${
+              activeTab === 'notes'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-slate-600 dark:text-slate-400 hover:text-primary'
+            }`}
           >
-            Extend (+10m)
+            Quick Scratchpad
           </button>
         </div>
-      </div>
 
-      {/* Attention Monitor Camera */}
-      <div className="mb-md mx-xs">
-        <AttentionCamera />
-      </div>
-
-      {/* Tabs Headers */}
-      <div className="flex border-b border-outline-variant/20 mb-md px-xs">
-        <button
-          onClick={() => setActiveTab('ai')}
-          className={`flex-1 pb-sm font-semibold text-label-sm text-center transition-all ${
-            activeTab === 'ai'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-on-surface-variant/60 hover:text-primary'
-          }`}
-        >
-          AI Study Companion
-        </button>
-        <button
-          onClick={() => setActiveTab('notes')}
-          className={`flex-1 pb-sm font-semibold text-label-sm text-center transition-all ${
-            activeTab === 'notes'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-on-surface-variant/60 hover:text-primary'
-          }`}
-        >
-          Quick Scratchpad
-        </button>
-      </div>
-
-      {/* Tabs Content */}
-      <div className="flex-1 flex flex-col overflow-hidden px-xs">
-        {activeTab === 'ai' ? (
-          <div className="flex-1 flex flex-col justify-between overflow-hidden">
-            {/* Chat Log */}
-            <div className="flex-1 overflow-y-auto space-y-sm pr-xs mb-sm max-h-[350px]">
-              {chatLog.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`flex flex-col max-w-[85%] rounded-xl p-sm text-label-sm ${
-                    msg.sender === 'user'
-                      ? 'bg-primary text-on-primary ml-auto rounded-tr-none'
-                      : 'bg-surface-container-high text-on-surface mr-auto rounded-tl-none border border-outline-variant/10'
-                  }`}
-                >
-                  <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                  <span
-                    className={`text-[9px] mt-1 self-end ${
-                      msg.sender === 'user' ? 'text-white/60' : 'text-on-surface-variant/60'
+        {/* Tabs Content */}
+        <div className="pb-6">
+          {activeTab === 'ai' ? (
+            <div className="flex flex-col space-y-3">
+              {/* Chat Log */}
+              <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1 [scrollbar-width:thin]">
+                {chatLog.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex flex-col max-w-[88%] rounded-xl p-2.5 text-xs font-medium ${
+                      msg.sender === 'user'
+                        ? 'bg-primary text-white ml-auto rounded-tr-none'
+                        : 'bg-surface-container-high text-slate-900 dark:text-slate-100 mr-auto rounded-tl-none border border-outline-variant/30'
                     }`}
                   >
-                    {msg.time}
-                  </span>
-                </div>
-              ))}
-            </div>
+                    <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                    <span
+                      className={`text-[9px] mt-1 self-end font-bold ${
+                        msg.sender === 'user' ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      {msg.time}
+                    </span>
+                  </div>
+                ))}
+              </div>
 
-            {/* Input Form */}
-            <form onSubmit={sendChatMessage} className="flex gap-xs mt-auto">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                placeholder="Ask focus tips, math help..."
-                className="flex-1 px-sm py-2 border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-label-sm outline-none bg-surface/50"
+              {/* Input Form */}
+              <form onSubmit={sendChatMessage} className="flex gap-1.5 pt-1">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  placeholder="Ask focus tips, math help..."
+                  className="flex-1 px-3 py-2 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-xs outline-none bg-surface text-slate-900 dark:text-slate-100"
+                />
+                <button
+                  type="submit"
+                  className="bg-primary hover:bg-primary/95 text-white px-3 py-2 rounded-lg flex items-center justify-center cursor-pointer transition-colors shadow-xs active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-[17px]">send</span>
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="flex flex-col space-y-2">
+              <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                Notes automatically save
+              </label>
+              <textarea
+                value={noteText}
+                onChange={e => saveNote(e.target.value)}
+                placeholder="Jot down quick reminders, equations, list items here so you don't break your study flow..."
+                className="w-full p-2.5 border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-xs outline-none bg-surface text-slate-900 dark:text-slate-100 min-h-[220px] resize-y leading-relaxed"
               />
-              <button
-                type="submit"
-                className="bg-primary hover:bg-primary/95 text-on-primary p-2 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-              >
-                <span className="material-symbols-outlined text-[18px]">send</span>
-              </button>
-            </form>
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col gap-sm">
-            <label className="text-xs font-bold text-on-surface-variant/50 uppercase tracking-wider">
-              Notes automatically save
-            </label>
-            <textarea
-              value={noteText}
-              onChange={e => saveNote(e.target.value)}
-              placeholder="Jot down quick reminders, equations, list items here so you don't break your study flow..."
-              className="flex-1 w-full p-sm border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-label-sm outline-none resize-none bg-surface/30 min-h-[300px]"
-            />
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
-    </nav>
+    </aside>
   );
 }

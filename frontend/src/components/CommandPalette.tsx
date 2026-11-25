@@ -272,11 +272,13 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 top-0 left-0 w-screen h-screen z-50 flex items-start justify-center pt-20 px-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-200"
+      style={{ width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0 }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl bg-white dark:bg-[#0c1322] border border-outline-variant/30 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+        className="w-full max-w-[640px] bg-surface text-on-surface border border-outline-variant rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+        style={{ width: '100%', maxWidth: '640px', minWidth: '320px' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Search Input Bar */}
@@ -292,7 +294,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
             }}
             onKeyDown={handleKeyDown}
             placeholder="Type a command or search (e.g. 'start timer', 'rain', 'planner')..."
-            className="flex-1 bg-transparent text-primary text-sm font-medium outline-none placeholder:text-outline-variant"
+            className="flex-1 bg-transparent text-primary text-sm font-medium outline-none placeholder:text-on-surface-variant/60"
           />
           <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono font-semibold text-outline bg-surface-container-high rounded border border-outline-variant/30">
             ESC to close

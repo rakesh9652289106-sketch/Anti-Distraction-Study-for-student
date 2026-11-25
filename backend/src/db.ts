@@ -83,6 +83,9 @@ export interface GlobalSettings {
     temperature: number;
     systemPrompt: string;
     attentionGuardSensitivity: string;
+    stareDurationLimit?: number;
+    gazeStatusDuration?: number;
+    lookAtScreenDuration?: number;
   };
   groupConfig?: {
     maxUsersPerGroup: number;
@@ -282,7 +285,10 @@ function getInitialData(): DbSchema {
         personality: 'academic',
         temperature: 0.7,
         systemPrompt: 'You are FocusFlow AI Tutor. Provide structured explanations and advice. Maintain a supportive educational tone. Encourage the student to avoid distraction and use Pomodoro blocks.',
-        attentionGuardSensitivity: 'medium'
+        attentionGuardSensitivity: 'medium',
+        stareDurationLimit: 7,
+        gazeStatusDuration: 10,
+        lookAtScreenDuration: 10
       }
     },
     tickets: [

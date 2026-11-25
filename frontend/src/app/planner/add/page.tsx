@@ -447,7 +447,7 @@ function AddEventForm() {
                     />
                     <div className={`p-sm rounded-lg border transition-all ${
                       focusMode === mode.id
-                        ? 'border-primary bg-primary-fixed text-primary'
+                        ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
                         : 'border-outline-variant/40 hover:bg-surface-container-low text-on-surface-variant'
                     }`}>
                       <div className="flex items-center gap-sm">

@@ -26,12 +26,6 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-on-surface`}>
         <AppProvider>
-          {/* Ambient Background Glows */}
-          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-secondary/5 blur-[120px]"></div>
-          </div>
-
           <MainLayoutWrapper>{children}</MainLayoutWrapper>
         </AppProvider>
       </body>

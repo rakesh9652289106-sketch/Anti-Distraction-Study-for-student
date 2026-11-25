@@ -58,7 +58,7 @@ export default function ZenModeModal({ isOpen, onClose }: ZenModeModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-between p-8 bg-[#070b14]/95 backdrop-blur-2xl text-white select-none animate-in fade-in duration-300">
       {/* Top Bar: Active Task & Exit */}
-      <div className="w-full max-w-4xl flex items-center justify-between">
+      <div className="w-full max-w-[800px] flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
           <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
@@ -134,7 +134,7 @@ export default function ZenModeModal({ isOpen, onClose }: ZenModeModalProps) {
         </div>
 
         {/* Focused Task Card */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 max-w-md w-full flex items-center justify-between backdrop-blur-md">
+        <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 max-w-[480px] w-full flex items-center justify-between backdrop-blur-md">
           <div className="flex items-center gap-3 overflow-hidden">
             <span className="material-symbols-outlined text-emerald-400">task_alt</span>
             <div className="truncate">
@@ -156,7 +156,7 @@ export default function ZenModeModal({ isOpen, onClose }: ZenModeModalProps) {
       </div>
 
       {/* Bottom Bar: Soundscape Quick Controls & Mindful Advice */}
-      <div className="w-full max-w-4xl flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10 text-xs text-slate-400">
+      <div className="w-full max-w-[800px] flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10 text-xs text-slate-400">
         <div className="flex items-center gap-2">
           <button
             onClick={handleToggleSound}

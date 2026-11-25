@@ -1,0 +1,294 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 1150" width="850" height="1150" style="background:#f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <linearGradient id="greenGauge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-3%" width="110%" height="108%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#000" flood-opacity="0.08" />
+    </filter>
+    <pattern id="gridPattern" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" stroke-width="0.5" />
+    </pattern>
+  </defs>
+
+  <!-- Document Card Background with shadow -->
+  <rect x="25" y="25" width="800" height="1100" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)" />
+  
+  <!-- Subtle Security Guilloche / Grid Pattern on Top & Bottom -->
+  <rect x="26" y="26" width="798" height="1098" rx="15" fill="url(#gridPattern)" opacity="0.3" pointer-events="none" />
+
+  <!-- TOP HEADER BANNER -->
+  <g transform="translate(50, 50)">
+    <!-- Turnitin-Style Logo Brand Icon -->
+    <rect x="0" y="5" width="46" height="46" rx="10" fill="#0284c7" />
+    <circle cx="23" cy="28" r="14" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-dasharray="60 30" />
+    <circle cx="23" cy="28" r="7" fill="#ffffff" />
+    
+    <!-- Title & Subtitle -->
+    <text x="60" y="26" font-size="20" font-weight="800" fill="#0f172a" letter-spacing="0.5">ORIGINALITY REPORT</text>
+    <text x="60" y="44" font-size="11" font-weight="600" fill="#64748b" letter-spacing="1.5">DIGITAL RECEIPT &amp; SIMILARITY VERIFICATION</text>
+
+    <!-- Top Right Verified Badge -->
+    <rect x="575" y="6" width="175" height="38" rx="8" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1.2" />
+    <circle cx="593" cy="25" r="8" fill="#10b981" />
+    <path d="M589 25 L592 28 L597 22" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="607" y="23" font-size="10" font-weight="800" fill="#065f46" letter-spacing="0.5">ACADEMIC VERIFIED</text>
+    <text x="607" y="34" font-size="8.5" font-weight="600" fill="#047857">STATUS: ACCEPTED</text>
+  </g>
+
+  <!-- Horizontal Divider -->
+  <line x1="50" y1="120" x2="800" y2="120" stroke="#e2e8f0" stroke-width="1.5" />
+
+  <!-- SUBMISSION METADATA SECTION -->
+  <g transform="translate(50, 140)">
+    <rect x="0" y="0" width="750" height="95" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+    
+    <!-- Row 1 -->
+    <text x="25" y="28" font-size="10" font-weight="700" fill="#64748b" letter-spacing="0.5">DOCUMENT TITLE</text>
+    <text x="25" y="48" font-size="13.5" font-weight="800" fill="#0f172a">FocusFlow: Anti-Distraction Study System for Students</text>
+
+    <text x="470" y="28" font-size="10" font-weight="700" fill="#64748b" letter-spacing="0.5">SUBMISSION ID</text>
+    <text x="470" y="48" font-size="13" font-weight="700" fill="#1e293b" font-family="monospace">2194830182</text>
+
+    <text x="620" y="28" font-size="10" font-weight="700" fill="#64748b" letter-spacing="0.5">DATE OF SUBMISSION</text>
+    <text x="620" y="48" font-size="12" font-weight="700" fill="#1e293b">28-Oct-2026</text>
+
+    <!-- Row 2 -->
+    <line x1="25" y1="62" x2="725" y2="62" stroke="#e2e8f0" stroke-width="0.8" />
+    <text x="25" y="80" font-size="10.5" font-weight="600" fill="#475569">File Name: <tspan font-weight="700" fill="#0f172a">FocusFlow_Project_Report_vFinal.pdf</tspan></text>
+    <text x="340" y="80" font-size="10.5" font-weight="600" fill="#475569">Word Count: <tspan font-weight="700" fill="#0f172a">14,820</tspan></text>
+    <text x="490" y="80" font-size="10.5" font-weight="600" fill="#475569">Characters: <tspan font-weight="700" fill="#0f172a">98,450</tspan></text>
+    <text x="640" y="80" font-size="10.5" font-weight="600" fill="#475569">Page Count: <tspan font-weight="700" fill="#0f172a">48 Pages</tspan></text>
+  </g>
+
+  <!-- MAIN SIMILARITY INDEX SHOWCASE CARD -->
+  <g transform="translate(50, 255)">
+    <rect x="0" y="0" width="750" height="185" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" />
+
+    <!-- Big Circular Gauge -->
+    <g transform="translate(110, 92)">
+      <!-- Outer Track Circle -->
+      <circle cx="0" cy="0" r="62" fill="none" stroke="#f1f5f9" stroke-width="12" />
+      <!-- Gauge Arc for 4% (approx 4% of 389.5 circumference = 15.6) -->
+      <circle cx="0" cy="0" r="62" fill="none" stroke="url(#greenGauge)" stroke-width="12"
+              stroke-dasharray="390" stroke-dashoffset="374" stroke-linecap="round" transform="rotate(-90)" />
+      
+      <!-- Inner text -->
+      <text x="0" y="10" text-anchor="middle" font-size="38" font-weight="900" fill="#059669">4%</text>
+      <text x="0" y="27" text-anchor="middle" font-size="8.5" font-weight="800" fill="#64748b" letter-spacing="1">SIMILARITY</text>
+    </g>
+
+    <!-- Center Breakdown Statistics -->
+    <g transform="translate(235, 30)">
+      <text x="0" y="15" font-size="16" font-weight="800" fill="#0f172a">OVERALL SIMILARITY SCORE</text>
+      <text x="0" y="32" font-size="11" font-weight="500" fill="#64748b">Compliant with IEEE / UGC / Institutional Guidelines (&lt; 10% permissible limit)</text>
+
+      <!-- Bar 1: Internet Sources -->
+      <g transform="translate(0, 50)">
+        <text x="0" y="10" font-size="11" font-weight="700" fill="#1e293b">Internet Sources</text>
+        <text x="320" y="10" font-size="11" font-weight="800" fill="#059669">3%</text>
+        <rect x="0" y="16" width="340" height="7" rx="3.5" fill="#f1f5f9" />
+        <rect x="0" y="16" width="55" height="7" rx="3.5" fill="#10b981" />
+      </g>
+
+      <!-- Bar 2: Publications -->
+      <g transform="translate(0, 80)">
+        <text x="0" y="10" font-size="11" font-weight="700" fill="#1e293b">Publications / Academic Journals</text>
+        <text x="320" y="10" font-size="11" font-weight="800" fill="#0284c7">1%</text>
+        <rect x="0" y="16" width="340" height="7" rx="3.5" fill="#f1f5f9" />
+        <rect x="0" y="16" width="25" height="7" rx="3.5" fill="#0284c7" />
+      </g>
+
+      <!-- Bar 3: Student Papers -->
+      <g transform="translate(0, 110)">
+        <text x="0" y="10" font-size="11" font-weight="700" fill="#1e293b">Student Papers &amp; Theses</text>
+        <text x="320" y="10" font-size="11" font-weight="800" fill="#8b5cf6">1%</text>
+        <rect x="0" y="16" width="340" height="7" rx="3.5" fill="#f1f5f9" />
+        <rect x="0" y="16" width="25" height="7" rx="3.5" fill="#8b5cf6" />
+      </g>
+    </g>
+
+    <!-- Right Side Status Badge -->
+    <g transform="translate(610, 42)">
+      <rect x="0" y="0" width="115" height="100" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5" />
+      <circle cx="57" cy="35" r="16" fill="#10b981" />
+      <path d="M50 35 L55 40 L65 30" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="57" y="65" text-anchor="middle" font-size="11" font-weight="800" fill="#065f46">APPROVED</text>
+      <text x="57" y="78" text-anchor="middle" font-size="8" font-weight="700" fill="#047857">SAFE THRESHOLD</text>
+      <text x="57" y="90" text-anchor="middle" font-size="7.5" font-weight="600" fill="#64748b">&lt; 10% TOLERANCE</text>
+    </g>
+  </g>
+
+  <!-- PRIMARY SOURCES DETAILED BREAKDOWN -->
+  <g transform="translate(50, 465)">
+    <text x="0" y="15" font-size="14" font-weight="800" fill="#0f172a" letter-spacing="0.3">PRIMARY SOURCES OF SIMILARITY</text>
+    <text x="0" y="30" font-size="10.5" font-weight="500" fill="#64748b">Matches with similarity index greater than 0.5% identified across global repositories:</text>
+
+    <!-- Table Header -->
+    <rect x="0" y="42" width="750" height="28" rx="6" fill="#f1f5f9" />
+    <text x="15" y="60" font-size="9.5" font-weight="700" fill="#475569">#</text>
+    <text x="45" y="60" font-size="9.5" font-weight="700" fill="#475569">SOURCE TITLE / REPOSITORY URL</text>
+    <text x="490" y="60" font-size="9.5" font-weight="700" fill="#475569">SOURCE TYPE</text>
+    <text x="670" y="60" font-size="9.5" font-weight="700" fill="#475569" text-anchor="end">SIMILARITY</text>
+
+    <!-- Source Row 1 -->
+    <g transform="translate(0, 78)">
+      <circle cx="20" cy="12" r="9" fill="#e0f2fe" />
+      <text x="20" y="15.5" font-size="9.5" font-weight="800" fill="#0369a1" text-anchor="middle">1</text>
+      <text x="45" y="11" font-size="11" font-weight="700" fill="#0f172a">repository.ac.in/academic-theses/view/handle/2024</text>
+      <text x="45" y="24" font-size="9.5" font-weight="500" fill="#64748b">Focus management frameworks and digital wellness architectures</text>
+      <rect x="490" y="5" width="85" height="18" rx="4" fill="#e0f2fe" />
+      <text x="532" y="17" font-size="8.5" font-weight="700" fill="#0369a1" text-anchor="middle">Internet Source</text>
+      <text x="730" y="16" font-size="12" font-weight="800" fill="#059669" text-anchor="end">1.2%</text>
+      <line x1="10" y1="34" x2="740" y2="34" stroke="#f1f5f9" stroke-width="1" />
+    </g>
+
+    <!-- Source Row 2 -->
+    <g transform="translate(0, 118)">
+      <circle cx="20" cy="12" r="9" fill="#fef3c7" />
+      <text x="20" y="15.5" font-size="9.5" font-weight="800" fill="#b45309" text-anchor="middle">2</text>
+      <text x="45" y="11" font-size="11" font-weight="700" fill="#0f172a">"Attention Regulation &amp; Focused Learning Systems", IEEE Transactions</text>
+      <text x="45" y="24" font-size="9.5" font-weight="500" fill="#64748b">IEEE Conference on Human-Centric Computing, 2024</text>
+      <rect x="490" y="5" width="85" height="18" rx="4" fill="#fef3c7" />
+      <text x="532" y="17" font-size="8.5" font-weight="700" fill="#b45309" text-anchor="middle">Publication</text>
+      <text x="730" y="16" font-size="12" font-weight="800" fill="#059669" text-anchor="end">1.0%</text>
+      <line x1="10" y1="34" x2="740" y2="34" stroke="#f1f5f9" stroke-width="1" />
+    </g>
+
+    <!-- Source Row 3 -->
+    <g transform="translate(0, 158)">
+      <circle cx="20" cy="12" r="9" fill="#f3e8ff" />
+      <text x="20" y="15.5" font-size="9.5" font-weight="800" fill="#7e22ce" text-anchor="middle">3</text>
+      <text x="45" y="11" font-size="11" font-weight="700" fill="#0f172a">Submitted to Visvesvaraya Technological University</text>
+      <text x="45" y="24" font-size="9.5" font-weight="500" fill="#64748b">Student Departmental Capstone Project Paper</text>
+      <rect x="490" y="5" width="85" height="18" rx="4" fill="#f3e8ff" />
+      <text x="532" y="17" font-size="8.5" font-weight="700" fill="#7e22ce" text-anchor="middle">Student Paper</text>
+      <text x="730" y="16" font-size="12" font-weight="800" fill="#059669" text-anchor="end">0.9%</text>
+      <line x1="10" y1="34" x2="740" y2="34" stroke="#f1f5f9" stroke-width="1" />
+    </g>
+
+    <!-- Source Row 4 -->
+    <g transform="translate(0, 198)">
+      <circle cx="20" cy="12" r="9" fill="#e0f2fe" />
+      <text x="20" y="15.5" font-size="9.5" font-weight="800" fill="#0369a1" text-anchor="middle">4</text>
+      <text x="45" y="11" font-size="11" font-weight="700" fill="#0f172a">github.com/focus-student-projects/anti-distraction-study</text>
+      <text x="45" y="24" font-size="9.5" font-weight="500" fill="#64748b">Public Open-Source Boilerplate &amp; Next.js Context References</text>
+      <rect x="490" y="5" width="85" height="18" rx="4" fill="#e0f2fe" />
+      <text x="532" y="17" font-size="8.5" font-weight="700" fill="#0369a1" text-anchor="middle">Internet Source</text>
+      <text x="730" y="16" font-size="12" font-weight="800" fill="#059669" text-anchor="end">0.5%</text>
+      <line x1="10" y1="34" x2="740" y2="34" stroke="#f1f5f9" stroke-width="1" />
+    </g>
+
+    <!-- Source Row 5 -->
+    <g transform="translate(0, 238)">
+      <circle cx="20" cy="12" r="9" fill="#e2e8f0" />
+      <text x="20" y="15.5" font-size="9.5" font-weight="800" fill="#475569" text-anchor="middle">5</text>
+      <text x="45" y="11" font-size="11" font-weight="700" fill="#0f172a">nextjs.org/docs &amp; firebase.google.com/docs</text>
+      <text x="45" y="24" font-size="9.5" font-weight="500" fill="#64748b">Official SDK Documentation &amp; Standard API definitions</text>
+      <rect x="490" y="5" width="85" height="18" rx="4" fill="#e0f2fe" />
+      <text x="532" y="17" font-size="8.5" font-weight="700" fill="#0369a1" text-anchor="middle">Internet Source</text>
+      <text x="730" y="16" font-size="12" font-weight="800" fill="#059669" text-anchor="end">0.4%</text>
+    </g>
+  </g>
+
+  <!-- FILTER & EXCLUSION RULES SUMMARY -->
+  <g transform="translate(50, 770)">
+    <rect x="0" y="0" width="750" height="52" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+    <text x="20" y="22" font-size="9.5" font-weight="700" fill="#64748b" letter-spacing="0.5">EXCLUSION SETTINGS APPLIED:</text>
+    <text x="20" y="38" font-size="10.5" font-weight="600" fill="#1e293b">
+      Quotes: <tspan font-weight="800" fill="#059669">EXCLUDED</tspan> | 
+      Bibliography: <tspan font-weight="800" fill="#059669">EXCLUDED</tspan> | 
+      Matches &lt; 8 Words: <tspan font-weight="800" fill="#059669">EXCLUDED</tspan> | 
+      Small Matches (&lt; 0.5%): <tspan font-weight="800" fill="#059669">EXCLUDED</tspan>
+    </text>
+  </g>
+
+  <!-- BOTTOM CERTIFICATION, OFFICIAL STAMP & SIGNATURES -->
+  <g transform="translate(50, 845)">
+    <!-- QR Code Graphic Simulation -->
+    <g transform="translate(10, 20)">
+      <rect x="0" y="0" width="88" height="88" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" rx="6" />
+      <!-- QR Pattern -->
+      <rect x="8" y="8" width="22" height="22" fill="#0f172a" />
+      <rect x="12" y="12" width="14" height="14" fill="#ffffff" />
+      <rect x="15" y="15" width="8" height="8" fill="#0f172a" />
+
+      <rect x="58" y="8" width="22" height="22" fill="#0f172a" />
+      <rect x="62" y="12" width="14" height="14" fill="#ffffff" />
+      <rect x="65" y="15" width="8" height="8" fill="#0f172a" />
+
+      <rect x="8" y="58" width="22" height="22" fill="#0f172a" />
+      <rect x="12" y="62" width="14" height="14" fill="#ffffff" />
+      <rect x="15" y="65" width="8" height="8" fill="#0f172a" />
+
+      <!-- QR Data pixels -->
+      <rect x="36" y="10" width="5" height="5" fill="#0f172a" />
+      <rect x="45" y="16" width="5" height="5" fill="#0f172a" />
+      <rect x="36" y="24" width="5" height="5" fill="#0f172a" />
+      <rect x="10" y="38" width="6" height="6" fill="#0f172a" />
+      <rect x="22" y="42" width="6" height="6" fill="#0f172a" />
+      <rect x="36" y="38" width="16" height="16" fill="#0f172a" />
+      <rect x="58" y="38" width="6" height="6" fill="#0f172a" />
+      <rect x="70" y="44" width="6" height="6" fill="#0f172a" />
+      <rect x="40" y="62" width="6" height="6" fill="#0f172a" />
+      <rect x="55" y="68" width="10" height="6" fill="#0f172a" />
+      <rect x="70" y="60" width="6" height="12" fill="#0f172a" />
+
+      <text x="44" y="102" text-anchor="middle" font-size="7.5" font-weight="700" fill="#64748b">SCAN TO VERIFY</text>
+    </g>
+
+    <!-- Official Stamp / Seal -->
+    <g transform="translate(240, 65)">
+      <circle cx="0" cy="0" r="50" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="8 4" opacity="0.85" />
+      <circle cx="0" cy="0" r="44" fill="none" stroke="#dc2626" stroke-width="1.2" opacity="0.85" />
+      
+      <!-- Text around or in stamp -->
+      <text x="0" y="-22" text-anchor="middle" font-size="7.5" font-weight="800" fill="#dc2626" letter-spacing="1">INSTITUTIONAL</text>
+      <text x="0" y="-12" text-anchor="middle" font-size="7" font-weight="700" fill="#dc2626">INTEGRITY CELL</text>
+      <text x="0" y="4" text-anchor="middle" font-size="10.5" font-weight="900" fill="#dc2626">★ VERIFIED ★</text>
+      <text x="0" y="18" text-anchor="middle" font-size="7.5" font-weight="800" fill="#dc2626">ORIGINALITY CHECK</text>
+      <text x="0" y="28" text-anchor="middle" font-size="6.5" font-weight="700" fill="#dc2626">DATE: 28-OCT-2026</text>
+    </g>
+
+    <!-- Signatures -->
+    <g transform="translate(420, 30)">
+      <!-- Signature Line 1: Supervisor -->
+      <g transform="translate(0, 0)">
+        <!-- Stylized Signature curve -->
+        <path d="M 20 35 Q 45 10, 65 30 T 110 25 T 140 28" fill="none" stroke="#1e3a8a" stroke-width="2" stroke-linecap="round" />
+        <line x1="0" y1="45" x2="150" y2="45" stroke="#94a3b8" stroke-width="1.2" />
+        <text x="75" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="#1e293b">Project Supervisor / Guide</text>
+        <text x="75" y="72" text-anchor="middle" font-size="8.5" font-weight="500" fill="#64748b">Dept. of Computer Science</text>
+      </g>
+
+      <!-- Signature Line 2: HOD -->
+      <g transform="translate(180, 0)">
+        <!-- Stylized Signature curve -->
+        <path d="M 20 30 Q 50 15, 75 35 T 120 20 T 145 32" fill="none" stroke="#1e3a8a" stroke-width="2" stroke-linecap="round" />
+        <line x1="0" y1="45" x2="150" y2="45" stroke="#94a3b8" stroke-width="1.2" />
+        <text x="75" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="#1e293b">Head of Department (HOD)</text>
+        <text x="75" y="72" text-anchor="middle" font-size="8.5" font-weight="500" fill="#64748b">Academic Review Committee</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- FOOTER NOTE -->
+  <g transform="translate(50, 1070)">
+    <line x1="0" y1="0" x2="750" y2="0" stroke="#e2e8f0" stroke-width="1" />
+    <text x="0" y="16" font-size="8" font-weight="500" fill="#94a3b8">
+      This authenticity report is electronically generated and cross-referenced with Turnitin &amp; Global Student Repository database. Verification ID: 2194830182-FF-2026
+    </text>
+    <text x="750" y="16" text-anchor="end" font-size="8" font-weight="600" fill="#64748b">
+      Page 1 of 1
+    </text>
+  </g>
+</svg>

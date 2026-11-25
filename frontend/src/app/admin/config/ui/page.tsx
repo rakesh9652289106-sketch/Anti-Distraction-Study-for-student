@@ -76,8 +76,8 @@ export default function AdminUiConfigPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-md pt-sm">
         <div>
-          <h2 className="font-bold text-headline-lg text-primary text-white">Panel Configuration: UI &amp; Visual Theme</h2>
-          <p className="text-body-md text-slate-400 font-medium">
+          <h2 className="font-black text-3xl text-white tracking-tight drop-shadow-sm">Panel Configuration: UI &amp; Visual Theme</h2>
+          <p className="text-xs font-bold text-amber-200 mt-1">
             Customize typography scales, layout presets, dark-mode, and student panel layouts.
           </p>
         </div>
@@ -97,9 +97,18 @@ export default function AdminUiConfigPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
             {[
-              { id: 'slate', name: 'Midnight Slate', desc: 'Default high-contrast charcoal and deep blue styling.', color: 'bg-slate-900 border-slate-700' },
-              { id: 'cyberpunk', name: 'Neon Cyberpunk', desc: 'Vibrant violet backgrounds, hot-pink borders, and dark neon style.', color: 'bg-purple-950 border-purple-800' },
-              { id: 'forest', name: 'Zen Forest', desc: 'Calming sage greens, soft warm slate highlights, and rounder profiles.', color: 'bg-emerald-950 border-emerald-800' }
+              { id: 'slate', name: 'Emerald Slate', desc: 'Obsidian charcoal with vibrant emerald-mint accents.', color: 'bg-emerald-600 border-emerald-500', swatch: null },
+              { id: 'indigo', name: 'Linear Indigo', desc: 'Electric indigo and purple styling inspired by Linear.', color: 'bg-indigo-600 border-indigo-500', swatch: null },
+              { id: 'ocean', name: 'Ocean Sapphire', desc: 'Deep sapphire with electric sky cyan glow.', color: 'bg-sky-500 border-sky-400', swatch: null },
+              { id: 'forest', name: 'Zen Forest', desc: 'Calming botanical sage and fresh emerald tones.', color: 'bg-teal-700 border-teal-500', swatch: null },
+              { id: 'cyberpunk', name: 'Neon Cyberpunk', desc: 'High-contrast neon magenta and purple style.', color: 'bg-pink-600 border-pink-400', swatch: null },
+              {
+                id: 'burgundy',
+                name: 'Burgundy Sage',
+                desc: 'Warm Cream Beige & Muted Sage Grey with rich Deep Burgundy accents.',
+                color: 'border-[#590907]',
+                swatch: ['#590907', '#A5A79B', '#E8D2B5']
+              }
             ].map(theme => (
               <div
                 key={theme.id}

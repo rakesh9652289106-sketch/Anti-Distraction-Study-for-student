@@ -132,61 +132,61 @@ export default function AdminPulsePage() {
   const { systemStats, zonesSummary } = metrics;
 
   return (
-    <div className="space-y-6 text-slate-200 font-sans">
+    <div className="space-y-6 text-black font-sans">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="font-bold text-2xl text-white tracking-tight">Admin Master Console</h2>
-          <p className="text-xs text-slate-400 mt-1">Unified monitoring and configuration dashboard hub.</p>
+          <h2 className="font-black text-3xl text-white tracking-tight drop-shadow-sm">Admin Master Console</h2>
+          <p className="text-xs font-bold text-amber-200 mt-1">Unified monitoring and configuration dashboard hub.</p>
         </div>
 
-        <div className="flex items-center gap-2 bg-[#0d1627] border border-[#16233c] px-4 py-2 rounded-full">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="text-xs font-bold text-slate-300">Uptime Metric: {systemStats.uptimePercent}%</span>
+        <div className="flex items-center gap-2 bg-[#FDF6ED] border-2 border-[#E2CEB9] px-4 py-2 rounded-full shadow-md text-black">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
+          <span className="text-xs font-black text-black">Uptime Metric: {systemStats.uptimePercent}%</span>
         </div>
       </div>
 
       {/* Grid: 4 Core Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Total Students */}
-        <div className="bg-[#0a101d] border border-[#15233c] rounded-2xl p-5 relative overflow-hidden group">
-          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-700/30 text-5xl">groups</span>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Students</p>
-          <h3 className="text-2xl font-bold text-white mt-2">{systemStats.totalStudents.toLocaleString()}</h3>
-          <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-400 mt-2">
+        <div className="bg-[#FDF6ED] border-2 border-[#E2CEB9] rounded-2xl p-5 relative overflow-hidden group shadow-lg text-black">
+          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-300/40 text-5xl">groups</span>
+          <p className="text-[10px] font-black text-black uppercase tracking-widest">Total Students</p>
+          <h3 className="text-3xl font-black text-black mt-2 font-mono">{systemStats.totalStudents.toLocaleString()}</h3>
+          <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-800 mt-2">
             <span className="material-symbols-outlined text-xs">trending_up</span>
             +{systemStats.studentsGrowthTrend}%
           </span>
         </div>
 
         {/* Active Faculty */}
-        <div className="bg-[#0a101d] border border-[#15233c] rounded-2xl p-5 relative overflow-hidden group">
-          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-700/30 text-5xl">school</span>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Faculty</p>
-          <h3 className="text-2xl font-bold text-white mt-2">{systemStats.activeFaculty}</h3>
-          <span className="inline-flex items-center gap-0.5 text-xs font-bold text-slate-400 mt-2">
+        <div className="bg-[#FDF6ED] border-2 border-[#E2CEB9] rounded-2xl p-5 relative overflow-hidden group shadow-lg text-black">
+          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-300/40 text-5xl">school</span>
+          <p className="text-[10px] font-black text-black uppercase tracking-widest">Active Faculty</p>
+          <h3 className="text-3xl font-black text-black mt-2 font-mono">{systemStats.activeFaculty}</h3>
+          <span className="inline-flex items-center gap-0.5 text-xs font-bold text-slate-800 mt-2">
             Stable
           </span>
         </div>
 
         {/* Active Licenses */}
-        <div className="bg-[#0a101d] border border-[#15233c] rounded-2xl p-5 relative overflow-hidden group">
-          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-700/30 text-5xl">card_membership</span>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Licenses</p>
-          <h3 className="text-2xl font-bold text-white mt-2">{systemStats.activeLicenses.toLocaleString()}</h3>
-          <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-400 mt-2">
+        <div className="bg-[#FDF6ED] border-2 border-[#E2CEB9] rounded-2xl p-5 relative overflow-hidden group shadow-lg text-black">
+          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-300/40 text-5xl">card_membership</span>
+          <p className="text-[10px] font-black text-black uppercase tracking-widest">Active Licenses</p>
+          <h3 className="text-3xl font-black text-black mt-2 font-mono">{systemStats.activeLicenses.toLocaleString()}</h3>
+          <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-800 mt-2">
             <span className="material-symbols-outlined text-xs">trending_up</span>
             +{systemStats.licensesGrowthTrend}%
           </span>
         </div>
 
         {/* Server Storage */}
-        <div className="bg-[#0a101d] border border-[#15233c] rounded-2xl p-5 relative overflow-hidden group">
-          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-700/30 text-5xl">database</span>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Server Storage</p>
-          <h3 className="text-2xl font-bold text-white mt-2">{systemStats.storageUsagePercent}%</h3>
-          <div className="w-full bg-[#16233c] h-1.5 rounded-full mt-3 overflow-hidden">
-            <div className="bg-emerald-500 h-full" style={{ width: `${systemStats.storageUsagePercent}%` }}></div>
+        <div className="bg-[#FDF6ED] border-2 border-[#E2CEB9] rounded-2xl p-5 relative overflow-hidden group shadow-lg text-black">
+          <span className="material-symbols-outlined absolute right-4 top-4 text-slate-300/40 text-5xl">database</span>
+          <p className="text-[10px] font-black text-black uppercase tracking-widest">Server Storage</p>
+          <h3 className="text-3xl font-black text-black mt-2 font-mono">{systemStats.storageUsagePercent}%</h3>
+          <div className="w-full bg-[#E2CEB9] h-2 rounded-full mt-3 overflow-hidden">
+            <div className="bg-[#590907] h-full rounded-full" style={{ width: `${systemStats.storageUsagePercent}%` }}></div>
           </div>
         </div>
       </div>
@@ -195,65 +195,65 @@ export default function AdminPulsePage() {
       <div className="grid grid-cols-12 gap-6">
         
         {/* Student and Faculty zones summary (8 columns) */}
-        <div className="col-span-12 lg:col-span-8 bg-[#0a101d] border border-[#15233c] rounded-2xl p-6 space-y-6">
-          <h3 className="font-bold text-lg text-white border-b border-[#16233c] pb-3">Sub-Zones Telemetry</h3>
+        <div className="col-span-12 lg:col-span-8 bg-[#FDF6ED] border-2 border-[#E2CEB9] rounded-2xl p-6 space-y-6 shadow-lg text-black">
+          <h3 className="font-black text-lg text-black border-b border-[#E2CEB9] pb-3">Sub-Zones Telemetry</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Student Zone */}
-            <div className="bg-[#0d1527] border border-[#1e2e4e]/40 p-4 rounded-xl">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Student Zone</h4>
+            <div className="bg-[#F3E2CF] border border-[#D5BFA7] p-4 rounded-xl text-black">
+              <h4 className="text-xs font-black text-black uppercase tracking-wider">Student Zone</h4>
               <div className="mt-3 space-y-1">
-                <p className="text-sm font-semibold text-white">Online Now: {zonesSummary.studentZone.onlineNow}</p>
-                <p className="text-xs text-slate-450">Pending: {zonesSummary.studentZone.pendingRegistration}</p>
+                <p className="text-sm font-black text-black">Online Now: {zonesSummary.studentZone.onlineNow}</p>
+                <p className="text-xs font-bold text-slate-800">Pending: {zonesSummary.studentZone.pendingRegistration}</p>
               </div>
             </div>
 
             {/* Teacher Zone */}
-            <div className="bg-[#0d1527] border border-[#1e2e4e]/40 p-4 rounded-xl">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Teacher Zone</h4>
+            <div className="bg-[#F3E2CF] border border-[#D5BFA7] p-4 rounded-xl text-black">
+              <h4 className="text-xs font-black text-black uppercase tracking-wider">Teacher Zone</h4>
               <div className="mt-3 space-y-1">
-                <p className="text-sm font-semibold text-white">Active Classes: {zonesSummary.teacherZone.activeCourses}</p>
-                <p className="text-xs text-slate-450">Flagged Files: {zonesSummary.teacherZone.flaggedResources}</p>
+                <p className="text-sm font-black text-black">Active Classes: {zonesSummary.teacherZone.activeCourses}</p>
+                <p className="text-xs font-bold text-slate-800">Flagged Files: {zonesSummary.teacherZone.flaggedResources}</p>
               </div>
             </div>
 
             {/* Infrastructure Zone */}
-            <div className="bg-[#0d1527] border border-[#1e2e4e]/40 p-4 rounded-xl">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Infra Node</h4>
+            <div className="bg-[#F3E2CF] border border-[#D5BFA7] p-4 rounded-xl text-black">
+              <h4 className="text-xs font-black text-black uppercase tracking-wider">Infra Node</h4>
               <div className="mt-3 space-y-1">
-                <p className="text-sm font-semibold text-white">Latency: {zonesSummary.infraZone.latencyMs}ms</p>
-                <p className="text-xs text-emerald-400 font-bold">API Status: {zonesSummary.infraZone.apiLoadStatus}</p>
+                <p className="text-sm font-black text-black">Latency: {zonesSummary.infraZone.latencyMs}ms</p>
+                <p className="text-xs font-black text-emerald-800">API Status: {zonesSummary.infraZone.apiLoadStatus}</p>
               </div>
             </div>
           </div>
 
           {/* Quick command buttons */}
-          <div className="pt-4 border-t border-[#16233c] flex flex-wrap gap-4">
+          <div className="pt-4 border-t border-[#E2CEB9] flex flex-wrap gap-4">
             <button
               onClick={generateSystemReport}
-              className="px-4 py-2.5 bg-slate-900 border border-slate-800 hover:bg-[#131d33] text-white font-bold text-xs rounded-lg cursor-pointer"
+              className="px-4 py-2.5 bg-[#590907] hover:bg-[#430605] text-white font-black text-xs rounded-lg cursor-pointer shadow-md"
             >
               Generate Report
             </button>
             <button
               onClick={triggerSafeMode}
-              className={`px-4 py-2.5 font-bold text-xs rounded-lg cursor-pointer transition-all border ${
+              className={`px-4 py-2.5 font-black text-xs rounded-lg cursor-pointer transition-all border shadow-md ${
                 safeModeActive
-                  ? 'bg-red-650 text-white border-red-500 hover:bg-red-700 animate-pulse'
-                  : 'bg-[#131d33] border-[#1e2e4e]/60 text-red-400 hover:bg-[#1e2e4e]/40'
+                  ? 'bg-red-700 text-white border-red-500 hover:bg-red-800 animate-pulse'
+                  : 'bg-red-100 border-red-300 text-red-800 hover:bg-red-200'
               }`}
             >
               {safeModeActive ? '🔴 SAFE MODE ENGAGED (Halt System)' : 'Lock Student Shells'}
             </button>
             <button
               onClick={toggleMasterCamera}
-              className={`px-4 py-2.5 font-bold text-xs rounded-lg cursor-pointer transition-all border flex items-center gap-1.5 ${
+              className={`px-4 py-2.5 font-black text-xs rounded-lg cursor-pointer transition-all border flex items-center gap-1.5 shadow-md ${
                 cameraEnabled
-                  ? 'bg-amber-950/40 border-amber-600/50 hover:bg-amber-900/50 text-amber-300'
-                  : 'bg-emerald-950/40 border-emerald-600/50 hover:bg-emerald-900/50 text-emerald-300'
+                  ? 'bg-amber-100 border-amber-300 hover:bg-amber-200 text-amber-900'
+                  : 'bg-emerald-100 border-emerald-300 hover:bg-emerald-200 text-emerald-900'
               }`}
             >
-              <span className="material-symbols-outlined text-sm">
+              <span className="material-symbols-outlined text-sm font-bold">
                 {cameraEnabled ? 'videocam_off' : 'videocam'}
               </span>
               {cameraEnabled ? 'Stop Camera (All Students)' : 'Restore Camera Stream'}
@@ -262,21 +262,21 @@ export default function AdminPulsePage() {
         </div>
 
         {/* AI Diagnostics (4 columns) */}
-        <div className="col-span-12 lg:col-span-4 bg-[#0a101d] border border-[#15233c] rounded-2xl p-6 flex flex-col justify-between">
+        <div className="col-span-12 lg:col-span-4 bg-[#FDF6ED] border-2 border-[#E2CEB9] rounded-2xl p-6 flex flex-col justify-between shadow-lg text-black">
           <div>
-            <h3 className="font-bold text-lg text-white border-b border-[#16233c] pb-3">AI Diagnostic Insights</h3>
+            <h3 className="font-black text-lg text-black border-b border-[#E2CEB9] pb-3">AI Diagnostic Insights</h3>
             <div className="mt-4 space-y-3">
               {insights.map(item => (
                 <div
                   key={item.id}
-                  className={`p-3 rounded-lg border text-xs leading-relaxed ${
+                  className={`p-3 rounded-lg border text-xs font-bold leading-relaxed ${
                     item.severity === 'error'
-                      ? 'bg-red-950/20 border-red-900/40 text-red-400'
+                      ? 'bg-red-100 border-red-300 text-red-900'
                       : item.severity === 'warning'
-                      ? 'bg-amber-950/20 border-amber-900/40 text-amber-400'
+                      ? 'bg-amber-100 border-amber-300 text-amber-900'
                       : item.severity === 'success'
-                      ? 'bg-emerald-950/20 border-emerald-900/40 text-emerald-400'
-                      : 'bg-slate-900 border-slate-800 text-slate-300'
+                      ? 'bg-emerald-100 border-emerald-300 text-emerald-900'
+                      : 'bg-[#F3E2CF] border-[#D5BFA7] text-black'
                   }`}
                 >
                   {item.text}
@@ -287,13 +287,13 @@ export default function AdminPulsePage() {
         </div>
 
         {/* Global System Events Logs (12 columns) */}
-        <div className="col-span-12 bg-[#0a101d] border border-[#15233c] rounded-2xl p-6">
-          <h3 className="font-bold text-lg text-white border-b border-[#16233c] pb-3 mb-4">Global System Events Log</h3>
+        <div className="col-span-12 bg-[#FDF6ED] border-2 border-[#E2CEB9] rounded-2xl p-6 shadow-lg text-black">
+          <h3 className="font-black text-lg text-black border-b border-[#E2CEB9] pb-3 mb-4">Global System Events Log</h3>
           
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-[#16233c] text-slate-400 uppercase font-bold tracking-wider">
+                <tr className="border-b-2 border-[#D5BFA7] text-black uppercase font-black tracking-wider">
                   <th className="pb-3">Timestamp</th>
                   <th className="pb-3">Module</th>
                   <th className="pb-3">Event Type</th>
@@ -301,20 +301,20 @@ export default function AdminPulsePage() {
                   <th className="pb-3">Target / Affected UID</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#16233c]/40">
+              <tbody className="divide-y divide-[#E2CEB9]">
                 {events.map((ev, i) => (
-                  <tr key={i} className="text-slate-300 hover:bg-[#131d33]/20">
-                    <td className="py-3 font-mono text-slate-400">{new Date(ev.timestamp).toLocaleString()}</td>
-                    <td className="py-3 font-semibold">{ev.module}</td>
-                    <td className="py-3">{ev.eventType}</td>
+                  <tr key={i} className="text-black font-semibold hover:bg-[#F3E2CF]/50">
+                    <td className="py-3 font-mono font-bold text-black">{new Date(ev.timestamp).toLocaleString()}</td>
+                    <td className="py-3 font-black text-black">{ev.module}</td>
+                    <td className="py-3 font-bold text-black">{ev.eventType}</td>
                     <td className="py-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        ev.status === 'CRITICAL' ? 'bg-red-950/40 text-red-400 border border-red-900/50' : 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/50'
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                        ev.status === 'CRITICAL' ? 'bg-red-200 text-red-900 border border-red-400' : 'bg-emerald-200 text-emerald-900 border border-emerald-400'
                       }`}>
                         {ev.status}
                       </span>
                     </td>
-                    <td className="py-3 font-mono text-slate-400">{ev.affectedUid}</td>
+                    <td className="py-3 font-mono font-bold text-black">{ev.affectedUid}</td>
                   </tr>
                 ))}
               </tbody>

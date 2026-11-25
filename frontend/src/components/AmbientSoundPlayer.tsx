@@ -83,7 +83,7 @@ export default function AmbientSoundPlayer() {
 
       {/* Floating Soundscape Selector Popover */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-outline-variant/30 rounded-2xl p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 top-full mt-2 w-72 bg-surface/95 backdrop-blur-xl border border-outline-variant text-on-surface rounded-2xl p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
           <div className="flex items-center justify-between pb-2 border-b border-outline-variant/20 mb-2">
             <div className="flex items-center gap-1.5">
               <span className="material-symbols-outlined text-secondary text-sm">headphones</span>

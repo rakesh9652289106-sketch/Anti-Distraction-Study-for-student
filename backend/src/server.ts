@@ -39,11 +39,25 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 
+// Ensure upload directories exist
+const uploadsBaseDir = path.join(__dirname, '../uploads');
+const roomsUploadsDir = path.join(uploadsBaseDir, 'rooms');
+const facultyUploadsDir = path.join(uploadsBaseDir, 'faculty');
+if (!fs.existsSync(uploadsBaseDir)) fs.mkdirSync(uploadsBaseDir, { recursive: true });
+if (!fs.existsSync(roomsUploadsDir)) fs.mkdirSync(roomsUploadsDir, { recursive: true });
+if (!fs.existsSync(facultyUploadsDir)) fs.mkdirSync(facultyUploadsDir, { recursive: true });
+
+const templatePdfPath = path.join(uploadsBaseDir, 'QM_Lecture_Notes_W4.pdf');
+if (!fs.existsSync(templatePdfPath)) {
+  fs.writeFileSync(templatePdfPath, Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000009 00000 n\n0000000052 00000 n\n0000000102 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n178\n%%EOF'));
+}
+
 // Serve static uploads folder
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(uploadsBaseDir));
 
 // Helper for admin authorization
 function isAuthenticated(req: Request): boolean {
@@ -724,13 +738,18 @@ app.get('/api/student/rooms/:roomId', (req: Request, res: Response) => {
   const resources = readResourcesDb();
   
   const room = db.rooms.find(r => r.id === roomId) || db.rooms[0];
+  const targetId = room ? room.id : roomId;
+
+  // Accurately filter resources shared with this room or marked for all rooms
   const roomResources = resources.filter(resItem => 
-    resItem.sharedWithGroups.some(g => g.groupId === roomId)
+    !resItem.archived && (
+      resItem.sharedWithGroups?.some(g => g.groupId === roomId || g.groupId === targetId || g.groupId === 'all')
+    )
   );
 
   res.json({
     roomDetails: {
-      roomId: room.id,
+      roomId: targetId,
       title: room.name,
       host: room.hostName || "Prof. Alex Rivera",
       isVerified: room.isVerified ?? true,
@@ -755,9 +774,154 @@ app.get('/api/student/rooms/:roomId', (req: Request, res: Response) => {
       title: r.title,
       type: r.fileType,
       size: r.size || "Unknown Size",
-      url: r.url
+      url: r.url,
+      downloads: r.stats?.downloads || 0,
+      createdAt: r.createdAt,
+      aiSummary: r.aiSummarySnippet || ""
     }))
   });
+});
+
+// POST /api/student/rooms/:roomId/files - Upload actual study files for students in this room
+app.post('/api/student/rooms/:roomId/files', (req: Request, res: Response) => {
+  try {
+    const { roomId } = req.params;
+    const { title, filename, fileData, fileType, size, description } = req.body;
+
+    if (!title || !fileData) {
+      return res.status(400).json({ error: "Title and file data are required" });
+    }
+
+    const db = readDb();
+    const room = db.rooms.find(r => r.id === roomId) || db.rooms[0];
+    const targetRoomId = room ? room.id : roomId;
+    const roomName = room ? room.name : "Study Room";
+
+    // Setup disk destination directory
+    const uploadsBase = path.join(__dirname, '../uploads');
+    const roomsDir = path.join(uploadsBase, 'rooms');
+    if (!fs.existsSync(roomsDir)) {
+      fs.mkdirSync(roomsDir, { recursive: true });
+    }
+
+    // Determine extension
+    const ext = path.extname(filename || title) || (fileType === 'pdf' ? '.pdf' : '.bin');
+    const cleanBase = (filename || title).replace(/[^a-zA-Z0-9_\-]/g, '_').replace(ext, '');
+    const uniqueFileName = `${Date.now()}_${cleanBase}${ext}`;
+    const targetFilePath = path.join(roomsDir, uniqueFileName);
+
+    // Extract base64 payload if data URL format (e.g. data:application/pdf;base64,...)
+    let base64Content = fileData;
+    if (fileData.includes(';base64,')) {
+      base64Content = fileData.split(';base64,')[1];
+    }
+    const buffer = Buffer.from(base64Content, 'base64');
+    fs.writeFileSync(targetFilePath, buffer);
+
+    const resourceUrl = `/uploads/rooms/${uniqueFileName}`;
+    const calculatedSize = size || `${(buffer.length / (1024 * 1024)).toFixed(1)} MB`;
+
+    // Persist to Database (Firestore synced)
+    const resources = readResourcesDb();
+    const newResource: SharedResource = {
+      id: 'res-' + Math.random().toString(36).substring(2, 9),
+      title: title || filename,
+      fileType: fileType || (ext.toLowerCase().includes('pdf') ? 'pdf' : ext.toLowerCase().includes('mp4') ? 'video' : 'note'),
+      url: resourceUrl,
+      size: calculatedSize,
+      ownerId: 'instructor-admin',
+      relevanceScore: 98,
+      aiSummarySnippet: description || `Study file uploaded for room "${roomName}". Available for student download.`,
+      suggestedTags: [roomName, 'Room Upload', 'Course Material'],
+      sharedWithGroups: [
+        {
+          groupId: targetRoomId,
+          permissions: { viewOnly: false, canDownload: true, allowAiSummarization: true }
+        }
+      ],
+      stats: { views: 1, downloads: 0 },
+      createdAt: new Date().toISOString(),
+      starred: false,
+      archived: false
+    };
+
+    resources.unshift(newResource);
+    writeResourcesDb(resources); // Automatically writes to Firestore database!
+
+    // Record an alert
+    if (!db.alerts) db.alerts = [];
+    db.alerts.unshift({
+      id: 'alert-' + Math.random().toString(36).substring(2, 9),
+      title: `New Material in ${roomName}`,
+      text: `File "${newResource.title}" (${calculatedSize}) is now live for all students in ${roomName}.`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type: 'info',
+      region: roomName,
+      source: 'Room Resources'
+    });
+    writeDb(db);
+
+    res.status(201).json({
+      success: true,
+      message: 'File successfully uploaded and stored in database',
+      resource: {
+        id: newResource.id,
+        title: newResource.title,
+        type: newResource.fileType,
+        size: newResource.size,
+        url: newResource.url,
+        downloads: 0,
+        createdAt: newResource.createdAt
+      }
+    });
+  } catch (err: any) {
+    console.error('Error uploading room file:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/resources/:id/download - Direct student file download with stats tracking & database persistence
+app.get('/api/resources/:id/download', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const resources = readResourcesDb();
+    const resource = resources.find(r => r.id === id);
+
+    if (!resource) {
+      return res.status(404).json({ error: "Resource not found" });
+    }
+
+    // Increment download count and update Firestore
+    resource.stats.downloads = (resource.stats.downloads || 0) + 1;
+    writeResourcesDb(resources);
+
+    // If external link, redirect
+    if (resource.url.startsWith('http://') || resource.url.startsWith('https://')) {
+      return res.redirect(resource.url);
+    }
+
+    // Local file path
+    const relativePath = resource.url.startsWith('/') ? resource.url.substring(1) : resource.url;
+    const localFilePath = path.join(__dirname, '..', relativePath);
+
+    if (fs.existsSync(localFilePath)) {
+      const ext = path.extname(localFilePath);
+      const safeTitle = resource.title.endsWith(ext) ? resource.title : `${resource.title}${ext}`;
+      return res.download(localFilePath, safeTitle);
+    }
+
+    // If template file fallback
+    const uploadsBase = path.join(__dirname, '../uploads');
+    const templatePath = path.join(uploadsBase, 'QM_Lecture_Notes_W4.pdf');
+    if (fs.existsSync(templatePath)) {
+      return res.download(templatePath, `${resource.title}.pdf`);
+    }
+
+    return res.status(404).json({ error: "Physical file not found on server disk" });
+  } catch (err: any) {
+    console.error('Error downloading resource:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST /api/student/rooms/:roomId/resources/suggest
@@ -1003,25 +1167,52 @@ app.post('/api/teacher/resources/upload', (req: Request, res: Response) => {
 // POST /api/teacher/resources/share
 app.post('/api/teacher/resources/share', (req: Request, res: Response) => {
   try {
-    const { tempId, title, fileType, tags, groupSettings } = req.body;
+    const { tempId, title, fileType, tags, groupSettings, fileData, size } = req.body;
     const resources = readResourcesDb();
     
     const sharedWithGroups = groupSettings?.map((gs: any) => ({
       groupId: gs.groupId,
       permissions: {
         viewOnly: gs.permissions?.viewOnly ?? true,
-        canDownload: gs.permissions?.canDownload ?? false,
+        canDownload: gs.permissions?.canDownload ?? true,
         allowAiSummarization: gs.permissions?.allowAiSummarization ?? true
       }
     })) || [];
 
+    const uploadsDir = path.join(__dirname, '../uploads');
+    const facultyDir = path.join(uploadsDir, 'faculty');
+    if (!fs.existsSync(facultyDir)) {
+      fs.mkdirSync(facultyDir, { recursive: true });
+    }
+
     let resourceUrl = `/uploads/faculty/${tempId}.pdf`;
-    if (fileType === 'video') {
+    let calculatedSize = size || "2.4 MB";
+
+    if (fileData) {
+      const ext = path.extname(title) || (fileType === 'pdf' ? '.pdf' : '.bin');
+      const safeName = `${tempId || Date.now()}${ext}`;
+      const destPath = path.join(facultyDir, safeName);
+      
+      let base64Content = fileData;
+      if (fileData.includes(';base64,')) {
+        base64Content = fileData.split(';base64,')[1];
+      }
+      const buffer = Buffer.from(base64Content, 'base64');
+      fs.writeFileSync(destPath, buffer);
+      resourceUrl = `/uploads/faculty/${safeName}`;
+      calculatedSize = `${(buffer.length / (1024 * 1024)).toFixed(1)} MB`;
+    } else if (fileType === 'video') {
       resourceUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
     } else if (fileType === 'link') {
       resourceUrl = (title && (title.startsWith('http://') || title.startsWith('https://'))) 
         ? title 
         : "https://en.wikipedia.org/wiki/Quantum_mechanics";
+    } else {
+      const templatePath = path.join(uploadsDir, 'QM_Lecture_Notes_W4.pdf');
+      const targetPath = path.join(facultyDir, `${tempId}.pdf`);
+      if (fs.existsSync(templatePath)) {
+        fs.copyFileSync(templatePath, targetPath);
+      }
     }
 
     const newResource: SharedResource = {
@@ -1029,7 +1220,7 @@ app.post('/api/teacher/resources/share', (req: Request, res: Response) => {
       title: title || `Lecture_Doc_${tempId?.substring(4)}.pdf`,
       fileType: fileType || 'pdf',
       url: resourceUrl,
-      size: "8.4 MB",
+      size: calculatedSize,
       ownerId: "t-aris-thorne",
       relevanceScore: 95,
       aiSummarySnippet: "Core lecture guidelines distributed by faculty. Required reading materials.",
@@ -1041,24 +1232,10 @@ app.post('/api/teacher/resources/share', (req: Request, res: Response) => {
       archived: false
     };
 
-    // Ensure the faculty directory exists and copy the mock PDF
-    if (fileType !== 'video' && fileType !== 'link') {
-      const uploadsDir = path.join(__dirname, '../uploads');
-      const facultyDir = path.join(uploadsDir, 'faculty');
-      if (!fs.existsSync(facultyDir)) {
-        fs.mkdirSync(facultyDir, { recursive: true });
-      }
-      const templatePath = path.join(uploadsDir, 'QM_Lecture_Notes_W4.pdf');
-      const targetPath = path.join(facultyDir, `${tempId}.pdf`);
-      if (fs.existsSync(templatePath)) {
-        fs.copyFileSync(templatePath, targetPath);
-      }
-    }
+    resources.unshift(newResource);
+    writeResourcesDb(resources); // Persist to Firestore!
 
-    resources.push(newResource);
-    writeResourcesDb(resources);
-
-    res.status(201).json({ success: true, materialId: newResource.id });
+    res.status(201).json({ success: true, materialId: newResource.id, resource: newResource });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

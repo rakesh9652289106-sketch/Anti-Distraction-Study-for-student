@@ -182,7 +182,7 @@ export default function SearchPage() {
               className={`px-md py-1.5 rounded-lg text-label-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'bg-primary text-on-primary shadow-sm'
-                  : 'border border-outline-variant/35 text-on-surface hover:bg-slate-100 bg-white'
+                  : 'border border-outline-variant text-on-surface hover:bg-surface-container bg-surface'
               }`}
             >
               {tab.label}
@@ -375,7 +375,7 @@ export default function SearchPage() {
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-2 border border-outline-variant/35 hover:bg-slate-100 text-primary font-bold text-xs rounded-lg flex items-center justify-center gap-xs cursor-pointer active:scale-95 transition-all bg-white"
+                className="w-full py-2 border border-outline-variant hover:bg-surface-container text-primary font-bold text-xs rounded-lg flex items-center justify-center gap-xs cursor-pointer active:scale-95 transition-all bg-surface"
               >
                 <span className="material-symbols-outlined text-sm font-bold">upload_file</span>
                 Select JSON Backup
@@ -418,7 +418,7 @@ export default function SearchPage() {
       {/* Confirmation Dialog - Reset Database */}
       {isResetConfirmOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-md">
-          <div className="bg-white dark:bg-slate-900 border border-outline-variant/35 rounded-2xl p-lg w-full max-w-[450px] shadow-2xl">
+          <div className="bg-surface border border-outline-variant rounded-2xl p-lg w-full max-w-[450px] shadow-2xl text-on-surface">
             <h3 className="font-bold text-headline-md text-red-600 mb-xs flex items-center gap-xs">
               <span className="material-symbols-outlined font-bold">warning</span>
               Reset Database to Factory Defaults?
@@ -429,7 +429,7 @@ export default function SearchPage() {
             <div className="flex gap-sm justify-end">
               <button
                 onClick={() => setIsResetConfirmOpen(false)}
-                className="px-md py-sm rounded-lg border border-outline-variant/30 text-primary font-bold text-xs hover:bg-slate-50 cursor-pointer"
+                className="px-md py-sm rounded-lg border border-outline-variant text-primary font-bold text-xs hover:bg-surface-container cursor-pointer"
               >
                 Keep Settings
               </button>
@@ -447,8 +447,8 @@ export default function SearchPage() {
       {/* Confirmation Dialog - Wipe Sessions */}
       {isWipeConfirmOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-md">
-          <div className="bg-white dark:bg-slate-900 border border-outline-variant/35 rounded-2xl p-lg w-full max-w-[450px] shadow-2xl">
-            <h3 className="font-bold text-headline-md text-slate-900 dark:text-slate-100 mb-xs flex items-center gap-xs">
+          <div className="bg-surface border border-outline-variant rounded-2xl p-lg w-full max-w-[450px] shadow-2xl text-on-surface">
+            <h3 className="font-bold text-headline-md text-primary mb-xs flex items-center gap-xs">
               <span className="material-symbols-outlined font-bold text-amber-500">history</span>
               Wipe Study History Logs?
             </h3>
@@ -458,7 +458,7 @@ export default function SearchPage() {
             <div className="flex gap-sm justify-end">
               <button
                 onClick={() => setIsWipeConfirmOpen(false)}
-                className="px-md py-sm rounded-lg border border-outline-variant/30 text-primary font-bold text-xs hover:bg-slate-50 cursor-pointer"
+                className="px-md py-sm rounded-lg border border-outline-variant text-primary font-bold text-xs hover:bg-surface-container cursor-pointer"
               >
                 Cancel
               </button>

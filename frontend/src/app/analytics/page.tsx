@@ -88,7 +88,7 @@ export default function AnalyticsPage() {
           <div className="absolute inset-0 bg-gradient-to-br from-tertiary-container/5 to-transparent pointer-events-none group-hover:from-tertiary-container/10 transition-colors duration-500"></div>
           <div className="flex justify-between items-start mb-sm relative z-10">
             <p className="text-label-sm font-semibold text-on-surface-variant uppercase tracking-wider">Total Experience (XP)</p>
-            <span className="material-symbols-outlined text-tertiary-container">diamond</span>
+            <span className="material-symbols-outlined text-indigo-500 font-bold">diamond</span>
           </div>
           <h3 className="font-bold text-headline-md text-primary relative z-10">{totalXP.toLocaleString()} XP</h3>
           <div className="w-full bg-surface-container-highest rounded-full h-1.5 mt-sm relative z-10">

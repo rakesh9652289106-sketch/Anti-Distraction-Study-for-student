@@ -117,23 +117,23 @@ export default function PlannerPage() {
                           onClick={() => router.push(`/planner/add?id=${event.id}`)}
                           className={`p-xs rounded-md border text-left cursor-pointer transition-all hover:scale-[1.02] active:scale-95 group relative ${
                             event.isAiSuggested
-                              ? 'bg-tertiary-fixed border-tertiary-fixed-dim text-tertiary-container relative p-sm'
-                              : 'bg-surface-container-low border-outline-variant/20 hover:border-primary/45 text-on-surface'
+                              ? 'bg-secondary/15 border-secondary/40 text-primary relative p-sm shadow-xs'
+                              : 'bg-surface-container-low border-outline-variant/30 hover:border-primary/45 text-on-surface'
                           }`}
                         >
                           {event.isAiSuggested && (
-                            <div className="absolute -top-2 -right-2 bg-primary text-white text-[9px] px-1.5 py-0.5 rounded-full shadow-sm">
+                            <div className="absolute -top-2 -right-2 bg-primary text-on-primary text-[9px] px-1.5 py-0.5 rounded-full shadow-sm font-bold">
                               AI Suggested
                             </div>
                           )}
-                          <p className={`text-[10px] font-bold mb-0.5 ${event.isAiSuggested ? 'text-tertiary-container' : 'text-primary'}`}>
+                          <p className="text-[10px] font-bold mb-0.5 text-primary">
                             {event.time}
                           </p>
-                          <p className={`text-[12px] leading-tight font-semibold ${event.isAiSuggested ? 'text-tertiary-container' : 'text-on-surface'}`}>
+                          <p className="text-[12px] leading-tight font-semibold text-on-surface">
                             {event.title}
                           </p>
                           {event.pomodoros > 0 && (
-                            <div className={`flex items-center gap-1 mt-1.5 ${event.isAiSuggested ? 'text-on-tertiary-container' : 'text-on-surface-variant/70'}`}>
+                            <div className="flex items-center gap-1 mt-1.5 text-on-surface-variant">
                               <span className="material-symbols-outlined text-[12px]">timer</span>
                               <span className="text-[9px] font-semibold">{event.pomodoros} Pomos</span>
                             </div>
@@ -189,22 +189,22 @@ export default function PlannerPage() {
         {/* Right column: Countdown & Task Assignment Tracker (Spans 4 cols) */}
         <div className="md:col-span-4 flex flex-col gap-md">
           {/* Exam Countdown Card */}
-          <div className="glass-panel rounded-xl p-md bg-gradient-to-br from-primary-container to-primary text-white border-none relative overflow-hidden shadow-md">
+          <div className="rounded-xl p-md bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white border border-outline-variant/30 relative overflow-hidden shadow-md">
             <div className="absolute -right-8 -bottom-8 opacity-10">
               <span className="material-symbols-outlined text-[120px]">science</span>
             </div>
-            <h3 className="text-label-sm text-on-primary-container uppercase tracking-wider mb-sm font-bold">
+            <h3 className="text-label-sm text-slate-300 uppercase tracking-wider mb-sm font-bold">
               Upcoming Major Exam
             </h3>
             <p className="text-headline-lg font-bold text-white leading-tight mb-sm">Biology Final</p>
             <div className="flex items-baseline gap-xs mb-md">
-              <span className="font-bold text-[48px] text-secondary-container">4</span>
-              <span className="text-label-md text-on-primary-container">days left</span>
+              <span className="font-bold text-[48px] text-emerald-400">4</span>
+              <span className="text-label-md text-slate-300">days left</span>
             </div>
-            <div className="w-full bg-primary/45 rounded-full h-1.5 mb-2">
-              <div className="bg-secondary-container h-1.5 rounded-full" style={{ width: '85%' }}></div>
+            <div className="w-full bg-slate-700/60 rounded-full h-1.5 mb-2">
+              <div className="bg-emerald-400 h-1.5 rounded-full" style={{ width: '85%' }}></div>
             </div>
-            <p className="text-[11px] text-on-primary-container text-right font-medium">
+            <p className="text-[11px] text-slate-300 text-right font-medium">
               85% Study Plan Completed
             </p>
           </div>

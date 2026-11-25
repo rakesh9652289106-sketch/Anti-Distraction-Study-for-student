@@ -7,16 +7,33 @@ export default function AttentionCamera() {
   const { settings, isTimerRunning, activeRoom, updateSettings, startTimer } = useApp();
   const [manualCheckActive, setManualCheckActive] = useState<boolean>(false);
 
-  const sensitivity = settings?.aiConfig?.attentionGuardSensitivity || 'medium';
-  const lookAwayThreshold = sensitivity === 'high' ? 10 : sensitivity === 'low' ? 60 : 30;
-  const gazeWarningThreshold = Math.round(lookAwayThreshold * 0.7);
+  const aiCfg = settings?.aiConfig as any;
+  const sensitivity = aiCfg?.attentionGuardSensitivity || 'medium';
 
-  const lookAwayThresholdRef = useRef(30);
+  // 1. Stare Duration Alert Limit (Configured: 1 to 10 seconds)
+  const stareDurationLimit = Math.max(1, Math.min(10, Number(aiCfg?.stareDurationLimit) || 7));
+  const stareWarningThreshold = Math.max(1, Math.round(stareDurationLimit * 0.7));
+  const stareDurationLimitRef = useRef(7);
+  useEffect(() => {
+    stareDurationLimitRef.current = stareDurationLimit;
+  }, [stareDurationLimit]);
+
+  // 2. Gaze Status Alert Threshold (Configured: 10s, 30s, or 60s)
+  const gazeStatusThreshold = Number(aiCfg?.gazeStatusDuration) || (sensitivity === 'high' ? 10 : sensitivity === 'low' ? 60 : 30);
+  const gazeStatusThresholdRef = useRef(10);
+  useEffect(() => {
+    gazeStatusThresholdRef.current = gazeStatusThreshold;
+  }, [gazeStatusThreshold]);
+
+  // 3. Look at Screen Alert Threshold (Configured: 10s, 30s, or 60s)
+  const lookAwayThreshold = Number(aiCfg?.lookAtScreenDuration) || (sensitivity === 'high' ? 10 : sensitivity === 'low' ? 60 : 30);
+  const gazeWarningThreshold = Math.max(2, Math.round(lookAwayThreshold * 0.7));
+  const lookAwayThresholdRef = useRef(10);
   useEffect(() => {
     lookAwayThresholdRef.current = lookAwayThreshold;
   }, [lookAwayThreshold]);
 
-  const [, setStreamState] = useState<MediaStream | null>(null);
+  const [streamState, setStreamState] = useState<MediaStream | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const activeDeviceIdRef = useRef<string>('');
 
@@ -53,9 +70,100 @@ export default function AttentionCamera() {
   const [baseSkinCount, setBaseSkinCount] = useState<number>(0);
   const [calibColor, setCalibColor] = useState<string>('N/A');
 
-  // Warning modal states for student attention UI alerts
-  const [showGazeAlertModal, setShowGazeAlertModal] = useState<boolean>(false);
+  // Specific Gaze Error Reasons
+  const [activeGazeError, setActiveGazeError] = useState<
+    'none' | 'multi_person' | 'face_missing' | 'side_view' | 'drift_off_center' | 'head_slanted' | 'face_occluded'
+  >('none');
+  const activeGazeErrorRef = useRef<
+    'none' | 'multi_person' | 'face_missing' | 'side_view' | 'drift_off_center' | 'head_slanted' | 'face_occluded'
+  >('none');
+
+  // Progressive multi-frame calibration accumulator
+  const calibFrameCountRef = useRef<number>(0);
+  const calibAccumCenterX = useRef<number>(0);
+  const calibAccumCenterY = useRef<number>(0);
+  const calibAccumSkinCount = useRef<number>(0);
+
+  // Warning modal states for student attention UI alerts (3 distinct alert systems)
+  const [showMultiPersonAlertModal, setShowMultiPersonAlertModal] = useState<boolean>(false);
+  const [showLookAwayAlertModal, setShowLookAwayAlertModal] = useState<boolean>(false);
   const [showBlinkAlertModal, setShowBlinkAlertModal] = useState<boolean>(false);
+
+  // Multi-person detection state (Policy: Only 1 member in frame, alert < 5s)
+  const [multiPersonDetected, setMultiPersonDetected] = useState<boolean>(false);
+  const [secondsMultiPerson, setSecondsMultiPerson] = useState<number>(0);
+  const multiPersonDetectedRef = useRef<boolean>(false);
+  const hasAlertedForMultiPersonRef = useRef<boolean>(false);
+  const multiPersonCountRef = useRef<number>(0);
+
+  // Helper to get human-readable details for the active error
+  const getGazeErrorDetails = (reason: string) => {
+    switch (reason) {
+      case 'multi_person':
+        return {
+          title: 'Security Alert: Only 1 Member Allowed',
+          label: 'Multiple Members in Frame (Security Violation)',
+          badgeColor: 'bg-orange-600 text-white',
+          description: 'Another person entered the camera frame. Policy strictly allows only 1 registered member in view.',
+          resolution: 'Ensure all other individuals step out of the camera view immediately (Alert fires within 5s).',
+          shortCode: 'ERR: ONLY 1 MEMBER ALLOWED'
+        };
+      case 'face_missing':
+        return {
+          title: 'Face Not Detected Error',
+          label: 'Face Out of Frame (No Face)',
+          badgeColor: 'bg-red-500 text-white',
+          description: 'No face detected in camera. Please face the screen and ensure good room lighting.',
+          resolution: 'Position your face centrally in front of your webcam.',
+          shortCode: 'ERR: NO FACE IN CAMERA VIEW'
+        };
+      case 'side_view':
+        return {
+          title: 'Face Turned Away (Gaze Diverted)',
+          label: 'Face Turned Away (Gaze Error)',
+          badgeColor: 'bg-red-600 text-white',
+          description: 'Your face is turned away from the screen. Gaze must remain focused on the monitor.',
+          resolution: 'Turn your face forward and look directly at your monitor.',
+          shortCode: 'ERR: FACE TURNED AWAY'
+        };
+      case 'drift_off_center':
+        return {
+          title: 'Head Position Drift Error',
+          label: 'Head Drifted Off-Center',
+          badgeColor: 'bg-amber-500 text-white',
+          description: 'Your head drifted too far from the screen center. Please realign with your webcam.',
+          resolution: 'Center yourself in front of your webcam and sit upright.',
+          shortCode: 'ERR: HEAD OFF-CENTER'
+        };
+      case 'head_slanted':
+        return {
+          title: 'Head Slant Error Detected',
+          label: 'Severe Head Tilt / Slant',
+          badgeColor: 'bg-amber-500 text-white',
+          description: 'Severe head tilt detected. Maintain an upright, alert posture facing the monitor.',
+          resolution: 'Keep your head straight and level with your screen.',
+          shortCode: 'ERR: EXCESSIVE HEAD TILT'
+        };
+      case 'face_occluded':
+        return {
+          title: 'Face Occlusion Error',
+          label: 'Face Partially Covered',
+          badgeColor: 'bg-amber-500 text-white',
+          description: 'Your face is partially covered or obscured. Keep your face clear of obstacles.',
+          resolution: 'Remove hands, hair, or objects covering your face and eyes.',
+          shortCode: 'ERR: FACE OCCLUDED / COVERED'
+        };
+      default:
+        return {
+          title: 'Gaze Aligned',
+          label: 'Looking at Screen (Focus OK)',
+          badgeColor: 'bg-emerald-600 text-white',
+          description: 'Student is looking directly at the workspace screen with normal gaze alignment.',
+          resolution: 'Gaze is centered. Keep focused on your study material.',
+          shortCode: 'GAZE OK: SCREEN ALIGNED'
+        };
+    }
+  };
 
   // Video input devices lists
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -87,8 +195,11 @@ export default function AttentionCamera() {
   const needsColorCalibration = useRef<boolean>(true);
 
   // Dynamic eye locations stored in refs to avoid high-frequency React re-renders
-  const eyeLeftRef = useRef({ x: 55, y: 45, w: 12, h: 9 });
-  const eyeRightRef = useRef({ x: 87, y: 45, w: 12, h: 9 });
+  const eyeLeftRef = useRef({ x: 55, y: 45, w: 14, h: 10 });
+  const eyeRightRef = useRef({ x: 87, y: 45, w: 14, h: 10 });
+  const pupilLeftRef = useRef({ x: 62, y: 50 });
+  const pupilRightRef = useRef({ x: 94, y: 50 });
+  const [gazeAlignment, setGazeAlignment] = useState<number>(100);
   
   const blinkThreshold = 1.6; // Adjusted luminance change threshold for dynamic tracking
 
@@ -162,6 +273,37 @@ export default function AttentionCamera() {
       playBeep(0.3);
     } catch (e) {
       console.error('Failed to play look away sound:', e);
+    }
+  };
+
+  // Web Audio warning tone for Multi-Person Detection (Urgent Triple Beep)
+  const playMultiPersonAlertSound = () => {
+    try {
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtxClass) return;
+      
+      const audioCtx = new AudioCtxClass();
+      
+      const playBeep = (timeOffset: number, freq: number) => {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime + timeOffset);
+        gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime + timeOffset);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + timeOffset + 0.15);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        oscillator.start(audioCtx.currentTime + timeOffset);
+        oscillator.stop(audioCtx.currentTime + timeOffset + 0.2);
+      };
+
+      playBeep(0, 660);
+      playBeep(0.22, 880);
+      playBeep(0.44, 1100);
+    } catch (e) {
+      console.error('Failed to play multi-person alert sound:', e);
     }
   };
 
@@ -243,6 +385,51 @@ export default function AttentionCamera() {
     return '';
   };
 
+  // Reset all calibration and tracking states cleanly
+  const resetCalibrationValues = () => {
+    prevCenterX.current = 80;
+    prevCenterY.current = 55;
+    baselineCenterX.current = -1;
+    baselineCenterY.current = -1;
+    baselineSkinCount.current = -1;
+    calibFrameCountRef.current = 0;
+    calibAccumCenterX.current = 0;
+    calibAccumCenterY.current = 0;
+    calibAccumSkinCount.current = 0;
+    setIsCalibrated(false);
+    multiPersonCountRef.current = 0;
+    multiPersonDetectedRef.current = false;
+    setMultiPersonDetected(false);
+    activeGazeErrorRef.current = 'none';
+    setActiveGazeError('none');
+    setFaceAsymmetry(0);
+    setFaceSlant(0);
+    setDriftX(0);
+    setDriftY(0);
+    setLiveSkinCount(0);
+    setBaseSkinCount(0);
+    setGazeAlignment(100);
+    pupilLeftRef.current = { x: 62, y: 50 };
+    pupilRightRef.current = { x: 94, y: 50 };
+    calibratedR.current = -1;
+    calibratedG.current = -1;
+    calibratedB.current = -1;
+    needsColorCalibration.current = true;
+    setCalibColor('N/A');
+    setSecondsLookingAway(0);
+    setSecondsMultiPerson(0);
+    hasAlertedForLookAwayRef.current = false;
+    hasAlertedForMultiPersonRef.current = false;
+    setIsLookingAway(false);
+    isLookingAwayRef.current = false;
+    setIsSideViewing(false);
+    setShowMultiPersonAlertModal(false);
+    setShowLookAwayAlertModal(false);
+    setShowBlinkAlertModal(false);
+    faceAbsentCountRef.current = 0;
+    facePresentCountRef.current = 0;
+  };
+
   // Start Camera
   const startCamera = async (deviceIdToUse?: string) => {
     if (settings?.cameraEnabled === false) {
@@ -282,37 +469,11 @@ export default function AttentionCamera() {
       }
       setIsCameraActive(true);
       activeDeviceIdRef.current = selectedDeviceId || '';
-      const now = Date.now();
-      lastBlinkTimeRef.current = now;
+      lastBlinkTimeRef.current = Date.now();
       hasAlertedForCurrentStareRef.current = false;
-      setSecondsLookingAway(0);
-      hasAlertedForLookAwayRef.current = false;
-      setIsLookingAway(false);
-      isLookingAwayRef.current = false;
-      setIsSideViewing(false);
       setIsBlinking(false);
       isBlinkingRef.current = false;
-      setShowGazeAlertModal(false);
-      setShowBlinkAlertModal(false);
-      faceAbsentCountRef.current = 0;
-      facePresentCountRef.current = 0;
-      prevCenterX.current = 80;
-      prevCenterY.current = 55;
-      baselineCenterX.current = -1;
-      baselineCenterY.current = -1;
-      baselineSkinCount.current = -1;
-      setIsCalibrated(false);
-      setFaceAsymmetry(0);
-      setFaceSlant(0);
-      setDriftX(0);
-      setDriftY(0);
-      setLiveSkinCount(0);
-      setBaseSkinCount(0);
-      calibratedR.current = -1;
-      calibratedG.current = -1;
-      calibratedB.current = -1;
-      needsColorCalibration.current = true;
-      setCalibColor('N/A');
+      resetCalibrationValues();
     } catch (err) {
       console.error('Error accessing webcam:', err);
       setCameraError('Webcam access blocked or unavailable. Please allow camera permissions in your browser.');
@@ -354,6 +515,17 @@ export default function AttentionCamera() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldBeActive]);
 
+  // Ensure stream is bound to video element as soon as video element is mounted
+  useEffect(() => {
+    const activeStream = streamState || streamRef.current;
+    if (videoRef.current && activeStream) {
+      if (videoRef.current.srcObject !== activeStream) {
+        videoRef.current.srcObject = activeStream;
+      }
+      videoRef.current.play().catch(() => {});
+    }
+  }, [streamState, isCameraActive, shouldBeActive]);
+
   // Restart camera when device changes
   useEffect(() => {
     if (settings?.cameraEnabled === false) return;
@@ -375,21 +547,7 @@ export default function AttentionCamera() {
             videoRef.current.srcObject = mediaStream;
           }
           activeDeviceIdRef.current = selectedDeviceId;
-           baselineCenterX.current = -1;
-          baselineCenterY.current = -1;
-          baselineSkinCount.current = -1;
-          setIsCalibrated(false);
-          setFaceAsymmetry(0);
-          setFaceSlant(0);
-          setDriftX(0);
-          setDriftY(0);
-          setLiveSkinCount(0);
-          setBaseSkinCount(0);
-          calibratedR.current = -1;
-          calibratedG.current = -1;
-          calibratedB.current = -1;
-          needsColorCalibration.current = true;
-          setCalibColor('N/A');
+          resetCalibrationValues();
         } catch (e) {
           console.error('Failed to switch camera device:', e);
         }
@@ -430,69 +588,74 @@ export default function AttentionCamera() {
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imgData.data;
 
-        // Perform color calibration if needed on first stable frame
-        if (needsColorCalibration.current) {
-          let sumCalibR = 0;
-          let sumCalibG = 0;
-          let sumCalibB = 0;
-          let calibPoints = 0;
-          
-          // Sample a 40x40 region in the center of the canvas (X: 60-100, Y: 40-80)
-          for (let cy = 40; cy < 80; cy += 2) {
-            for (let cx = 60; cx < 100; cx += 2) {
-              const cidx = (cy * canvas.width + cx) * 4;
-              sumCalibR += data[cidx];
-              sumCalibG += data[cidx + 1];
-              sumCalibB += data[cidx + 2];
-              calibPoints++;
-            }
-          }
-          
-          if (calibPoints > 0) {
-            calibratedR.current = sumCalibR / calibPoints;
-            calibratedG.current = sumCalibG / calibPoints;
-            calibratedB.current = sumCalibB / calibPoints;
-            needsColorCalibration.current = false;
-            setCalibColor(`${Math.round(calibratedR.current)},${Math.round(calibratedG.current)},${Math.round(calibratedB.current)}`);
-          }
-        }
-
-        // Skin color centroid detection (simple face tracking)
+        // Skin color centroid detection (Universal multi-spectrum face & gaze tracking)
         let skinCount = 0;
         let skinCountLeft = 0;
         let skinCountRight = 0;
+        let skinCountLeftThird = 0;
+        let skinCountMiddleThird = 0;
+        let skinCountRightThird = 0;
         let skinCountTL = 0;
         let skinCountTR = 0;
         let skinCountBL = 0;
         let skinCountBR = 0;
         let sumX = 0;
         let sumY = 0;
+        let sumSkinR = 0;
+        let sumSkinG = 0;
+        let sumSkinB = 0;
+        let minSkinX = 999;
+        let maxSkinX = -1;
+        let minSkinY = 999;
+        let maxSkinY = -1;
 
-        // Narrow the search loop to the central focus zone to ignore background wood/corners
-        for (let y = 20; y < canvas.height - 20; y += 2) {
-          for (let x = 30; x < canvas.width - 30; x += 2) {
+        // Expanded search loop to cover full webcam frame for face tracking and peripheral detection
+        for (let y = 8; y < canvas.height - 8; y += 2) {
+          for (let x = 8; x < canvas.width - 8; x += 2) {
             const idx = (y * canvas.width + x) * 4;
             const r = data[idx];
             const g = data[idx + 1];
             const b = data[idx + 2];
 
-            // Adaptive skin detection relative to calibrated face color
-            let isSkin = false;
+            // Multi-spectrum color space conversion (YCbCr + normalized RGB)
+            const yLum = 0.299 * r + 0.587 * g + 0.114 * b;
+            const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+            const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+
+            // Universal skin cluster detection (invariant to lighting & ethnicity)
+            const isSkinYCbCr = cr >= 132 && cr <= 175 && cb >= 77 && cb <= 135 && yLum > 30;
+            const isSkinRGB = r > 45 && g > 28 && b > 16 && r > g && r > b && (r - g) >= 7 && (r - b) >= 9 && (r + g + b) > 95;
+            let isSkin = isSkinYCbCr || isSkinRGB;
+
             if (calibratedR.current !== -1) {
               const diffR = Math.abs(r - calibratedR.current);
               const diffG = Math.abs(g - calibratedG.current);
               const diffB = Math.abs(b - calibratedB.current);
-              isSkin = diffR < 35 && diffG < 35 && diffB < 35 && (r + g + b) > 60;
-            } else {
-              // Fallback to basic rule if not calibrated yet
-              const sum = r + g + b;
-              isSkin = sum > 70 && r > 45 && g > 35 && b > 20 && r > g;
+              if (diffR < 48 && diffG < 48 && diffB < 48 && yLum > 30) {
+                isSkin = true;
+              }
             }
 
             if (isSkin) {
               skinCount++;
               sumX += x;
               sumY += y;
+              sumSkinR += r;
+              sumSkinG += g;
+              sumSkinB += b;
+
+              if (x < minSkinX) minSkinX = x;
+              if (x > maxSkinX) maxSkinX = x;
+              if (y < minSkinY) minSkinY = y;
+              if (y > maxSkinY) maxSkinY = y;
+
+              if (x < 55) {
+                skinCountLeftThird++;
+              } else if (x <= 105) {
+                skinCountMiddleThird++;
+              } else {
+                skinCountRightThird++;
+              }
               
               if (x < prevCenterX.current) {
                 skinCountLeft++;
@@ -513,10 +676,19 @@ export default function AttentionCamera() {
           }
         }
 
-        const isFacePresent = skinCount >= 25;
+        const isFacePresent = skinCount >= 28;
         let centerX = 80;
         let centerY = 55;
         let headShift = 0;
+
+        // Perform automatic skin color calibration once face is stably in view
+        if (isFacePresent && needsColorCalibration.current && skinCount >= 50) {
+          calibratedR.current = Math.round(sumSkinR / skinCount);
+          calibratedG.current = Math.round(sumSkinG / skinCount);
+          calibratedB.current = Math.round(sumSkinB / skinCount);
+          needsColorCalibration.current = false;
+          setCalibColor(`${calibratedR.current},${calibratedG.current},${calibratedB.current}`);
+        }
 
         // Feed live variables to React states for HUD debug display
         setLiveSkinCount(skinCount);
@@ -530,16 +702,23 @@ export default function AttentionCamera() {
           centerX = sumX / skinCount;
           centerY = sumY / skinCount;
 
-          // Calibrate baseline values on first stable face frame
-          if (baselineCenterX.current === -1) {
-            baselineCenterX.current = centerX;
-            baselineCenterY.current = centerY;
-            baselineSkinCount.current = skinCount;
-            setIsCalibrated(true);
+          // Progressive multi-frame calibration: accumulate 18 frames so baseline is accurate
+          if (!isCalibrated) {
+            calibFrameCountRef.current += 1;
+            calibAccumCenterX.current += centerX;
+            calibAccumCenterY.current += centerY;
+            calibAccumSkinCount.current += skinCount;
+
+            if (calibFrameCountRef.current >= 18) {
+              baselineCenterX.current = calibAccumCenterX.current / 18;
+              baselineCenterY.current = calibAccumCenterY.current / 18;
+              baselineSkinCount.current = Math.max(60, calibAccumSkinCount.current / 18);
+              setIsCalibrated(true);
+            }
           }
 
           // Smooth centroid to reduce jitter (exponential moving average)
-          const smoothFactor = 0.08;
+          const smoothFactor = 0.12;
           const finalX = prevCenterX.current + (centerX - prevCenterX.current) * smoothFactor;
           const finalY = prevCenterY.current + (centerY - prevCenterY.current) * smoothFactor;
 
@@ -552,11 +731,11 @@ export default function AttentionCamera() {
           prevCenterX.current = finalX;
           prevCenterY.current = finalY;
 
-          // Slowly adapt the baseline only when the user is stable, not looking away, and very close to the baseline
-          if (baselineCenterX.current !== -1) {
+          // Gently adapt baseline when student is looking at screen and relatively stable
+          if (baselineCenterX.current !== -1 && isCalibrated) {
             const dx = Math.abs(finalX - baselineCenterX.current);
             const dy = Math.abs(finalY - baselineCenterY.current);
-            if (!isLookingAwayRef.current && headShift < 1.0 && dx < 5 && dy < 5) {
+            if (!isLookingAwayRef.current && !multiPersonDetectedRef.current && headShift < 1.2 && dx < 20 && dy < 16) {
               baselineCenterX.current = baselineCenterX.current * 0.99 + finalX * 0.01;
               baselineCenterY.current = baselineCenterY.current * 0.99 + finalY * 0.01;
               baselineSkinCount.current = baselineSkinCount.current * 0.99 + skinCount * 0.01;
@@ -565,36 +744,116 @@ export default function AttentionCamera() {
 
           // Dynamically adjust eye box coordinates relative to face centroid
           eyeLeftRef.current = {
-            x: Math.round(Math.max(5, Math.min(140, finalX - 22))),
-            y: Math.round(Math.max(5, Math.min(105, finalY - 8))),
-            w: 12,
-            h: 9
+            x: Math.round(Math.max(4, Math.min(142, finalX - 22))),
+            y: Math.round(Math.max(4, Math.min(106, finalY - 10))),
+            w: 14,
+            h: 10
           };
           eyeRightRef.current = {
-            x: Math.round(Math.max(5, Math.min(140, finalX + 10))),
-            y: Math.round(Math.max(5, Math.min(105, finalY - 8))),
-            w: 12,
-            h: 9
+            x: Math.round(Math.max(4, Math.min(142, finalX + 8))),
+            y: Math.round(Math.max(4, Math.min(106, finalY - 10))),
+            w: 14,
+            h: 10
+          };
+
+          // Active Iris / Pupil Gaze Tracking:
+          // Find lowest luminance (darkest spot) inside left and right eye boxes
+          let minLumL = 255;
+          let pXL = eyeLeftRef.current.x + 7;
+          let pYL = eyeLeftRef.current.y + 5;
+          for (let ey = eyeLeftRef.current.y + 1; ey < eyeLeftRef.current.y + eyeLeftRef.current.h - 1; ey++) {
+            for (let ex = eyeLeftRef.current.x + 1; ex < eyeLeftRef.current.x + eyeLeftRef.current.w - 1; ex++) {
+              const idx = (ey * canvas.width + ex) * 4;
+              const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+              if (lum < minLumL) {
+                minLumL = lum;
+                pXL = ex;
+                pYL = ey;
+              }
+            }
+          }
+
+          let minLumR = 255;
+          let pXR = eyeRightRef.current.x + 7;
+          let pYR = eyeRightRef.current.y + 5;
+          for (let ey = eyeRightRef.current.y + 1; ey < eyeRightRef.current.y + eyeRightRef.current.h - 1; ey++) {
+            for (let ex = eyeRightRef.current.x + 1; ex < eyeRightRef.current.x + eyeRightRef.current.w - 1; ex++) {
+              const idx = (ey * canvas.width + ex) * 4;
+              const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+              if (lum < minLumR) {
+                minLumR = lum;
+                pXR = ex;
+                pYR = ey;
+              }
+            }
+          }
+
+          // Smooth pupil centroid coordinates
+          pupilLeftRef.current = {
+            x: pupilLeftRef.current.x * 0.65 + pXL * 0.35,
+            y: pupilLeftRef.current.y * 0.65 + pYL * 0.35
+          };
+          pupilRightRef.current = {
+            x: pupilRightRef.current.x * 0.65 + pXR * 0.35,
+            y: pupilRightRef.current.y * 0.65 + pYR * 0.35
           };
         }
 
-        // Look away conditions:
-        // 1. No skin pixels/face detected (user has left the frame or turned away completely)
-        // 2. Face centroid shifted too far relative to the calibrated baseline (user turned head or leaned away)
-        // 3. Skin count dropped significantly compared to baseline (user turned head away, revealing hair)
-        // 4. Skin distribution is asymmetric (user turned head to the side)
-        // 5. Head is slanted/tilted sideways
+        // Multi-person detection:
+        // Checked strictly only AFTER calibration is established to avoid false positives during camera boot.
+        // Ensures only 1 member is in the frame. If anyone else enters, triggers an alert within 5 seconds.
+        const faceWidth = maxSkinX >= minSkinX ? (maxSkinX - minSkinX) : 0;
+        let rawMultiPerson = false;
+        if (isCalibrated && baselineSkinCount.current >= 45) {
+          // Rule 1: Left third + Middle third (2 people: registered student + someone entering from left)
+          const isLeftAndMiddle = skinCountLeftThird >= 24 && skinCountMiddleThird >= 30 && faceWidth >= 70;
+          // Rule 2: Right third + Middle third (2 people: registered student + someone entering from right)
+          const isRightAndMiddle = skinCountRightThird >= 24 && skinCountMiddleThird >= 30 && faceWidth >= 70;
+          // Rule 3: Left third + Right third (2 people spaced on sides of frame)
+          const isDualClusters = skinCountLeftThird >= 22 && skinCountRightThird >= 22 && faceWidth >= 74;
+          // Rule 4: Wide horizontal face span (> 82px across 160px canvas)
+          const isWideSpan = faceWidth >= 82 && skinCount >= 115;
+          // Rule 5: Significant skin area surge above single student baseline (> 1.50x baseline + 32px)
+          const isAreaSurge = skinCount >= Math.max(125, baselineSkinCount.current * 1.50) && (skinCount - baselineSkinCount.current >= 32);
+
+          if (isLeftAndMiddle || isRightAndMiddle || isDualClusters || isWideSpan || isAreaSurge) {
+            rawMultiPerson = true;
+          }
+        }
+
+        if (rawMultiPerson) {
+          multiPersonCountRef.current = Math.min(30, multiPersonCountRef.current + 2);
+        } else {
+          multiPersonCountRef.current = Math.max(0, multiPersonCountRef.current - 1);
+        }
+
+        // Fast confirmation within ~300ms (10 frames)
+        const isMultiPersonConfirmed = multiPersonCountRef.current >= 10;
+        if (isMultiPersonConfirmed !== multiPersonDetectedRef.current) {
+          multiPersonDetectedRef.current = isMultiPersonConfirmed;
+          setMultiPersonDetected(isMultiPersonConfirmed);
+        }
+
+        // Gaze Alignment & Look-away conditions:
+        // 1. No face detected (left frame or turned away)
+        // 2. Pupil gaze diverted (looking away sideways)
+        // 3. Face turned sideways (asymmetryVal > 0.30)
+        // 4. Head position drifted away (dx > 26 || dy > 22)
+        // 5. Head slanted/tilted (slantVal > 0.30)
+        // 6. Skin count dropped (showing back/side of head < 0.65 baseline)
         let isFaceOffCenter = false;
         let isSkinCountTooLow = false;
         let isAsymmetric = false;
         let isSlanted = false;
+        let isPupilDiverted = false;
 
         if (isFacePresent && skinCount > 0) {
           const leftRatio = skinCountLeft / skinCount;
           const rightRatio = skinCountRight / skinCount;
           const asymmetryVal = Math.abs(leftRatio - rightRatio);
           
-          if (asymmetryVal > 0.28) {
+          // Face turn / side-view detection:
+          if (asymmetryVal > 0.30) {
             isAsymmetric = true;
           }
           isAsymmetricActiveRef.current = isAsymmetric;
@@ -605,27 +864,42 @@ export default function AttentionCamera() {
           const diag1 = skinCountTL + skinCountBR;
           const diag2 = skinCountTR + skinCountBL;
           const slantVal = Math.abs(diag1 - diag2) / skinCount;
-          if (slantVal > 0.20) {
+          if (slantVal > 0.30) {
             isSlanted = true;
           }
           setFaceSlant(Number(slantVal.toFixed(2)));
+
+          // Pupil / Iris Gaze Direction:
+          const pupilRatioL = (pupilLeftRef.current.x - eyeLeftRef.current.x) / eyeLeftRef.current.w;
+          const pupilRatioR = (pupilRightRef.current.x - eyeRightRef.current.x) / eyeRightRef.current.w;
+          const avgPupilRatio = (pupilRatioL + pupilRatioR) / 2;
+          const gazeDev = Math.abs(avgPupilRatio - 0.50);
+          const score = Math.max(0, Math.min(100, Math.round((1 - gazeDev * 2.2) * 100)));
+          setGazeAlignment(score);
+
+          if (pupilRatioL < 0.18 || pupilRatioL > 0.82 || pupilRatioR < 0.18 || pupilRatioR > 0.82) {
+            isPupilDiverted = true;
+          }
         } else {
           isAsymmetricActiveRef.current = false;
           setIsSideViewing(false);
           setFaceAsymmetry(0);
           setFaceSlant(0);
+          setGazeAlignment(0);
         }
 
-        if (baselineCenterX.current !== -1) {
+        if (baselineCenterX.current !== -1 && isCalibrated) {
           const dx = Math.abs(prevCenterX.current - baselineCenterX.current);
           const dy = Math.abs(prevCenterY.current - baselineCenterY.current);
           setDriftX(Number(dx.toFixed(1)));
           setDriftY(Number(dy.toFixed(1)));
           
-          if (dx > 12 || dy > 10) {
+          // Head position drift or turning away from center
+          if (dx > 26 || dy > 22) {
             isFaceOffCenter = true;
           }
           
+          // Turning head sideways lowers visible frontal skin surface area
           if (skinCount < baselineSkinCount.current * 0.65) {
             isSkinCountTooLow = true;
           }
@@ -634,11 +908,38 @@ export default function AttentionCamera() {
           setDriftY(0);
         }
 
-        const isRawLookingAway = !isFacePresent || isFaceOffCenter || isSkinCountTooLow || isAsymmetric || isSlanted;
+        // Classify the EXACT active gaze error reason (Face turn & eye diversion strictly considered gaze errors)
+        let currentReason: 'none' | 'multi_person' | 'face_missing' | 'side_view' | 'drift_off_center' | 'head_slanted' | 'face_occluded' = 'none';
 
-        // Apply hysteresis: 15 frames for absence (approx 250-500ms), 5 frames for presence (approx 80-160ms)
+        if (isMultiPersonConfirmed) {
+          currentReason = 'multi_person';
+        } else if (!isFacePresent) {
+          currentReason = 'face_missing';
+        } else if (isAsymmetric || isPupilDiverted) {
+          // Face turned sideways or pupil gaze diverted
+          currentReason = 'side_view';
+        } else if (isFaceOffCenter) {
+          currentReason = 'drift_off_center';
+        } else if (isSlanted) {
+          currentReason = 'head_slanted';
+        } else if (isSkinCountTooLow) {
+          currentReason = 'face_occluded';
+        }
+
+        if (currentReason !== activeGazeErrorRef.current) {
+          activeGazeErrorRef.current = currentReason;
+          setActiveGazeError(currentReason);
+        }
+
+        const isRawLookingAway = currentReason !== 'none';
+
+        // Responsive hysteresis: engages within ~180ms (6 frames) for immediate feedback when face is turned
         if (isRawLookingAway) {
-          faceAbsentCountRef.current += 1;
+          if (currentReason === 'multi_person') {
+            faceAbsentCountRef.current = Math.max(15, faceAbsentCountRef.current + 3);
+          } else {
+            faceAbsentCountRef.current += 2;
+          }
           facePresentCountRef.current = 0;
         } else {
           facePresentCountRef.current += 1;
@@ -646,9 +947,9 @@ export default function AttentionCamera() {
         }
 
         let nextLookingAway = isLookingAwayRef.current;
-        if (faceAbsentCountRef.current >= 15) {
+        if (faceAbsentCountRef.current >= 6) {
           nextLookingAway = true;
-        } else if (facePresentCountRef.current >= 5) {
+        } else if (facePresentCountRef.current >= 4) {
           nextLookingAway = false;
         }
 
@@ -709,36 +1010,86 @@ export default function AttentionCamera() {
         }
 
         // 3. Draw HUD Overlays onto canvas using stable ref values
+        const currentErr = activeGazeErrorRef.current;
+        const errDetails = getGazeErrorDetails(currentErr);
+
+        // Top Status Badge on Video Canvas HUD
+        if (currentErr === 'none') {
+          ctx.fillStyle = 'rgba(0, 108, 73, 0.90)'; // Emerald OK
+          ctx.fillRect(4, 4, 152, 14);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 7px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('● 1 MEMBER IN FRAME (FOCUS OK)', 80, 14);
+        } else if (currentErr === 'multi_person') {
+          ctx.fillStyle = 'rgba(234, 88, 12, 0.96)'; // Orange Multi-Person
+          ctx.fillRect(4, 4, 152, 14);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 7px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`⚠ 2+ PEOPLE (${gazeStatusThresholdRef.current}s LIMIT)`, 80, 14);
+        } else {
+          ctx.fillStyle = 'rgba(220, 38, 38, 0.96)'; // Red Gaze Error
+          ctx.fillRect(4, 4, 152, 14);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 7px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('⚠ ' + errDetails.shortCode, 80, 14);
+        }
+        ctx.textAlign = 'start';
+
         // Face outline box
-        ctx.strokeStyle = isLookingAwayRef.current ? '#ef4444' : '#006c49';
+        ctx.strokeStyle = currentErr === 'multi_person' ? '#f97316' : currentErr !== 'none' ? '#ef4444' : '#006c49';
         ctx.lineWidth = 1.5;
         if (isFacePresent) {
           // Dynamic bounding box around face centroid
           ctx.strokeRect(prevCenterX.current - 28, prevCenterY.current - 35, 56, 70);
           
           // Draw face center crosshair dot
-          ctx.fillStyle = isLookingAwayRef.current ? '#ef4444' : '#10b981';
+          ctx.fillStyle = currentErr === 'multi_person' ? '#f97316' : currentErr !== 'none' ? '#ef4444' : '#10b981';
           ctx.beginPath();
           ctx.arc(prevCenterX.current, prevCenterY.current, 2, 0, Math.PI * 2);
           ctx.fill();
         } else {
           // Fallback static guide when face is missing
           ctx.beginPath();
-          ctx.arc(80, 55, 38, 0, Math.PI * 2);
+          ctx.arc(80, 60, 36, 0, Math.PI * 2);
           ctx.stroke();
         }
 
         // Eye tracking bounding boxes
-        ctx.strokeStyle = isBlinkingRef.current ? '#f59e0b' : isLookingAwayRef.current ? 'rgba(239, 68, 68, 0.4)' : '#38bdf8';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = isBlinkingRef.current ? '#f59e0b' : currentErr !== 'none' ? 'rgba(239, 68, 68, 0.75)' : '#38bdf8';
+        ctx.lineWidth = 1.2;
         ctx.strokeRect(eyeLeftRef.current.x, eyeLeftRef.current.y, eyeLeftRef.current.w, eyeLeftRef.current.h);
         ctx.strokeRect(eyeRightRef.current.x, eyeRightRef.current.y, eyeRightRef.current.w, eyeRightRef.current.h);
 
+        // Pupil Focus Crosshairs & Target Points
+        if (isFacePresent) {
+          ctx.fillStyle = currentErr !== 'none' ? '#ef4444' : '#10b981';
+          // Left pupil focus dot
+          ctx.beginPath();
+          ctx.arc(pupilLeftRef.current.x, pupilLeftRef.current.y, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+          // Right pupil focus dot
+          ctx.beginPath();
+          ctx.arc(pupilRightRef.current.x, pupilRightRef.current.y, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Inter-ocular focus bridge line
+          ctx.strokeStyle = currentErr !== 'none' ? 'rgba(239, 68, 68, 0.45)' : 'rgba(56, 189, 248, 0.45)';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(pupilLeftRef.current.x, pupilLeftRef.current.y);
+          ctx.lineTo(pupilRightRef.current.x, pupilRightRef.current.y);
+          ctx.stroke();
+        }
+
         // Center crosshair indicators
-        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(80, 5); ctx.lineTo(80, 115);
-        ctx.moveTo(5, 55); ctx.lineTo(155, 55);
+        ctx.moveTo(80, 20); ctx.lineTo(80, 115);
+        ctx.moveTo(5, 60); ctx.lineTo(155, 60);
         ctx.stroke();
       }
 
@@ -759,8 +1110,39 @@ export default function AttentionCamera() {
     if (!isCameraActive) return;
 
     const timer = setInterval(() => {
-      // 1. Gaze Look-Away Monitor
-      if (isLookingAwayRef.current) {
+      const isMulti = multiPersonDetectedRef.current;
+      const isAway = isLookingAwayRef.current && !isMulti;
+
+      // 1. Multi-Person Frame Security Monitor (Gaze Status: 1 Member Focused)
+      // Policy: Only 1 member in frame. Alerts when violation reaches configured time (10s, 30s, or 60s)
+      if (isMulti) {
+        setSecondsMultiPerson(prev => {
+          const nextVal = prev + 1;
+          const targetGazeTime = gazeStatusThresholdRef.current;
+          if (nextVal >= targetGazeTime && !hasAlertedForMultiPersonRef.current) {
+            hasAlertedForMultiPersonRef.current = true;
+            playMultiPersonAlertSound();
+            const roomName = activeRoomRef.current?.name;
+            dispatchAdminAlert(
+              'Security Alert: Only 1 Member Allowed in Frame',
+              roomName
+                ? `Security alert in room "${roomName}": More than 1 person detected in frame (duration: ${targetGazeTime}.0s). Only 1 member is permitted.`
+                : `Security alert: More than 1 person detected in frame (duration: ${targetGazeTime}.0s). Only 1 member is permitted.`,
+              roomName ? `AI Gaze Security (${roomName})` : 'AI Gaze Security'
+            );
+            setShowMultiPersonAlertModal(true);
+          }
+          return nextVal;
+        });
+      } else {
+        setSecondsMultiPerson(0);
+        hasAlertedForMultiPersonRef.current = false;
+        setShowMultiPersonAlertModal(false);
+      }
+
+      // 2. Look at Screen Monitor
+      // Tracks if student is looking directly at workspace screen
+      if (isAway) {
         setSecondsLookingAway(prev => {
           const nextVal = prev + 1;
           const threshold = lookAwayThresholdRef.current;
@@ -768,35 +1150,28 @@ export default function AttentionCamera() {
             hasAlertedForLookAwayRef.current = true;
             playLookAwayAlertSound();
             const roomName = activeRoomRef.current?.name;
-            
-            const isSideView = isAsymmetricActiveRef.current;
-            const alertTitle = isSideView ? 'Side-Viewing Attention Alert' : 'Look-Away Attention Alert';
-            const alertText = isSideView
-              ? (roomName
-                  ? `Focus warning: Student in study room "${roomName}" has been looking to the side for over ${threshold}.0 seconds. The person should see the screen.`
-                  : `Focus warning: Student has been looking to the side for over ${threshold}.0 seconds. The person should see the screen.`)
-              : (roomName
-                  ? `Focus warning: Student in study room "${roomName}" has been looking away from the screen for over ${threshold}.0 seconds. The person should see the screen.`
-                  : `Focus warning: Student has been looking away from the screen for over ${threshold}.0 seconds. The person should see the screen.`);
-
+            const currentErr = activeGazeErrorRef.current;
+            const errInfo = getGazeErrorDetails(currentErr);
             dispatchAdminAlert(
-              alertTitle,
-              alertText,
-              roomName ? `AI Look-Away Monitor (${roomName})` : 'AI Look-Away Monitor'
+              `Look at Screen Alert: ${errInfo.title}`,
+              roomName
+                ? `${errInfo.description} (Room: "${roomName}", duration: ${threshold}.0s). Student must look directly at the study screen.`
+                : `${errInfo.description} (duration: ${threshold}.0s). Student must look directly at the study screen.`,
+              roomName ? `AI Screen Focus Guard (${roomName})` : 'AI Screen Focus Guard'
             );
-            setShowGazeAlertModal(true);
+            setShowLookAwayAlertModal(true);
           }
           return nextVal;
         });
       } else {
         setSecondsLookingAway(0);
         hasAlertedForLookAwayRef.current = false;
-        setShowGazeAlertModal(false);
+        setShowLookAwayAlertModal(false);
       }
 
-      // 2. Eye-Blink Stare Monitor (Runs in parallel)
-      // Reset stare duration baseline to current time while looking away to avoid dual alert clashes
-      if (isLookingAwayRef.current) {
+      // 3. Eye-Blink Stare Monitor (Runs in parallel)
+      // Reset stare duration baseline while multi-person or look-away is active
+      if (isMulti || isAway) {
         lastBlinkTimeRef.current = Date.now();
         setSecondsSinceLastBlink(0);
         setShowBlinkAlertModal(false);
@@ -804,7 +1179,7 @@ export default function AttentionCamera() {
         const elapsed = Math.floor((Date.now() - lastBlinkTimeRef.current) / 1000);
         setSecondsSinceLastBlink(elapsed);
 
-        if (elapsed >= 7) {
+        if (elapsed >= stareDurationLimitRef.current) {
           if (!hasAlertedForCurrentStareRef.current) {
             hasAlertedForCurrentStareRef.current = true;
             playBlinkAlertSound();
@@ -812,8 +1187,8 @@ export default function AttentionCamera() {
             dispatchAdminAlert(
               'Eye-Blink Attention Alert',
               roomName
-                ? `Focus warning: Student in study room "${roomName}" has not blinked for over 7.0 seconds. Possible eye fatigue.`
-                : 'Focus warning: Student has not blinked for over 7.0 seconds. Possible eye fatigue.',
+                ? `Focus warning: Student in study room "${roomName}" has not blinked for over ${stareDurationLimitRef.current}.0 seconds. Possible eye fatigue.`
+                : `Focus warning: Student has not blinked for over ${stareDurationLimitRef.current}.0 seconds. Possible eye fatigue.`,
               roomName ? `AI Eye-Blink Monitor (${roomName})` : 'AI Eye-Blink Monitor'
             );
             setShowBlinkAlertModal(true);
@@ -882,19 +1257,27 @@ export default function AttentionCamera() {
     );
   }
 
-  const isBlinkWarning = secondsSinceLastBlink >= 5.0;
-  const isBlinkAlertState = secondsSinceLastBlink >= 7.0;
+  const isBlinkWarning = secondsSinceLastBlink >= stareWarningThreshold;
+  const isBlinkAlertState = secondsSinceLastBlink >= stareDurationLimit;
 
-  const isGazeWarning = secondsLookingAway >= gazeWarningThreshold;
-  const isGazeAlertState = secondsLookingAway >= lookAwayThreshold;
+  const isMultiPersonWarning = secondsMultiPerson >= Math.max(1, Math.round(gazeStatusThreshold * 0.5));
+  const isMultiPersonAlertState = secondsMultiPerson >= gazeStatusThreshold;
+
+  const isScreenLookAwayWarning = secondsLookingAway >= gazeWarningThreshold;
+  const isScreenLookAwayAlertState = secondsLookingAway >= lookAwayThreshold;
+
+  const isLookingAwayFromScreen = isLookingAway && activeGazeError !== 'multi_person' && activeGazeError !== 'none';
+  const currentErrInfo = getGazeErrorDetails(activeGazeError);
 
   return (
     <div className={`p-sm rounded-xl border transition-all duration-300 ${
-      isBlinkAlertState || isGazeAlertState
+      multiPersonDetected
+        ? 'bg-orange-500/10 border-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.25)]'
+        : isBlinkAlertState || isScreenLookAwayAlertState
         ? 'bg-red-500/10 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.25)]' 
-        : isBlinkWarning || isGazeWarning
+        : isBlinkWarning || isScreenLookAwayWarning || isMultiPersonWarning
         ? 'bg-amber-500/5 border-amber-500' 
-        : 'bg-white border-outline-variant/30'
+        : 'bg-surface border-outline-variant/40 text-on-surface'
     }`}>
       
       {/* Header Info */}
@@ -911,12 +1294,12 @@ export default function AttentionCamera() {
                 setManualCheckActive(false);
                 stopCamera();
               }}
-              className="text-[9px] px-2 py-0.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded cursor-pointer transition-colors"
+              className="text-[9px] px-2 py-0.5 bg-surface-container hover:bg-surface-container-high text-on-surface font-bold rounded cursor-pointer transition-colors border border-outline-variant/30"
             >
               Stop Check
             </button>
           )}
-          <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-on-surface-variant px-1.5 py-0.5 rounded font-mono font-bold">
+          <span className="text-[9px] bg-surface-container text-on-surface-variant px-1.5 py-0.5 rounded font-mono font-bold border border-outline-variant/20">
             Alerts: {alertsCount}
           </span>
         </div>
@@ -942,13 +1325,13 @@ export default function AttentionCamera() {
             playsInline
             muted
             className="absolute inset-0 w-full h-full object-cover opacity-60 scale-x-[-1]"
-          />
+          ></video>
           <canvas
             ref={canvasRef}
             width={160}
             height={120}
             className="absolute inset-0 w-full h-full z-10 pointer-events-none"
-          />
+          ></canvas>
           
           {isBlinking && !isLookingAway && (
             <div className="absolute inset-0 bg-secondary/15 flex items-center justify-center z-25 pointer-events-none">
@@ -958,74 +1341,93 @@ export default function AttentionCamera() {
             </div>
           )}
 
-          {isLookingAway && (
-            <div className="absolute inset-0 bg-red-600/10 flex items-center justify-center z-25 pointer-events-none">
-              <span className="bg-red-600 text-white font-bold text-[8px] px-2 py-0.5 rounded uppercase tracking-wider">
-                {isSideViewing ? 'Side-Viewing Warning' : 'Gaze Warning'}
+          {/* Look at Screen Video Overlay Badge */}
+          {isLookingAwayFromScreen && (
+            <div className="absolute inset-0 bg-red-600/15 flex items-center justify-center z-25 pointer-events-none">
+              <span className="font-bold text-[8.5px] px-2.5 py-1 rounded-md uppercase tracking-wider text-white shadow-md bg-red-600 animate-pulse">
+                ⚠ {activeGazeError === 'side_view' ? 'FACE TURNED AWAY (GAZE ERROR)' : 'LOOK AT SCREEN'} ({secondsLookingAway}s / {lookAwayThreshold}s)
+              </span>
+            </div>
+          )}
+
+          {/* Multi-Person Video Overlay Badge */}
+          {multiPersonDetected && (
+            <div className="absolute inset-0 bg-orange-600/20 flex items-center justify-center z-25 pointer-events-none">
+              <span className="font-bold text-[8.5px] px-2.5 py-1 rounded-md uppercase tracking-wider text-white shadow-md bg-orange-600 animate-pulse">
+                ⚠ 2+ MEMBERS DETECTED ({secondsMultiPerson}s / {gazeStatusThreshold}.0s)
               </span>
             </div>
           )}
           
-          {isBlinkAlertState && !isLookingAway && (
+          {/* Blink Alert Video Overlay Badge */}
+          {isBlinkAlertState && !isLookingAwayFromScreen && !multiPersonDetected && (
             <div className="absolute inset-0 bg-red-600/20 flex flex-col items-center justify-center z-25 pointer-events-none">
               <span className="bg-red-600 text-white font-bold text-[8px] px-2 py-0.5 rounded uppercase tracking-wider animate-bounce">
-                ATTENTION ALERT SENT
+                ATTENTION: PLEASE BLINK
               </span>
             </div>
           )}
 
-          {isGazeAlertState && (
-            <div className="absolute inset-0 bg-red-600/30 flex flex-col items-center justify-center z-25 pointer-events-none">
-              <span className="bg-red-600 text-white font-bold text-[8px] px-2 py-0.5 rounded uppercase tracking-wider animate-bounce">
-                {isSideViewing ? 'SIDE VIEWING DETECTED - SEE THE SCREEN' : 'THE PERSON SHOULD SEE THE SCREEN'}
-              </span>
-            </div>
-          )}
-
-          {showGazeAlertModal && (
-            <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-sm z-30 text-center animate-fade-in">
-              <span className="material-symbols-outlined text-red-500 text-3xl animate-bounce mb-xs">warning</span>
-              <h5 className="text-[11px] font-bold text-white uppercase tracking-wider">Attention Alert!</h5>
-              <p className="text-[9px] text-slate-300 mt-1 mb-sm px-xs font-semibold">
-                {isSideViewing 
-                  ? 'Side-viewing detected. The person should see the screen.' 
-                  : 'The person should see the screen.'}
+          {/* Alert Modal 1: Multi-Person Frame Security Violation */}
+          {showMultiPersonAlertModal && (
+            <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-xs flex flex-col items-center justify-center p-3 z-30 text-center animate-fade-in">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center mb-1.5 shadow-lg bg-orange-500/20 text-orange-400 border border-orange-500/40">
+                <span className="material-symbols-outlined text-2xl animate-bounce">group_off</span>
+              </div>
+              <h5 className="text-[11px] font-black text-white uppercase tracking-wider">
+                Security Alert: Only 1 Member Allowed
+              </h5>
+              <p className="text-[9.5px] text-slate-200 mt-1 mb-1 px-1 font-semibold leading-tight">
+                Another person was detected in camera frame. Focus policy strictly allows only 1 registered member in view.
               </p>
+              <div className="text-[8.5px] text-amber-200 font-bold mb-2 bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded">
+                Action: Ensure all other individuals step out of camera view immediately.
+              </div>
               <button
                 onClick={() => {
-                  setShowGazeAlertModal(false);
-                  setSecondsLookingAway(0);
-                  hasAlertedForLookAwayRef.current = false;
-                  isAsymmetricActiveRef.current = false;
-                  setIsSideViewing(false);
-                  baselineCenterX.current = -1;
-                  baselineCenterY.current = -1;
-                  baselineSkinCount.current = -1;
-                  setIsCalibrated(false);
-                  setFaceAsymmetry(0);
-                  setFaceSlant(0);
-                  setDriftX(0);
-                  setDriftY(0);
-                  setLiveSkinCount(0);
-                  setBaseSkinCount(0);
-                  calibratedR.current = -1;
-                  calibratedG.current = -1;
-                  calibratedB.current = -1;
-                  needsColorCalibration.current = true;
-                  setCalibColor('N/A');
+                  setShowMultiPersonAlertModal(false);
+                  resetCalibrationValues();
                 }}
-                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-[9px] font-bold rounded-lg transition-colors cursor-pointer"
+                className="px-3.5 py-1 bg-primary hover:bg-primary/90 text-white text-[9px] font-bold rounded-lg transition-colors cursor-pointer shadow-md"
               >
-                Dismiss Warning
+                Dismiss &amp; Recalibrate
               </button>
             </div>
           )}
 
+          {/* Alert Modal 2: Look at Screen Warning */}
+          {showLookAwayAlertModal && (
+            <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-xs flex flex-col items-center justify-center p-3 z-30 text-center animate-fade-in">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center mb-1.5 shadow-lg bg-red-500/20 text-red-400 border border-red-500/40">
+                <span className="material-symbols-outlined text-2xl animate-bounce">visibility_off</span>
+              </div>
+              <h5 className="text-[11px] font-black text-white uppercase tracking-wider">
+                Look at Screen Alert!
+              </h5>
+              <p className="text-[9.5px] text-slate-200 mt-1 mb-1 px-1 font-semibold leading-tight">
+                {currentErrInfo.description}
+              </p>
+              <div className="text-[8.5px] text-amber-200 font-bold mb-2 bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded">
+                Action: {currentErrInfo.resolution}
+              </div>
+              <button
+                onClick={() => {
+                  setShowLookAwayAlertModal(false);
+                  resetCalibrationValues();
+                }}
+                className="px-3.5 py-1 bg-primary hover:bg-primary/90 text-white text-[9px] font-bold rounded-lg transition-colors cursor-pointer shadow-md"
+              >
+                Dismiss &amp; Resume Study
+              </button>
+            </div>
+          )}
+
+          {/* Alert Modal 3: Stare Warning / Eye Blink Alert */}
           {showBlinkAlertModal && (
-            <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-sm z-30 text-center animate-fade-in">
-              <span className="material-symbols-outlined text-amber-500 text-3xl animate-bounce mb-xs">visibility</span>
-              <h5 className="text-[11px] font-bold text-white uppercase tracking-wider">Stare Warning!</h5>
-              <p className="text-[9px] text-slate-300 mt-1 mb-sm px-xs font-semibold">
+            <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-sm z-30 text-center animate-fade-in">
+              <span className="material-symbols-outlined text-amber-400 text-3xl animate-bounce mb-xs">visibility</span>
+              <h5 className="text-[11px] font-black text-white uppercase tracking-wider">Stare Warning!</h5>
+              <p className="text-[9.5px] text-slate-200 mt-1 mb-sm px-xs font-semibold">
                 Please blink your eyes to reduce fatigue.
               </p>
               <button
@@ -1042,50 +1444,187 @@ export default function AttentionCamera() {
         </div>
       )}
 
-      {/* Control Details and Timers */}
-      <div className="mt-sm space-y-sm">
+      {/* Control Details and Timers: 3 Metrics Display */}
+      <div className="mt-sm space-y-2.5">
         
-        {/* Blink gauge */}
+        {/* Metric 1: Stare Duration (Configured: 1 to 10s) */}
         <div className="space-y-xs">
-          <div className="flex items-center justify-between text-[9px] font-semibold text-on-surface-variant">
-            <span>Stare Duration:</span>
-            <span className={`font-mono font-bold ${isBlinkAlertState ? 'text-red-600' : isBlinkWarning ? 'text-amber-500' : 'text-primary'}`}>
-              {secondsSinceLastBlink}s / 7.0s
+          <div className="flex items-center justify-between text-[9px] font-bold text-slate-900 dark:text-slate-100">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-[13px] text-primary">visibility</span>
+              Stare Duration:
+            </span>
+            <span className={`font-mono font-black ${isBlinkAlertState ? 'text-red-600' : isBlinkWarning ? 'text-amber-500' : 'text-primary'}`}>
+              {secondsSinceLastBlink}s / {stareDurationLimit}.0s
             </span>
           </div>
-          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+          <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
             <div 
               className={`h-full rounded-full transition-all duration-100 ${
                 isBlinkAlertState ? 'bg-red-500' : isBlinkWarning ? 'bg-amber-500' : 'bg-primary'
               }`}
-              style={{ width: `${isLookingAway ? 0 : Math.min(100, (secondsSinceLastBlink / 7.0) * 100)}%` }}
-            />
+              style={{ width: `${Math.min(100, (secondsSinceLastBlink / stareDurationLimit) * 100)}%` }}
+            ></div>
           </div>
         </div>
 
-        {/* Gaze Look Away gauge */}
+        {/* Metric 2: Gaze Status: 1 Member Focused (Configured: 10s, 30s, or 60s) */}
         <div className="space-y-xs">
-          <div className="flex items-center justify-between text-[9px] font-semibold text-on-surface-variant">
-            <span>Gaze Status:</span>
-            <span className={`font-mono font-bold flex items-center gap-1 ${isLookingAway ? 'text-red-500' : 'text-secondary'}`}>
-              <span className={`w-1.5 h-1.5 rounded-full inline-block ${isLookingAway ? 'bg-red-500 animate-pulse' : 'bg-secondary'}`}></span>
-              {isLookingAway ? `Looking Away (${secondsLookingAway}s / ${lookAwayThreshold}s)` : 'Looking at Screen'}
+          <div className="flex items-center justify-between text-[9px] font-bold text-slate-900 dark:text-slate-100">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-[13px] text-secondary">person</span>
+              Gaze Status:
+            </span>
+            <span className={`font-mono font-black flex items-center gap-1 ${
+              multiPersonDetected
+                ? 'text-orange-600 dark:text-orange-400'
+                : activeGazeError === 'face_missing'
+                ? 'text-red-600 dark:text-red-400'
+                : isLookingAwayFromScreen
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-secondary'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full inline-block ${
+                multiPersonDetected
+                  ? 'bg-orange-600 animate-pulse'
+                  : activeGazeError === 'face_missing'
+                  ? 'bg-red-600'
+                  : isLookingAwayFromScreen
+                  ? 'bg-red-600 animate-pulse'
+                  : 'bg-secondary'
+              }`}></span>
+              {multiPersonDetected
+                ? `Multiple Persons (${secondsMultiPerson}s / ${gazeStatusThreshold}.0s)`
+                : activeGazeError === 'face_missing'
+                ? 'No Member in Frame'
+                : isLookingAwayFromScreen
+                ? `Face Turned Away (${secondsLookingAway}s / ${gazeStatusThreshold}.0s)`
+                : '1 Member Focused (OK)'}
             </span>
           </div>
-          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+          <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
             <div 
               className={`h-full rounded-full transition-all duration-100 ${
-                isGazeAlertState ? 'bg-red-500' : isGazeWarning ? 'bg-amber-500' : 'bg-secondary'
+                multiPersonDetected
+                  ? 'bg-orange-500'
+                  : activeGazeError === 'face_missing'
+                  ? 'bg-red-500'
+                  : isScreenLookAwayAlertState
+                  ? 'bg-red-500'
+                  : isScreenLookAwayWarning
+                  ? 'bg-amber-500'
+                  : 'bg-secondary'
               }`}
-              style={{ width: `${Math.min(100, (secondsLookingAway / lookAwayThreshold) * 100)}%` }}
-            />
+              style={{
+                width: multiPersonDetected
+                  ? `${Math.min(100, (secondsMultiPerson / gazeStatusThreshold) * 100)}%`
+                  : isLookingAwayFromScreen
+                  ? `${Math.min(100, (secondsLookingAway / gazeStatusThreshold) * 100)}%`
+                  : '100%'
+              }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Metric 3: Look at Screen (Configured: 10s, 30s, or 60s) */}
+        <div className="space-y-xs">
+          <div className="flex items-center justify-between text-[9px] font-bold text-slate-900 dark:text-slate-100">
+            <span className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-[13px] text-emerald-600 dark:text-emerald-400">desktop_windows</span>
+              Look at Screen:
+            </span>
+            <span className={`font-mono font-black flex items-center gap-1 ${
+              isLookingAwayFromScreen ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full inline-block ${
+                isLookingAwayFromScreen ? 'bg-red-600 animate-pulse' : 'bg-emerald-600'
+              }`}></span>
+              {isLookingAwayFromScreen
+                ? `Face Turned Away (${secondsLookingAway}s / ${lookAwayThreshold}.0s)`
+                : 'Screen Aligned (OK)'}
+            </span>
+          </div>
+          <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+            <div 
+              className={`h-full rounded-full transition-all duration-100 ${
+                isScreenLookAwayAlertState ? 'bg-red-500' : isScreenLookAwayWarning ? 'bg-amber-500' : 'bg-emerald-600'
+              }`}
+              style={{
+                width: isLookingAwayFromScreen
+                  ? `${Math.min(100, (secondsLookingAway / lookAwayThreshold) * 100)}%`
+                  : '100%'
+              }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Explicit Gaze Error Diagnostic & Status Card (No truncation) */}
+        <div className={`p-2.5 rounded-lg border text-left transition-all ${
+          multiPersonDetected
+            ? 'bg-orange-500/15 border-orange-500/40 text-slate-900 dark:text-slate-100'
+            : isLookingAwayFromScreen
+            ? 'bg-red-500/15 border-red-500/40 text-slate-900 dark:text-slate-100'
+            : 'bg-emerald-500/15 border-emerald-500/35 text-slate-900 dark:text-slate-100'
+        }`}>
+          <div className="flex items-start gap-2">
+            <span className={`material-symbols-outlined text-[17px] shrink-0 mt-0.5 ${
+              multiPersonDetected
+                ? 'text-orange-600 dark:text-orange-400'
+                : isLookingAwayFromScreen
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-emerald-600 dark:text-emerald-400'
+            }`}>
+              {multiPersonDetected
+                ? 'group_off'
+                : isLookingAwayFromScreen
+                ? 'visibility_off'
+                : 'check_circle'}
+            </span>
+            <div className="space-y-1 min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-1 flex-wrap">
+                <span className={`text-[10px] font-black uppercase tracking-wider ${
+                  multiPersonDetected
+                    ? 'text-orange-700 dark:text-orange-300'
+                    : isLookingAwayFromScreen
+                    ? 'text-red-700 dark:text-red-300'
+                    : 'text-emerald-700 dark:text-emerald-300'
+                }`}>
+                  {multiPersonDetected
+                    ? 'SECURITY ALERT: ONLY 1 MEMBER ALLOWED'
+                    : isLookingAwayFromScreen
+                    ? `LOOK AT SCREEN ERROR: ${currentErrInfo.title.toUpperCase()}`
+                    : 'ALL CHECKS PASSING: 1 MEMBER FOCUSED & LOOKING AT SCREEN'}
+                </span>
+                <span className={`text-[8px] font-mono px-1.5 py-0.5 rounded font-black uppercase ${
+                  multiPersonDetected
+                    ? 'bg-orange-600 text-white'
+                    : isLookingAwayFromScreen
+                    ? 'bg-red-600 text-white'
+                    : 'bg-emerald-600 text-white'
+                }`}>
+                  {multiPersonDetected ? '2+ MEMBERS' : isLookingAwayFromScreen ? currentErrInfo.shortCode : 'SCREEN ALIGNED'}
+                </span>
+              </div>
+              <p className="text-[9.5px] text-slate-900 dark:text-slate-100 font-semibold leading-snug">
+                {multiPersonDetected
+                  ? 'Another person detected in the camera frame. Focus policy strictly allows only 1 registered member in view.'
+                  : isLookingAwayFromScreen
+                  ? currentErrInfo.description
+                  : 'Student is looking directly at the workspace screen with normal gaze alignment and 1 member in frame.'}
+              </p>
+              {(multiPersonDetected || isLookingAwayFromScreen) && (
+                <p className="text-[8.5px] font-bold text-amber-800 dark:text-amber-300 pt-0.5">
+                  ➔ {multiPersonDetected ? 'Ensure all other individuals step out of camera view immediately (Alert fires within 5s).' : currentErrInfo.resolution}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Camera Selector Dropdown */}
         {devices.length > 0 && (
           <div className="space-y-xs">
-            <div className="flex items-center justify-between text-[9px] font-semibold text-on-surface-variant">
+            <div className="flex items-center justify-between text-[9px] font-bold text-slate-900 dark:text-slate-100">
               <span className="flex items-center gap-xs">
                 <span className="material-symbols-outlined text-[12px]">photo_camera</span>
                 Webcam Input Source:
@@ -1094,10 +1633,10 @@ export default function AttentionCamera() {
             <select
               value={selectedDeviceId}
               onChange={(e) => setSelectedDeviceId(e.target.value)}
-              className="w-full text-[10px] bg-slate-50 dark:bg-slate-900 border border-outline-variant/30 rounded px-2 py-1.5 text-on-surface-variant font-medium focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-colors"
+              className="w-full text-[10px] bg-surface border border-outline-variant rounded px-2 py-1.5 text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-colors"
             >
               {devices.map((device) => (
-                <option key={device.deviceId} value={device.deviceId} className="bg-white dark:bg-slate-900">
+                <option key={device.deviceId} value={device.deviceId} className="bg-surface text-slate-900 dark:text-slate-100 font-semibold">
                   {device.label || `Camera ${device.deviceId.slice(0, 5)}...`}
                 </option>
               ))}
@@ -1106,41 +1645,25 @@ export default function AttentionCamera() {
         )}
 
         {/* Live Debug Metrics */}
-        <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold font-mono flex-wrap gap-x-sm">
+        <div className="flex justify-between items-center text-[8.5px] text-slate-900 dark:text-slate-100 font-bold font-mono flex-wrap gap-x-sm">
+          <span className="text-emerald-600 dark:text-emerald-400 font-black">GAZE: {gazeAlignment}%</span>
           <span>EYE DELTA: {calibrationDiff}</span>
-          <span>CALIB: {isCalibrated ? 'OK' : 'PENDING'}</span>
-          <span>RGB: {calibColor}</span>
+          <span>CALIB: {isCalibrated ? 'OK' : 'CALIBRATING'}</span>
+          <span>ERR: {activeGazeError}</span>
           <span>ASYM: {faceAsymmetry}</span>
           <span>SLANT: {faceSlant}</span>
           <span>DRIFT: X:{driftX} Y:{driftY}</span>
-          <span>SKIN: {liveSkinCount}/{baseSkinCount}</span>
-          <span>THRESHOLD: {blinkThreshold}</span>
+          <span>SKIN: {liveSkinCount} / {baseSkinCount}</span>
         </div>
 
         {/* Manual controls */}
         <div className="pt-xs flex flex-col gap-xs">
           {isCameraActive && (
             <button
-              onClick={() => {
-                baselineCenterX.current = -1;
-                baselineCenterY.current = -1;
-                baselineSkinCount.current = -1;
-                setIsCalibrated(false);
-                setFaceAsymmetry(0);
-                setFaceSlant(0);
-                setDriftX(0);
-                setDriftY(0);
-                setLiveSkinCount(0);
-                setBaseSkinCount(0);
-                calibratedR.current = -1;
-                calibratedG.current = -1;
-                calibratedB.current = -1;
-                needsColorCalibration.current = true;
-                setCalibColor('N/A');
-              }}
-              className="w-full py-1 bg-secondary hover:bg-secondary/90 text-white rounded text-[9px] font-bold cursor-pointer transition-colors"
+              onClick={() => resetCalibrationValues()}
+              className="w-full py-1 bg-secondary hover:bg-secondary/90 text-white rounded text-[9px] font-bold cursor-pointer transition-colors shadow-xs"
             >
-              Recalibrate Face Center
+              Recalibrate Face &amp; Gaze
             </button>
           )}
           {!isCameraActive && (

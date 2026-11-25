@@ -5,6 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import AmbientSoundPlayer from './AmbientSoundPlayer';
 
+const THEMES = [
+  { id: 'slate', name: 'Emerald Slate', color: 'bg-emerald-500' },
+  { id: 'indigo', name: 'Linear Indigo', color: 'bg-indigo-500' },
+  { id: 'ocean', name: 'Pacific Ocean', color: 'bg-sky-500' },
+  { id: 'forest', name: 'Zen Forest', color: 'bg-teal-600' },
+  { id: 'midnight', name: 'Midnight Obsidian', color: 'bg-slate-900' },
+  { id: 'burgundy', name: 'Burgundy Sage', color: 'bg-[#590907]' },
+  { id: 'cyberpunk', name: 'Cyberpunk Neon', color: 'bg-pink-500' },
+];
+
 export default function Header() {
   const router = useRouter();
   const {
@@ -17,8 +27,10 @@ export default function Header() {
   } = useApp();
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [userStatus, setUserStatus] = useState<'deep_work' | 'break' | 'available'>('deep_work');
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
 
   const toggleStudyMode = () => {
     updateSettings({ studyMode: !settings.studyMode });
@@ -34,11 +46,26 @@ export default function Header() {
     router.push('/login');
   };
 
-  // Close profile dropdown on outside click
+  const handleSelectTheme = (themeId: string) => {
+    updateSettings({
+      uiConfig: {
+        ...settings?.uiConfig,
+        theme: themeId,
+        density: settings?.uiConfig?.density || 'comfort',
+        brandingName: settings?.uiConfig?.brandingName || 'FocusFlow'
+      }
+    });
+    setThemeMenuOpen(false);
+  };
+
+  // Close menus on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
+      }
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target as Node)) {
+        setThemeMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -46,9 +73,10 @@ export default function Header() {
   }, []);
 
   const formattedTime = `${timerMinutes.toString().padStart(2, '0')}:${timerSeconds.toString().padStart(2, '0')}`;
+  const currentTheme = THEMES.find(t => t.id === (settings?.uiConfig?.theme || 'slate')) || THEMES[0];
 
   return (
-    <header className="fixed top-0 right-0 left-64 flex items-center justify-between px-6 bg-white/80 dark:bg-[#0c1322]/80 backdrop-blur-xl h-16 border-b border-outline-variant/20 z-40 transition-colors">
+    <header className="fixed top-0 right-0 left-64 flex items-center justify-between px-6 bg-surface/85 backdrop-blur-xl h-16 border-b border-outline-variant/30 text-on-surface z-40 transition-colors">
       {/* Left: Session Clock & Command Palette search shortcut */}
       <div className="flex items-center gap-4">
         {/* Active Session Indicator */}
@@ -64,10 +92,10 @@ export default function Header() {
           <span className="font-mono font-bold text-xs text-primary bg-surface-container-low px-2 py-1 rounded-md border border-outline-variant/20">
             {formattedTime}
           </span>
-          <span className="text-outline-variant/40 hidden md:inline">|</span>
-          <span className="hidden md:flex items-center gap-1.5 text-xs text-on-surface-variant max-w-[260px] truncate">
-            <span className="text-outline">Focus:</span>
-            <strong className="text-primary font-semibold truncate">
+          <span className="text-outline-variant/60 hidden md:inline">|</span>
+          <span className="hidden md:flex items-center gap-1.5 text-xs text-slate-900 dark:text-slate-100 max-w-[260px] truncate">
+            <span className="text-slate-600 dark:text-slate-400 font-semibold">Focus:</span>
+            <strong className="text-primary font-bold truncate">
               {activeTaskTitle || 'Autonomous Study'}
             </strong>
           </span>
@@ -77,19 +105,19 @@ export default function Header() {
         <button
           type="button"
           onClick={handleOpenCommandPalette}
-          className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-surface-container-low/70 hover:bg-surface-container border border-outline-variant/30 rounded-xl text-xs text-on-surface-variant/80 hover:text-primary transition-all cursor-pointer shadow-2xs"
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container border border-outline-variant/40 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-semibold transition-all cursor-pointer shadow-2xs"
           title="Open Command Palette (Ctrl+K or Cmd+K)"
         >
-          <span className="material-symbols-outlined text-sm">search</span>
-          <span className="font-medium">Quick Actions...</span>
-          <kbd className="font-mono text-[10px] font-bold bg-surface-container-highest text-on-surface-variant px-1.5 py-0.5 rounded border border-outline-variant/30">
+          <span className="material-symbols-outlined text-sm text-secondary">search</span>
+          <span className="font-semibold">Quick Actions...</span>
+          <kbd className="font-mono text-[10px] font-bold bg-surface-container-highest text-slate-900 dark:text-slate-100 px-1.5 py-0.5 rounded border border-outline-variant/40">
             ⌘K
           </kbd>
         </button>
       </div>
 
-      {/* Right Controls: Ambient Player, Study Mode, Coins & Profile */}
-      <div className="flex items-center gap-3">
+      {/* Right Controls: Ambient Player, Study Mode, Theme, Coins & Profile */}
+      <div className="flex items-center gap-2.5">
         {/* Ambient Soundscape Synthesizer */}
         <AmbientSoundPlayer />
 
@@ -112,6 +140,49 @@ export default function Header() {
           </span>
         </button>
 
+        {/* Theme Palette Switcher Dropdown */}
+        <div className="relative" ref={themeMenuRef}>
+          <button
+            type="button"
+            onClick={() => setThemeMenuOpen(!themeMenuOpen)}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-surface-container-low hover:bg-surface-container border border-outline-variant/30 rounded-full text-xs font-semibold text-on-surface-variant hover:text-primary transition-all cursor-pointer"
+            title="Switch Visual Color Theme"
+          >
+            <span className={`w-2 h-2 rounded-full ${currentTheme.color}`}></span>
+            <span className="hidden xl:inline capitalize">{currentTheme.name}</span>
+            <span className="material-symbols-outlined text-[13px] text-outline">palette</span>
+          </button>
+
+          {themeMenuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-52 bg-surface text-on-surface border border-outline-variant rounded-2xl p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-3 py-1.5 border-b border-outline-variant/20 mb-1 text-[10px] font-bold text-outline uppercase tracking-wider">
+                Select Color Palette
+              </div>
+              <div className="space-y-1">
+                {THEMES.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => handleSelectTheme(t.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${
+                      (settings?.uiConfig?.theme || 'slate') === t.id
+                        ? 'bg-secondary/10 text-primary font-bold border border-secondary/30'
+                        : 'hover:bg-surface-container text-on-surface-variant'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`w-3 h-3 rounded-full ${t.color}`}></span>
+                      <span>{t.name}</span>
+                    </div>
+                    {(settings?.uiConfig?.theme || 'slate') === t.id && (
+                      <span className="material-symbols-outlined text-secondary text-sm">check</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Focus Score pill */}
         <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-secondary bg-secondary/10 px-2.5 py-1 rounded-full border border-secondary/20">
           <span className="material-symbols-outlined text-sm">radar</span>
@@ -131,7 +202,7 @@ export default function Header() {
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             className="flex items-center gap-1.5 pl-1 pr-1.5 py-1 rounded-full hover:bg-surface-container transition-colors cursor-pointer"
           >
-            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-secondary to-emerald-400 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-secondary to-secondary/60 text-on-secondary font-bold text-xs flex items-center justify-center shadow-xs">
               S
             </div>
             <span className={`w-2 h-2 rounded-full ${
@@ -141,7 +212,7 @@ export default function Header() {
 
           {/* User Menu Dropdown */}
           {userMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-[#0c1322] border border-outline-variant/30 rounded-2xl p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 top-full mt-2 w-56 bg-surface text-on-surface border border-outline-variant rounded-2xl p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="px-3 py-2 border-b border-outline-variant/20 mb-1">
                 <p className="text-xs font-bold text-primary">Student Account</p>
                 <p className="text-[11px] text-on-surface-variant truncate">student@focusflow.edu</p>
