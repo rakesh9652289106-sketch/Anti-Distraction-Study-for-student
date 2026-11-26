@@ -78,7 +78,7 @@ function RoomPreviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id') || '';
-  const { joinStudyRoom, joinedRooms, leaveStudyRoom, showNotification, isSidebarCollapsed, isAssistantOpen, setIsAssistantOpen } = useApp();
+  const { joinStudyRoom, joinedRooms, leaveStudyRoom, showNotification, isSidebarCollapsed, setIsSidebarCollapsed, isAssistantOpen, setIsAssistantOpen } = useApp();
   const [data, setData] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
@@ -88,15 +88,19 @@ function RoomPreviewContent() {
   const [hiddenEmbeds, setHiddenEmbeds] = useState<Record<string, boolean>>({});
   const [fullscreenAppId, setFullscreenAppId] = useState<string | null>(null);
   const wasAssistantOpenRef = useRef(false);
+  const wasSidebarCollapsedRef = useRef(true);
 
   const toggleAppFullscreen = (appId: string) => {
     setFullscreenAppId(prev => {
       const next = prev === appId ? null : appId;
       if (next) {
         wasAssistantOpenRef.current = isAssistantOpen;
+        wasSidebarCollapsedRef.current = isSidebarCollapsed;
         setIsAssistantOpen(false);
-      } else if (wasAssistantOpenRef.current) {
-        setIsAssistantOpen(true);
+        setIsSidebarCollapsed(true);
+      } else {
+        if (wasAssistantOpenRef.current) setIsAssistantOpen(true);
+        if (!wasSidebarCollapsedRef.current) setIsSidebarCollapsed(false);
       }
       return next;
     });
@@ -108,11 +112,12 @@ function RoomPreviewContent() {
       if (e.key === 'Escape') {
         setFullscreenAppId(null);
         if (wasAssistantOpenRef.current) setIsAssistantOpen(true);
+        if (!wasSidebarCollapsedRef.current) setIsSidebarCollapsed(false);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [fullscreenAppId, setIsAssistantOpen]);
+  }, [fullscreenAppId, setIsAssistantOpen, setIsSidebarCollapsed]);
 
   const fetchRoomData = async () => {
     if (!id) return;
@@ -204,30 +209,9 @@ function RoomPreviewContent() {
     );
   }
 
-  const { roomDetails, environment, participants, joinedStudents = [], curatedResources } = data;
+  const { roomDetails, environment, participants, curatedResources } = data;
   const isCurrentlyInThisRoom = joinedRooms.some(r => r.id === id);
   const isInspectRulesMode = searchParams.get('mode') === 'rules' || !isCurrentlyInThisRoom;
-
-  const isStaffUser =
-    typeof window !== 'undefined' &&
-    (sessionStorage.getItem('staff_authenticated') === 'true' ||
-      localStorage.getItem('staff_authenticated') === 'true');
-  const currentStaffId = typeof window !== 'undefined' ? (localStorage.getItem('staff_user_id') || '') : '';
-  const currentStaffEmail = typeof window !== 'undefined' ? (localStorage.getItem('staff_user_email') || '').toLowerCase() : '';
-  const isAdminUser = typeof window !== 'undefined' && sessionStorage.getItem('admin_authenticated') === 'true';
-  const isRoomHead =
-    (isStaffUser &&
-      Boolean(roomDetails.roomHead) &&
-      (roomDetails.roomHead?.userId === currentStaffId ||
-        roomDetails.roomHead?.email?.toLowerCase() === currentStaffEmail)) ||
-    isAdminUser;
-
-  const avgFocusScore =
-    joinedStudents.length > 0
-      ? Math.round(joinedStudents.reduce((acc, s) => acc + (s.focusScore || 0), 0) / joinedStudents.length)
-      : roomDetails.focusIndex;
-  const totalGazeAlerts = joinedStudents.reduce((acc, s) => acc + (s.gazeAlerts || 0), 0);
-  const totalTabSwitches = joinedStudents.reduce((acc, s) => acc + (s.tabSwitchCount || 0), 0);
 
   return (
     <div className="w-full text-on-surface font-sans pb-xl pt-2">
@@ -385,6 +369,18 @@ function RoomPreviewContent() {
                 <p className="text-[11px] text-on-surface-variant font-medium mt-0.5">{environment.durationFormat}</p>
               </div>
             </div>
+
+            <div className="flex items-start gap-3">
+              <div className="bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 p-2 rounded-xl">
+                <span className="material-symbols-outlined block text-[20px]">badge</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-on-surface">Room Head</p>
+                <p className="text-[11px] text-on-surface-variant font-medium mt-0.5">
+                  {roomDetails.roomHead?.name || 'Not Assigned'}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -419,102 +415,6 @@ function RoomPreviewContent() {
           </div>
         </div>
 
-        {/* Room Head Overall Stats Panel (Visible when Admin grants Room Head access) */}
-        {roomDetails.roomHead && isRoomHead && (
-          <div className="md:col-span-12 bg-surface border-2 border-primary/40 shadow-md rounded-2xl p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-primary text-on-primary text-[10px] font-bold uppercase tracking-wider">
-                    Room Head Access
-                  </span>
-                  <h3 className="text-lg font-bold text-on-surface">Overall Student Focus &amp; Gaze Stats</h3>
-                </div>
-                <p className="text-xs text-on-surface-variant mt-0.5 font-medium">
-                  Assigned Room Head: <span className="font-bold text-on-surface">{roomDetails.roomHead.name}</span> ({roomDetails.roomHead.email})
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={fetchRoomData}
-                className="px-4 py-2 bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 rounded-xl text-xs font-bold text-on-surface flex items-center gap-1.5 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">refresh</span>
-                Refresh Live Stats
-              </button>
-            </div>
-
-            {/* Summary KPIs */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-              <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Joined Students</p>
-                <p className="text-2xl font-extrabold text-on-surface mt-1">{joinedStudents.length}</p>
-              </div>
-              <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Avg Focus Score</p>
-                <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{avgFocusScore}%</p>
-              </div>
-              <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Total Gaze Alerts</p>
-                <p className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">{totalGazeAlerts}</p>
-              </div>
-              <div className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Total Tab Switches</p>
-                <p className="text-2xl font-extrabold text-red-600 dark:text-red-400 mt-1">{totalTabSwitches}</p>
-              </div>
-            </div>
-
-            {/* Per-student Telemetry Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-outline-variant/30 text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">
-                    <th className="py-2.5 px-3">Student</th>
-                    <th className="py-2.5 px-3">Gaze Status</th>
-                    <th className="py-2.5 px-3">Gaze Alerts</th>
-                    <th className="py-2.5 px-3">Tab Switch Count</th>
-                    <th className="py-2.5 px-3">Focus Score</th>
-                    <th className="py-2.5 px-3">Joined At</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/20">
-                  {joinedStudents.length > 0 ? (
-                    joinedStudents.map(st => (
-                      <tr key={st.userId} className="hover:bg-surface-container-low/60">
-                        <td className="py-3 px-3">
-                          <div className="font-bold text-on-surface">{st.name}</div>
-                          <div className="text-[10px] text-on-surface-variant">{st.email || st.userId}</div>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            st.gazeStatus === 'Focused'
-                              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                              : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                          }`}>
-                            {st.gazeStatus || 'Focused'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 font-bold text-amber-600 dark:text-amber-400">{st.gazeAlerts ?? 0}</td>
-                        <td className="py-3 px-3 font-bold text-red-600 dark:text-red-400">{st.tabSwitchCount ?? 0}</td>
-                        <td className="py-3 px-3 font-bold text-emerald-600 dark:text-emerald-400">{st.focusScore ?? 0}%</td>
-                        <td className="py-3 px-3 text-on-surface-variant text-[11px]">
-                          {new Date(st.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="py-6 text-center text-on-surface-variant italic">
-                        No students currently active in this room.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
         {/* Integrated Learning Portals (FACE Prep / HackerRank when enabled for this room) */}
         {!isInspectRulesMode &&
           [
@@ -544,10 +444,10 @@ function RoomPreviewContent() {
                   key={portal.id}
                   className={
                     isFullscreen
-                      ? `fixed top-16 bottom-0 z-30 bg-surface flex flex-col p-4 transition-all duration-300 ${
+                      ? `fixed top-16 bottom-0 z-30 bg-surface flex flex-col p-4 transition-all duration-300 ease-in-out shadow-2xl ${
                           isSidebarCollapsed ? 'left-16' : 'left-64'
                         } ${isAssistantOpen ? 'right-80' : 'right-0'}`
-                      : 'md:col-span-12 bg-surface border border-outline-variant/40 shadow-sm rounded-2xl p-6'
+                      : 'md:col-span-12 bg-surface border border-outline-variant/40 shadow-sm rounded-2xl p-6 transition-all duration-300 ease-in-out'
                   }
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 shrink-0">
@@ -606,21 +506,31 @@ function RoomPreviewContent() {
                   </div>
 
                   {isEmbedVisible && (
-                    <div
-                      className={
-                        isFullscreen
-                          ? 'w-full flex-1 min-h-0 rounded-xl overflow-hidden border border-outline-variant/40 bg-white'
-                          : 'w-full h-[650px] rounded-xl overflow-hidden border border-outline-variant/40 bg-white'
-                      }
-                    >
-                      <iframe
-                        src={portal.url}
-                        title={portal.title}
-                        className="w-full h-full border-0"
-                        allow="fullscreen; clipboard-read; clipboard-write"
-                        allowFullScreen
-                        referrerPolicy="no-referrer-when-downgrade"
-                      />
+                    <div className={isFullscreen ? 'flex-1 flex flex-col min-h-0 gap-2' : 'space-y-2'}>
+                      {portal.id === 'hackerrank' && (
+                        <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] font-semibold text-amber-700 dark:text-amber-300 flex items-center justify-between gap-2 flex-wrap">
+                          <span className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[15px]">info</span>
+                            Google/SSO login inside embeds is blocked by browser third-party cookie rules. Use <strong>Open HackerRank</strong> to sign in with Google.
+                          </span>
+                        </div>
+                      )}
+                      <div
+                        className={
+                          isFullscreen
+                            ? 'w-full flex-1 min-h-0 rounded-xl overflow-hidden border border-outline-variant/40 bg-white'
+                            : 'w-full h-[650px] rounded-xl overflow-hidden border border-outline-variant/40 bg-white'
+                        }
+                      >
+                        <iframe
+                          src={portal.url}
+                          title={portal.title}
+                          className="w-full h-full border-0"
+                          allow="fullscreen; clipboard-read; clipboard-write"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>

@@ -124,7 +124,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-            {greeting}, {userName}! 🚀
+            {greeting}, {userName} 🚀
           </h2>
         </div>
 

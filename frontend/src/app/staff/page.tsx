@@ -595,7 +595,7 @@ export default function StaffPortalPage() {
                 {activeTab === 'monitor' && (
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="relative flex-1 max-w-xs">
+                      <div className="relative flex-1 max-w-[340px] w-full">
                         <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">
                           search
                         </span>
@@ -783,27 +783,34 @@ export default function StaffPortalPage() {
                       roomMaterials.map(mat => (
                         <div
                           key={mat.id}
-                          className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between gap-3"
+                          className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-sky-500/40 transition-colors flex items-center justify-between gap-3"
                         >
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-white truncate" title={mat.title}>
-                              {mat.title}
-                            </p>
-                            <p className="text-[10px] text-slate-400 uppercase mt-0.5">
-                              {mat.type} • {mat.size} • {mat.downloads || 0} downloads
-                            </p>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-[20px]">
+                                {mat.type === 'pdf' ? 'picture_as_pdf' : mat.type === 'video' ? 'video_library' : 'description'}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-white truncate" title={mat.title}>
+                                {mat.title}
+                              </p>
+                              <p className="text-[10px] text-slate-400 uppercase mt-0.5">
+                                {mat.type} • {mat.size} • {mat.downloads || 0} downloads
+                              </p>
+                            </div>
                           </div>
                           <a
                             href={`/api/resources/${mat.id}/download`}
                             download={mat.title}
-                            className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-[11px] font-bold shrink-0"
+                            className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-[11px] font-bold shrink-0 transition-colors"
                           >
                             Download
                           </a>
                         </div>
                       ))
                     ) : (
-                      <div className="col-span-full text-center py-8 text-xs text-slate-500 italic">
+                      <div className="col-span-full text-center py-10 text-xs text-slate-400 italic border border-dashed border-slate-800 rounded-2xl">
                         No study materials shared with this room yet.
                       </div>
                     )}
@@ -817,8 +824,8 @@ export default function StaffPortalPage() {
 
       {/* Edit Staff Profile Modal */}
       {showProfileModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl relative text-slate-100">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-[440px] w-full shadow-2xl relative text-slate-100">
             <button
               type="button"
               onClick={() => setShowProfileModal(false)}

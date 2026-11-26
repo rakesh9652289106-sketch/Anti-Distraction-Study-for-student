@@ -388,7 +388,7 @@ app.patch('/api/student/profile', (req: Request, res: Response) => {
 });
 
 // Update Staff Profile (Name, 10-digit Phone & Department)
-app.patch('/api/staff/profile', (req: Request, res: Response) => {
+app.patch('/api/staff/profile', async (req: Request, res: Response) => {
   try {
     const { staffId, email, name, phone, department } = req.body;
     if (!name || !String(name).trim()) {
@@ -419,7 +419,10 @@ app.patch('/api/staff/profile', (req: Request, res: Response) => {
       }
     });
 
-    writeDb(db);
+    await Promise.all([
+      saveCollectionToFirestore('staff', db.staff),
+      saveCollectionToFirestore('rooms', db.rooms)
+    ]);
     const { password: _pw, ...safeStaff } = staffMember;
     res.json({ success: true, staff: safeStaff });
   } catch (err: any) {

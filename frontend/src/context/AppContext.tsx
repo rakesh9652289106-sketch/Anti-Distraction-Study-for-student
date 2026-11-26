@@ -29,6 +29,7 @@ interface AppContextType {
 
   // Left Navigation Sidebar State (collapsed = small icon bar)
   isSidebarCollapsed: boolean;
+  setIsSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
 
   // Tab Switch & Site Focus Protection
@@ -656,6 +657,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isAssistantOpen,
         setIsAssistantOpen,
         isSidebarCollapsed,
+        setIsSidebarCollapsed,
         toggleSidebar,
         isTabSwitchModalOpen,
         tabSwitchCount,
