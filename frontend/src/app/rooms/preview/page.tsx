@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -78,24 +78,41 @@ function RoomPreviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id') || '';
-  const { joinStudyRoom, joinedRooms, leaveStudyRoom, showNotification, isSidebarCollapsed, isAssistantOpen } = useApp();
+  const { joinStudyRoom, joinedRooms, leaveStudyRoom, showNotification, isSidebarCollapsed, isAssistantOpen, setIsAssistantOpen } = useApp();
   const [data, setData] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmails, setInviteEmails] = useState('');
   const [isInviting, setIsInviting] = useState(false);
-  const [showFacePrepEmbed, setShowFacePrepEmbed] = useState(true);
-  const [isFacePrepFullscreen, setIsFacePrepFullscreen] = useState(false);
+  const [hiddenEmbeds, setHiddenEmbeds] = useState<Record<string, boolean>>({});
+  const [fullscreenAppId, setFullscreenAppId] = useState<string | null>(null);
+  const wasAssistantOpenRef = useRef(false);
+
+  const toggleAppFullscreen = (appId: string) => {
+    setFullscreenAppId(prev => {
+      const next = prev === appId ? null : appId;
+      if (next) {
+        wasAssistantOpenRef.current = isAssistantOpen;
+        setIsAssistantOpen(false);
+      } else if (wasAssistantOpenRef.current) {
+        setIsAssistantOpen(true);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
-    if (!isFacePrepFullscreen) return;
+    if (!fullscreenAppId) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsFacePrepFullscreen(false);
+      if (e.key === 'Escape') {
+        setFullscreenAppId(null);
+        if (wasAssistantOpenRef.current) setIsAssistantOpen(true);
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isFacePrepFullscreen]);
+  }, [fullscreenAppId, setIsAssistantOpen]);
 
   const fetchRoomData = async () => {
     if (!id) return;
@@ -260,11 +277,13 @@ function RoomPreviewContent() {
                 Joined (Leave Room)
               </button>
             )}
-            <button 
-              onClick={() => setShowInviteModal(true)}
-              className="border border-outline-variant hover:border-primary/60 bg-surface text-on-surface font-semibold text-sm px-6 py-3 rounded-xl hover:bg-surface-container transition-all cursor-pointer"
+            <button
+              type="button"
+              onClick={() => router.push('/rooms')}
+              className="border border-outline-variant hover:border-primary/60 bg-surface text-on-surface font-semibold text-sm px-6 py-3 rounded-xl hover:bg-surface-container transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              Invite Peers
+              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+              Back
             </button>
           </div>
         </div>
@@ -326,28 +345,33 @@ function RoomPreviewContent() {
               <div>
                 <p className="text-xs font-bold text-on-surface">Allowed Ecosystem</p>
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {environment.allowedApps.map((app, idx) => (
-                    app === 'faceprep' ? (
+                  {environment.allowedApps.map((app, idx) => {
+                    const appLinks: Record<string, { label: string; url: string }> = {
+                      faceprep: { label: 'FACE Prep', url: 'https://student.faceprep.in/auth' },
+                      hackerrank: { label: 'HackerRank', url: 'https://www.hackerrank.com/dashboard' }
+                    };
+                    const match = appLinks[app];
+                    return match ? (
                       <a
                         key={idx}
-                        href="https://student.faceprep.in/auth"
+                        href={match.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="bg-primary/10 border border-primary/30 text-[10px] px-2 py-0.5 rounded text-primary font-bold inline-flex items-center gap-1 hover:bg-primary hover:text-white transition-colors"
-                        title="Open FACE Prep Student Portal"
+                        title={`Open ${match.label}`}
                       >
-                        FACE Prep
+                        {match.label}
                         <span className="material-symbols-outlined text-[11px]">open_in_new</span>
                       </a>
                     ) : (
-                      <span 
-                        key={idx} 
+                      <span
+                        key={idx}
                         className="bg-surface-container border border-outline-variant/30 text-[10px] px-2 py-0.5 rounded text-on-surface-variant font-bold capitalize"
                       >
                         {app}
                       </span>
-                    )
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -491,92 +515,117 @@ function RoomPreviewContent() {
           </div>
         )}
 
-        {/* FACE Prep Integrated Learning Portal (Shown when Admin enabled FACE Prep for this room) */}
-        {!isInspectRulesMode && environment.allowedApps.includes('faceprep') && (
-          <div
-            className={
-              isFacePrepFullscreen
-                ? `fixed top-16 bottom-0 z-30 bg-surface flex flex-col p-4 transition-all duration-300 ${
-                    isSidebarCollapsed ? 'left-16' : 'left-64'
-                  } ${isAssistantOpen ? 'right-80' : 'right-0'}`
-                : 'md:col-span-12 bg-surface border border-outline-variant/40 shadow-sm rounded-2xl p-6'
+        {/* Integrated Learning Portals (FACE Prep / HackerRank when enabled for this room) */}
+        {!isInspectRulesMode &&
+          [
+            {
+              id: 'faceprep',
+              title: 'FACE Prep Student Portal',
+              subtitle: 'Access your FACE Prep courses, assessments, and practice modules directly inside this room.',
+              url: 'https://student.faceprep.in/auth',
+              icon: 'school',
+              openLabel: 'Open FACE Prep'
+            },
+            {
+              id: 'hackerrank',
+              title: 'HackerRank Coding Dashboard',
+              subtitle: 'Solve coding challenges, interview prep kits, and assessments directly inside this room.',
+              url: 'https://www.hackerrank.com/dashboard',
+              icon: 'code',
+              openLabel: 'Open HackerRank'
             }
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[22px]">school</span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold text-on-surface">FACE Prep Student Portal</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                      Integrated App
-                    </span>
+          ]
+            .filter(portal => environment.allowedApps.includes(portal.id))
+            .map(portal => {
+              const isFullscreen = fullscreenAppId === portal.id;
+              const isEmbedVisible = !hiddenEmbeds[portal.id];
+              return (
+                <div
+                  key={portal.id}
+                  className={
+                    isFullscreen
+                      ? `fixed top-16 bottom-0 z-30 bg-surface flex flex-col p-4 transition-all duration-300 ${
+                          isSidebarCollapsed ? 'left-16' : 'left-64'
+                        } ${isAssistantOpen ? 'right-80' : 'right-0'}`
+                      : 'md:col-span-12 bg-surface border border-outline-variant/40 shadow-sm rounded-2xl p-6'
+                  }
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-[22px]">{portal.icon}</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-bold text-on-surface">{portal.title}</h3>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                            Integrated App
+                          </span>
+                        </div>
+                        <p className="text-xs text-on-surface-variant font-medium mt-0.5">
+                          {portal.subtitle}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!isEmbedVisible) setHiddenEmbeds(prev => ({ ...prev, [portal.id]: false }));
+                          toggleAppFullscreen(portal.id);
+                        }}
+                        className="px-3.5 py-2 border border-outline-variant/40 hover:bg-surface-container rounded-xl text-xs font-bold text-on-surface flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {isFullscreen ? 'fullscreen_exit' : 'fullscreen'}
+                        </span>
+                        {isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
+                      </button>
+                      {!isFullscreen && (
+                        <button
+                          type="button"
+                          onClick={() => setHiddenEmbeds(prev => ({ ...prev, [portal.id]: !prev[portal.id] }))}
+                          className="px-3.5 py-2 border border-outline-variant/40 hover:bg-surface-container rounded-xl text-xs font-bold text-on-surface flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">
+                            {isEmbedVisible ? 'visibility_off' : 'visibility'}
+                          </span>
+                          {isEmbedVisible ? 'Hide Embed' : 'Show Embed'}
+                        </button>
+                      )}
+                      <a
+                        href={portal.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                        {portal.openLabel}
+                      </a>
+                    </div>
                   </div>
-                  <p className="text-xs text-on-surface-variant font-medium mt-0.5">
-                    Access your FACE Prep courses, assessments, and practice modules directly inside this room.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!showFacePrepEmbed) setShowFacePrepEmbed(true);
-                    setIsFacePrepFullscreen(prev => !prev);
-                  }}
-                  className="px-3.5 py-2 border border-outline-variant/40 hover:bg-surface-container rounded-xl text-xs font-bold text-on-surface flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[16px]">
-                    {isFacePrepFullscreen ? 'fullscreen_exit' : 'fullscreen'}
-                  </span>
-                  {isFacePrepFullscreen ? 'Exit Full Screen' : 'Full Screen'}
-                </button>
-                {!isFacePrepFullscreen && (
-                  <button
-                    type="button"
-                    onClick={() => setShowFacePrepEmbed(prev => !prev)}
-                    className="px-3.5 py-2 border border-outline-variant/40 hover:bg-surface-container rounded-xl text-xs font-bold text-on-surface flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">
-                      {showFacePrepEmbed ? 'visibility_off' : 'visibility'}
-                    </span>
-                    {showFacePrepEmbed ? 'Hide Embed' : 'Show Embed'}
-                  </button>
-                )}
-                <a
-                  href="https://student.faceprep.in/auth"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
-                >
-                  <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                  Open FACE Prep
-                </a>
-              </div>
-            </div>
 
-            {showFacePrepEmbed && (
-              <div
-                className={
-                  isFacePrepFullscreen
-                    ? 'w-full flex-1 min-h-0 rounded-xl overflow-hidden border border-outline-variant/40 bg-white'
-                    : 'w-full h-[650px] rounded-xl overflow-hidden border border-outline-variant/40 bg-white'
-                }
-              >
-                <iframe
-                  src="https://student.faceprep.in/auth"
-                  title="FACE Prep Student Portal"
-                  className="w-full h-full border-0"
-                  allow="fullscreen; clipboard-read; clipboard-write"
-                  allowFullScreen
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
-              </div>
-            )}
-          </div>
-        )}
+                  {isEmbedVisible && (
+                    <div
+                      className={
+                        isFullscreen
+                          ? 'w-full flex-1 min-h-0 rounded-xl overflow-hidden border border-outline-variant/40 bg-white'
+                          : 'w-full h-[650px] rounded-xl overflow-hidden border border-outline-variant/40 bg-white'
+                      }
+                    >
+                      <iframe
+                        src={portal.url}
+                        title={portal.title}
+                        className="w-full h-full border-0"
+                        allow="fullscreen; clipboard-read; clipboard-write"
+                        allowFullScreen
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
         {/* Curated materials folder (12 cols) */}
         <div className="md:col-span-12 bg-surface border border-outline-variant/40 shadow-sm rounded-2xl p-6">

@@ -136,7 +136,7 @@ app.post('/api/staff/login', (req: Request, res: Response) => {
       maxAge: 86400 * 1000
     });
 
-    if (cleanEmail === 'rakesh9652289106@gmail.com') {
+    if (staffMember.email.toLowerCase() === 'rakesh9652289106@gmail.com') {
       res.cookie('focusflow_admin_auth', 'authenticated', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -190,23 +190,6 @@ app.post('/api/staff/google-auth', async (req: Request, res: Response) => {
     }
 
     const cleanEmail = String(googleEmail).trim().toLowerCase();
-    if (cleanEmail === 'rakesh9652289106@gmail.com') {
-      res.cookie('focusflow_admin_auth', 'authenticated', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 86400 * 1000
-      });
-    } else {
-      res.cookie('focusflow_admin_auth', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 0
-      });
-    }
     const cleanPhone = String(phone || '').replace(/\D/g, '');
     const db = readDb();
     if (!Array.isArray(db.staff)) db.staff = [];
@@ -253,7 +236,7 @@ app.post('/api/staff/google-auth', async (req: Request, res: Response) => {
       maxAge: 86400 * 1000
     });
 
-    if (cleanEmail === 'rakesh9652289106@gmail.com') {
+    if (staffMember.email.toLowerCase() === 'rakesh9652289106@gmail.com') {
       res.cookie('focusflow_admin_auth', 'authenticated', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -1324,7 +1307,7 @@ app.get('/api/student/rooms/:roomId', (req: Request, res: Response) => {
 });
 
 // POST /api/student/rooms/:roomId/files - Admin-only endpoint (user uploads disabled)
-app.post('/api/student/rooms/:roomId/files', (req: Request, res: Response) => {
+app.post('/api/student/rooms/:roomId/files', async (req: Request, res: Response) => {
   if (!isAuthenticated(req)) {
     return res.status(403).json({ error: 'Only administrators can upload study materials for rooms.' });
   }
@@ -1493,17 +1476,21 @@ async function serveResourceFile(req: Request, res: Response, disposition: 'inli
       return res.send(buffer);
     }
 
-    // 3. Template fallback for legacy/sample PDFs
-    const uploadsBase = path.join(__dirname, '../uploads');
-    const templatePath = path.join(uploadsBase, 'QM_Lecture_Notes_W4.pdf');
-    if (fs.existsSync(templatePath)) {
-      if (disposition === 'attachment') {
-        return res.download(templatePath, `${resource.title}.pdf`);
+    // 3. Only use template fallback for built-in sample/demo resources, never for real uploaded files
+    if (resource.id === 'res-1' || resource.id === 'res-2' || resource.title === 'QM_Lecture_Notes_W4.pdf') {
+      const uploadsBase = path.join(__dirname, '../uploads');
+      const templatePath = path.join(uploadsBase, 'QM_Lecture_Notes_W4.pdf');
+      if (fs.existsSync(templatePath)) {
+        if (disposition === 'attachment') {
+          return res.download(templatePath, `${resource.title}.pdf`);
+        }
+        return res.sendFile(templatePath);
       }
-      return res.sendFile(templatePath);
     }
 
-    return res.status(404).json({ error: "Physical file not found on server disk or cloud storage" });
+    return res.status(404).json({
+      error: 'File not found in cloud storage. Please delete and re-upload this material from Admin → Share Study Materials.'
+    });
   } catch (err: any) {
     console.error(`Error serving resource (${disposition}):`, err);
     res.status(500).json({ error: err.message });
@@ -2274,7 +2261,18 @@ app.patch('/api/rooms', (req: Request, res: Response) => {
 app.post('/api/rooms/:id/telemetry', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { userId, userName, userEmail, gazeStatus, gazeAlerts, tabSwitchCount, focusScore } = req.body;
+    const {
+      userId,
+      userName,
+      userEmail,
+      gazeStatus,
+      gazeAlerts,
+      stareAlerts,
+      multiPersonAlerts,
+      lookAwayAlerts,
+      tabSwitchCount,
+      focusScore
+    } = req.body;
     const db = readDb();
     const room = db.rooms.find(r => r.id === id);
     if (!room) return res.status(404).json({ error: 'Room not found' });
@@ -2283,13 +2281,19 @@ app.post('/api/rooms/:id/telemetry', (req: Request, res: Response) => {
     const targetId = userId || userEmail || 'u1';
     let participant = room.joinedStudents.find(s => s.userId === targetId);
     if (!participant) {
+      const sAlerts = stareAlerts ?? 0;
+      const mAlerts = multiPersonAlerts ?? 0;
+      const lAlerts = lookAwayAlerts ?? 0;
       participant = {
         userId: targetId,
         name: userName || 'Alex Rivera',
         email: userEmail || 'alex@student.edu',
         joinedAt: new Date().toISOString(),
         gazeStatus: gazeStatus || 'Focused',
-        gazeAlerts: gazeAlerts ?? 0,
+        gazeAlerts: gazeAlerts ?? (sAlerts + mAlerts + lAlerts),
+        stareAlerts: sAlerts,
+        multiPersonAlerts: mAlerts,
+        lookAwayAlerts: lAlerts,
         tabSwitchCount: tabSwitchCount ?? 0,
         focusScore: focusScore ?? db.settings.focusScore ?? 0,
         lastUpdated: new Date().toISOString()
@@ -2297,7 +2301,14 @@ app.post('/api/rooms/:id/telemetry', (req: Request, res: Response) => {
       room.joinedStudents.push(participant);
     } else {
       if (gazeStatus !== undefined) participant.gazeStatus = gazeStatus;
-      if (gazeAlerts !== undefined) participant.gazeAlerts = gazeAlerts;
+      if (stareAlerts !== undefined) participant.stareAlerts = stareAlerts;
+      if (multiPersonAlerts !== undefined) participant.multiPersonAlerts = multiPersonAlerts;
+      if (lookAwayAlerts !== undefined) participant.lookAwayAlerts = lookAwayAlerts;
+      if (gazeAlerts !== undefined) {
+        participant.gazeAlerts = gazeAlerts;
+      } else if (stareAlerts !== undefined || multiPersonAlerts !== undefined || lookAwayAlerts !== undefined) {
+        participant.gazeAlerts = (participant.stareAlerts ?? 0) + (participant.multiPersonAlerts ?? 0) + (participant.lookAwayAlerts ?? 0);
+      }
       if (tabSwitchCount !== undefined) participant.tabSwitchCount = tabSwitchCount;
       if (focusScore !== undefined) participant.focusScore = focusScore;
       participant.lastUpdated = new Date().toISOString();

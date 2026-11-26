@@ -18,6 +18,36 @@ export default function VirtualRoomsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('All Topics');
   const [flowGoalPercent, setFlowGoalPercent] = useState(75);
+  const [recentRooms, setRecentRooms] = useState<Array<{ id: string; name: string; joinedAt: string }>>([]);
+
+  // Track recent rooms accurately from current & previous joins
+  useEffect(() => {
+    try {
+      const saved: Array<{ id: string; name: string; joinedAt: string }> = JSON.parse(
+        localStorage.getItem('focusflow_recent_rooms') || '[]'
+      );
+      const map = new Map<string, { id: string; name: string; joinedAt: string }>();
+      // Prioritize currently joined rooms first
+      joinedRooms.forEach(jr => {
+        const existing = saved.find(s => s.id === jr.id);
+        map.set(jr.id, {
+          id: jr.id,
+          name: jr.name,
+          joinedAt: existing?.joinedAt || new Date().toISOString()
+        });
+      });
+      saved.forEach(s => {
+        if (!map.has(s.id) && rooms.some(r => r.id === s.id)) {
+          map.set(s.id, s);
+        }
+      });
+      const merged = Array.from(map.values()).slice(0, 5);
+      localStorage.setItem('focusflow_recent_rooms', JSON.stringify(merged));
+      setRecentRooms(merged);
+    } catch {
+      setRecentRooms(joinedRooms.map(jr => ({ id: jr.id, name: jr.name, joinedAt: new Date().toISOString() })));
+    }
+  }, [joinedRooms, rooms]);
 
   // Fetch current flow goal metrics
   useEffect(() => {
@@ -236,12 +266,12 @@ export default function VirtualRoomsPage() {
                       <div className="flex items-center gap-2 mb-4">
                         <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Ecosystem:</span>
                         <div className="flex gap-1.5">
-                          {(room.allowedApps || ['notion', 'gdocs']).map((app, idx) => (
+                          {(room.allowedApps || ['faceprep']).map((app, idx) => (
                             <span 
                               key={idx} 
                               className="bg-surface-container border border-outline-variant/30 text-[10px] px-2 py-0.5 rounded text-on-surface-variant font-bold capitalize"
                             >
-                              {app === 'faceprep' ? 'FACE Prep' : app}
+                              {app === 'faceprep' ? 'FACE Prep' : app === 'hackerrank' ? 'HackerRank' : app}
                             </span>
                           ))}
                         </div>
@@ -298,7 +328,7 @@ export default function VirtualRoomsPage() {
         {/* Sidebar: Recent Rooms & Goal meters */}
         <aside className="lg:col-span-4 space-y-8">
           
-          {/* Recent Rooms list */}
+          {/* Recent Rooms list (Synced with current & recent joins) */}
           <section className="bg-surface border border-outline-variant/40 rounded-2xl p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <span className="material-symbols-outlined text-primary font-bold">history</span>
@@ -306,25 +336,48 @@ export default function VirtualRoomsPage() {
             </div>
             
             <div className="space-y-2">
-              {[
-                { name: 'Quantum Mechanics Study', when: 'Joined 2h ago', icon: 'science' },
-                { name: 'UI/UX Figma Jam', when: 'Joined yesterday', icon: 'palette' },
-                { name: 'Silent Library', when: 'Joined 3 days ago', icon: 'menu_book' }
-              ].map((rr, idx) => (
-                <div 
-                  key={idx} 
-                  className="flex items-center gap-3 p-2 rounded-xl border border-transparent hover:border-outline-variant/40 hover:bg-surface-container transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined">{rr.icon}</span>
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <p className="text-xs font-bold text-on-surface truncate">{rr.name}</p>
-                    <p className="text-[10px] text-on-surface-variant font-medium">{rr.when}</p>
-                  </div>
-                  <span className="material-symbols-outlined text-on-surface-variant text-sm">chevron_right</span>
-                </div>
-              ))}
+              {recentRooms.length > 0 ? (
+                recentRooms.map(rr => {
+                  const isCurrentlyJoined = joinedRooms.some(jr => jr.id === rr.id);
+                  const minsAgo = Math.max(0, Math.floor((Date.now() - new Date(rr.joinedAt).getTime()) / 60000));
+                  const timeLabel = isCurrentlyJoined
+                    ? 'Active now (Joined)'
+                    : minsAgo < 1
+                    ? 'Joined just now'
+                    : minsAgo < 60
+                    ? `Joined ${minsAgo}m ago`
+                    : minsAgo < 1440
+                    ? `Joined ${Math.floor(minsAgo / 60)}h ago`
+                    : `Joined ${Math.floor(minsAgo / 1440)}d ago`;
+                  return (
+                    <Link
+                      key={rr.id}
+                      href={`/rooms/preview?id=${rr.id}`}
+                      className="flex items-center gap-3 p-2 rounded-xl border border-transparent hover:border-outline-variant/40 hover:bg-surface-container transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary shrink-0">
+                        <span className="material-symbols-outlined">
+                          {isCurrentlyJoined ? 'meeting_room' : 'history'}
+                        </span>
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-xs font-bold text-on-surface truncate">{rr.name}</p>
+                        <p className={`text-[10px] font-medium flex items-center gap-1 ${
+                          isCurrentlyJoined ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-on-surface-variant'
+                        }`}>
+                          {isCurrentlyJoined && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                          {timeLabel}
+                        </p>
+                      </div>
+                      <span className="material-symbols-outlined text-on-surface-variant text-sm">chevron_right</span>
+                    </Link>
+                  );
+                })
+              ) : (
+                <p className="text-xs text-on-surface-variant italic py-3 text-center">
+                  No rooms joined yet. Join a study hall to see it here.
+                </p>
+              )}
             </div>
           </section>
 

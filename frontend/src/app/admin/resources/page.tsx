@@ -24,6 +24,7 @@ export default function AdminResourcesPage() {
   const [uploadedType, setUploadedType] = useState('pdf');
   const [uploadedFileData, setUploadedFileData] = useState<string>('');
   const [uploadedSize, setUploadedSize] = useState<string>('');
+  const [isReadingFile, setIsReadingFile] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [suggestedTags, setSuggestedTags] = useState<string[]>(['Quantum Mechanics', 'Advanced Physics', 'Particle Theory']);
   const [newTagInput, setNewTagInput] = useState('');
@@ -85,11 +86,17 @@ export default function AdminResourcesPage() {
     else setUploadedType('pdf');
 
     // Read actual file bytes as base64 Data URL so it is persisted on the backend
+    setIsReadingFile(true);
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
         setUploadedFileData(reader.result);
       }
+      setIsReadingFile(false);
+    };
+    reader.onerror = () => {
+      setIsReadingFile(false);
+      alert('Failed to read file from disk. Please try selecting the file again.');
     };
     reader.readAsDataURL(file);
 
@@ -140,6 +147,10 @@ export default function AdminResourcesPage() {
   };
 
   const handleShareSubmit = async () => {
+    if (isReadingFile) {
+      alert('Please wait a moment while the file finishes loading before sharing.');
+      return;
+    }
     if (!uploadedTitle.trim()) {
       alert('Please upload a file or specify a study material name first.');
       return;

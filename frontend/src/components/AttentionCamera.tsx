@@ -226,6 +226,32 @@ export default function AttentionCamera() {
     activeRoomRef.current = activeRoom;
   }, [activeRoom]);
 
+  // Separate per-situation alert counters for Room Head telemetry
+  const stareAlertsCountRef = useRef<number>(0);
+  const multiPersonAlertsCountRef = useRef<number>(0);
+  const lookAwayAlertsCountRef = useRef<number>(0);
+
+  const reportRoomGazeTelemetry = (gazeStatusLabel: string) => {
+    const roomId = activeRoomRef.current?.id;
+    if (!roomId) return;
+    const userId = localStorage.getItem('student_user_id') || 'u1';
+    const userName = localStorage.getItem('student_user_name') || 'Alex Rivera';
+    const userEmail = localStorage.getItem('student_user_email') || 'alex@student.edu';
+    fetch(`/api/rooms/${roomId}/telemetry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        userName,
+        userEmail,
+        gazeStatus: gazeStatusLabel,
+        stareAlerts: stareAlertsCountRef.current,
+        multiPersonAlerts: multiPersonAlertsCountRef.current,
+        lookAwayAlerts: lookAwayAlertsCountRef.current
+      })
+    }).catch(() => {});
+  };
+
   // Web Audio warning tone synthesiser for Eye Blinks (High Beep)
   const playBlinkAlertSound = () => {
     try {
@@ -1323,6 +1349,8 @@ export default function AttentionCamera() {
           const targetGazeTime = gazeStatusThresholdRef.current;
           if (nextVal >= targetGazeTime && !hasAlertedForMultiPersonRef.current) {
             hasAlertedForMultiPersonRef.current = true;
+            multiPersonAlertsCountRef.current += 1;
+            reportRoomGazeTelemetry('Distracted');
             playMultiPersonAlertSound();
             const roomName = activeRoomRef.current?.name;
             dispatchAdminAlert(
@@ -1350,6 +1378,8 @@ export default function AttentionCamera() {
           const threshold = lookAwayThresholdRef.current;
           if (nextVal >= threshold && !hasAlertedForLookAwayRef.current) {
             hasAlertedForLookAwayRef.current = true;
+            lookAwayAlertsCountRef.current += 1;
+            reportRoomGazeTelemetry('Looking Away');
             playLookAwayAlertSound();
             const roomName = activeRoomRef.current?.name;
             const currentErr = activeGazeErrorRef.current;
@@ -1383,6 +1413,8 @@ export default function AttentionCamera() {
         if (elapsed >= stareDurationLimitRef.current) {
           if (!hasAlertedForCurrentStareRef.current) {
             hasAlertedForCurrentStareRef.current = true;
+            stareAlertsCountRef.current += 1;
+            reportRoomGazeTelemetry('Distracted');
             playBlinkAlertSound();
             const roomName = activeRoomRef.current?.name;
             dispatchAdminAlert(

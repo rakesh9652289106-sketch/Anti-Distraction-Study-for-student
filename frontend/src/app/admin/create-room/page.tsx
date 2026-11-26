@@ -24,7 +24,7 @@ export default function AdminCreateRoomPage() {
   const [chatModerationFilter, setChatModerationFilter] = useState(true);
   const [censorWords, setCensorWords] = useState<string[]>(['spam', 'cheat', 'abuse', 'slack', 'tiktok']);
   const [newCensorWord, setNewCensorWord] = useState('');
-  const [allowedApps, setAllowedApps] = useState<string[]>(['notion', 'gdocs']);
+  const [allowedApps, setAllowedApps] = useState<string[]>(['faceprep']);
   const [coinsLimit, setCoinsLimit] = useState(0);
   const [bonusCoins, setBonusCoins] = useState(0);
 
@@ -107,7 +107,7 @@ export default function AdminCreateRoomPage() {
     setAllowMaterialDownloads(true);
     setChatModerationFilter(true);
     setCensorWords(['spam', 'cheat', 'abuse', 'slack', 'tiktok']);
-    setAllowedApps(['notion', 'gdocs']);
+    setAllowedApps(['faceprep']);
     setCoinsLimit(0);
     setBonusCoins(0);
     setSelectedRoomHeadId('');
@@ -128,7 +128,8 @@ export default function AdminCreateRoomPage() {
     setAllowMaterialDownloads(room.allowMaterialDownloads !== false);
     setChatModerationFilter(room.chatModerationFilter !== false);
     setCensorWords(room.censorWords || ['spam', 'cheat', 'abuse', 'slack', 'tiktok']);
-    setAllowedApps(room.allowedApps || ['notion', 'gdocs']);
+    const firstValidApp = (room.allowedApps || []).find(a => a === 'faceprep' || a === 'hackerrank');
+    setAllowedApps([firstValidApp || 'faceprep']);
     setCoinsLimit(room.coinsLimit || 0);
     setBonusCoins(room.bonusCoins || 0);
     setSelectedRoomHeadId(room.roomHead?.userId || '');
@@ -164,22 +165,16 @@ export default function AdminCreateRoomPage() {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  // Toggle app selection
+  // Single-select between FACE Prep and HackerRank
   const handleToggleApp = (appId: string) => {
-    if (allowedApps.includes(appId)) {
-      setAllowedApps(allowedApps.filter(id => id !== appId));
-    } else {
-      setAllowedApps([...allowedApps, appId]);
-    }
+    setAllowedApps([appId]);
   };
 
-  // One-click toggle for FACE Prep in an existing room
-  const handleToggleRoomFacePrep = async (room: StudyRoom) => {
+  // One-click exclusive toggle for FACE Prep / HackerRank in an existing room (only one active at a time)
+  const handleToggleRoomApp = async (room: StudyRoom, appId: 'faceprep' | 'hackerrank', label: string) => {
     const currentApps = room.allowedApps || [];
-    const hasFacePrep = currentApps.includes('faceprep');
-    const nextApps = hasFacePrep
-      ? currentApps.filter(a => a !== 'faceprep')
-      : [...currentApps, 'faceprep'];
+    const hasApp = currentApps.includes(appId);
+    const nextApps = hasApp ? [] : [appId];
     try {
       const res = await fetch('/api/rooms', {
         method: 'PATCH',
@@ -188,9 +183,9 @@ export default function AdminCreateRoomPage() {
       });
       if (res.ok) {
         triggerToast(
-          hasFacePrep
-            ? `FACE Prep disabled in "${room.name}"`
-            : `FACE Prep allowed in "${room.name}"`
+          hasApp
+            ? `${label} disabled in "${room.name}"`
+            : `${label} set as the active app in "${room.name}"`
         );
         await fetchData();
       }
@@ -683,13 +678,10 @@ export default function AdminCreateRoomPage() {
                   3. Allowed App Integrations
                 </span>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-xs">
+                <div className="grid grid-cols-2 gap-sm">
                   {[
-                    { id: 'notion', name: 'Notion', icon: 'description' },
-                    { id: 'gdocs', name: 'Google Docs', icon: 'drafts' },
-                    { id: 'terminal', name: 'Terminal', icon: 'terminal' },
-                    { id: 'youtube', name: 'YouTube', icon: 'video_library' },
-                    { id: 'faceprep', name: 'FACE Prep', icon: 'school' }
+                    { id: 'faceprep', name: 'FACE Prep', icon: 'school' },
+                    { id: 'hackerrank', name: 'HackerRank', icon: 'code' }
                   ].map(app => {
                     const isSelected = allowedApps.includes(app.id);
                     return (
@@ -887,16 +879,16 @@ export default function AdminCreateRoomPage() {
                       <div className="flex flex-wrap gap-xs max-w-[120px]">
                         {(room.allowedApps || []).map(app => (
                           <span key={app} className="px-1.5 py-0.5 bg-[#1b2e46] text-slate-300 rounded text-[9px] font-bold uppercase">
-                            {app === 'faceprep' ? 'FACE Prep' : app}
+                            {app === 'faceprep' ? 'FACE Prep' : app === 'hackerrank' ? 'HackerRank' : app}
                           </span>
                         ))}
                       </div>
                     </td>
                     <td className="py-sm pr-xs text-right">
-                      <div className="inline-flex items-center justify-end gap-1.5">
+                      <div className="inline-flex items-center justify-end gap-1.5 flex-wrap">
                         <button
                           type="button"
-                          onClick={() => handleToggleRoomFacePrep(room)}
+                          onClick={() => handleToggleRoomApp(room, 'faceprep', 'FACE Prep')}
                           className={`px-2 py-1 rounded-lg text-[9px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 border ${
                             (room.allowedApps || []).includes('faceprep')
                               ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 hover:bg-emerald-600 hover:text-white'
@@ -906,6 +898,19 @@ export default function AdminCreateRoomPage() {
                         >
                           <span className="material-symbols-outlined text-[12px]">school</span>
                           <span>FACE Prep</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleRoomApp(room, 'hackerrank', 'HackerRank')}
+                          className={`px-2 py-1 rounded-lg text-[9px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 border ${
+                            (room.allowedApps || []).includes('hackerrank')
+                              ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 hover:bg-emerald-600 hover:text-white'
+                              : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-emerald-600 hover:text-white'
+                          }`}
+                          title={(room.allowedApps || []).includes('hackerrank') ? 'HackerRank Allowed (Click to disable)' : 'Allow HackerRank in this room'}
+                        >
+                          <span className="material-symbols-outlined text-[12px]">code</span>
+                          <span>HackerRank</span>
                         </button>
                         <button
                           type="button"

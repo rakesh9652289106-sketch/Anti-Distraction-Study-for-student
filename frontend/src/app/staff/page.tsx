@@ -300,7 +300,13 @@ export default function StaffPortalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans relative overflow-x-hidden">
+      {/* Subtle Ambient Background Glow */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute -top-32 -left-32 w-[480px] h-[480px] rounded-full bg-sky-500/8 blur-[140px]" />
+        <div className="absolute -bottom-32 -right-32 w-[480px] h-[480px] rounded-full bg-emerald-500/8 blur-[140px]" />
+      </div>
+
       {/* Toast Notification */}
       {toast && (
         <div
@@ -320,10 +326,10 @@ export default function StaffPortalPage() {
       )}
 
       {/* Top Navbar */}
-      <header className="border-b border-slate-800 bg-slate-900/95 backdrop-blur-md sticky top-0 z-30">
+      <header className="border-b border-slate-800/90 bg-slate-900/90 backdrop-blur-xl sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500/20 to-indigo-500/20 border border-sky-500/30 text-sky-400 flex items-center justify-center shrink-0 shadow-sm">
               <span className="material-symbols-outlined">badge</span>
             </div>
             <div className="min-w-0">
@@ -339,7 +345,7 @@ export default function StaffPortalPage() {
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
-            <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-bold text-emerald-400">
+            <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-[11px] font-bold text-emerald-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Live Auto-Sync
             </span>
@@ -352,7 +358,7 @@ export default function StaffPortalPage() {
                 setProfileMsg('');
                 setShowProfileModal(true);
               }}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700/70 text-xs font-bold text-slate-200 flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">manage_accounts</span>
               <span className="hidden sm:inline">Edit Profile</span>
@@ -360,7 +366,7 @@ export default function StaffPortalPage() {
             <button
               type="button"
               onClick={loadRooms}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700/70 text-xs font-bold text-slate-200 flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">refresh</span>
               <span className="hidden sm:inline">Refresh</span>
@@ -377,40 +383,83 @@ export default function StaffPortalPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="relative z-10 max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* Global Staff Overview KPIs */}
         <section className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Rooms</p>
-            <p className="text-2xl font-black text-white mt-1">{assignedRooms.length}</p>
+          <div className="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 transition-colors shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Rooms</p>
+              <span className="material-symbols-outlined text-[18px] text-slate-400">meeting_room</span>
+            </div>
+            <p className="text-2xl font-black text-white mt-2">{assignedRooms.length}</p>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Students</p>
-            <p className="text-2xl font-black text-sky-400 mt-1">{allAssignedStudents.length}</p>
+          <div className="bg-slate-900/90 border border-slate-800 hover:border-sky-500/30 rounded-2xl p-4 transition-colors shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Students</p>
+              <span className="material-symbols-outlined text-[18px] text-sky-400">groups</span>
+            </div>
+            <p className="text-2xl font-black text-sky-400 mt-2">{allAssignedStudents.length}</p>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Avg Focus Score</p>
-            <p className="text-2xl font-black text-emerald-400 mt-1">{globalAvgFocus}%</p>
+          <div className="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/30 rounded-2xl p-4 transition-colors shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Avg Focus Score</p>
+              <span className="material-symbols-outlined text-[18px] text-emerald-400">radar</span>
+            </div>
+            <p className="text-2xl font-black text-emerald-400 mt-2">{globalAvgFocus}%</p>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Gaze Alerts</p>
-            <p className="text-2xl font-black text-amber-400 mt-1">{globalGazeAlerts}</p>
+          <div className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/30 rounded-2xl p-4 transition-colors shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Gaze Alerts</p>
+              <span className="material-symbols-outlined text-[18px] text-amber-400">visibility</span>
+            </div>
+            <p className="text-2xl font-black text-amber-400 mt-2">{globalGazeAlerts}</p>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 col-span-2 lg:col-span-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Tab Switches</p>
-            <p className="text-2xl font-black text-red-400 mt-1">{globalTabSwitches}</p>
+          <div className="bg-slate-900/90 border border-slate-800 hover:border-red-500/30 rounded-2xl p-4 col-span-2 lg:col-span-1 transition-colors shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Tab Switches</p>
+              <span className="material-symbols-outlined text-[18px] text-red-400">tab_close</span>
+            </div>
+            <p className="text-2xl font-black text-red-400 mt-2">{globalTabSwitches}</p>
           </div>
         </section>
 
         {assignedRooms.length === 0 ? (
-          <div className="p-12 rounded-2xl border border-dashed border-slate-800 bg-slate-900/50 text-center">
-            <span className="material-symbols-outlined text-5xl text-slate-600 mb-3">meeting_room</span>
-            <h2 className="text-lg font-bold text-white">No Rooms Assigned Yet</h2>
-            <p className="text-xs text-slate-400 mt-1.5 max-w-md mx-auto leading-relaxed">
+          <div className="p-10 sm:p-14 rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900/90 to-slate-900/50 shadow-xl flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-sky-400 flex items-center justify-center mb-4 shadow-inner">
+              <span className="material-symbols-outlined text-4xl">meeting_room</span>
+            </div>
+            <h2 className="text-xl font-extrabold text-white tracking-tight">No Rooms Assigned Yet</h2>
+            <p className="text-sm text-slate-300 mt-2.5 w-full max-w-[520px] mx-auto leading-relaxed">
               Ask the Administrator to assign you as <span className="text-sky-400 font-bold">Room Head</span> in{' '}
-              <span className="font-mono text-slate-300">/admin/create-room</span>. Once assigned, you can monitor
-              live student gazes, tab switches, chat announcements, and room controls here.
+              <span className="font-mono text-xs bg-slate-800/90 px-2 py-0.5 rounded-md border border-slate-700 text-slate-200">
+                /admin/create-room
+              </span>
+              . Once assigned, you can monitor live student gazes, tab switches, chat announcements, and room controls here.
             </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={loadRooms}
+                className="px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-md shadow-sky-500/20"
+              >
+                <span className="material-symbols-outlined text-[16px]">refresh</span>
+                Check for Assigned Rooms
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditName(staffInfo.name);
+                  setEditPhone(staffInfo.phone || '');
+                  setEditDept(staffInfo.department || 'General');
+                  setProfileMsg('');
+                  setShowProfileModal(true);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">manage_accounts</span>
+                Update Staff Profile
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -443,16 +492,6 @@ export default function StaffPortalPage() {
                   );
                 })}
               </div>
-
-              {activeRoom && (
-                <Link
-                  href={`/rooms/preview?id=${activeRoom.id}`}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-white flex items-center gap-1.5"
-                >
-                  <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                  Open Room Workspace
-                </Link>
-              )}
             </div>
 
             {activeRoom && (
@@ -619,7 +658,28 @@ export default function StaffPortalPage() {
                                     {st.gazeStatus || 'Focused'}
                                   </span>
                                 </td>
-                                <td className="py-3 px-3 font-bold text-amber-400">{st.gazeAlerts ?? 0}</td>
+                                <td className="py-3 px-3">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span
+                                      className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-bold text-[10px]"
+                                      title="Stare / Eye-Blink Alerts"
+                                    >
+                                      Stare: {st.stareAlerts ?? 0}
+                                    </span>
+                                    <span
+                                      className="px-2 py-0.5 rounded-md bg-orange-500/15 border border-orange-500/30 text-orange-300 font-mono font-bold text-[10px]"
+                                      title="2+ Persons Detected Alerts"
+                                    >
+                                      Multi: {st.multiPersonAlerts ?? 0}
+                                    </span>
+                                    <span
+                                      className="px-2 py-0.5 rounded-md bg-red-500/15 border border-red-500/30 text-red-300 font-mono font-bold text-[10px]"
+                                      title="Look Away / Face Turned Alerts"
+                                    >
+                                      Away: {st.lookAwayAlerts ?? 0}
+                                    </span>
+                                  </div>
+                                </td>
                                 <td className="py-3 px-3 font-bold text-red-400">{st.tabSwitchCount ?? 0}</td>
                                 <td className="py-3 px-3">
                                   <div className="flex items-center gap-2">

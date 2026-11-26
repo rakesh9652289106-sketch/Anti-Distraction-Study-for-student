@@ -45,6 +45,9 @@ export interface RoomParticipantStats {
   joinedAt: string;
   gazeStatus: 'Focused' | 'Looking Away' | 'Distracted' | 'Offline' | string;
   gazeAlerts: number;
+  stareAlerts?: number;
+  multiPersonAlerts?: number;
+  lookAwayAlerts?: number;
   tabSwitchCount: number;
   focusScore: number;
   lastUpdated: string;
