@@ -203,7 +203,12 @@ export default function AdminResourcesPage() {
     try {
       const res = await fetch(`/api/teacher/resources/${id}`, {
         method: 'DELETE',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          ...(sessionStorage.getItem('admin_authenticated') === 'true'
+            ? { 'x-admin-auth': 'authenticated' }
+            : {})
+        }
       });
       if (res.ok) {
         setHistory(prev => prev.filter(item => item.id !== id));
@@ -403,46 +408,47 @@ export default function AdminResourcesPage() {
               <table className="w-full text-left">
                 <thead className="bg-[#131d33]/50 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                   <tr>
-                    <th className="px-5 py-3">Material Name</th>
-                    <th className="px-5 py-3">Target Rooms</th>
-                    <th className="px-5 py-3">Shared Date</th>
-                    <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3">Views</th>
-                    <th className="px-5 py-3">Downloads</th>
-                    <th className="px-5 py-3 text-right">Delete</th>
+                    <th className="px-3 py-3">Material Name</th>
+                    <th className="px-3 py-3">Target Rooms</th>
+                    <th className="px-3 py-3">Shared Date</th>
+                    <th className="px-3 py-3">Status</th>
+                    <th className="px-3 py-3">Views</th>
+                    <th className="px-3 py-3">Downloads</th>
+                    <th className="px-3 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-900 font-semibold text-slate-300">
                   {history.map(item => (
                     <tr key={item.id} className="hover:bg-[#131d33]/20 transition-colors">
-                      <td className="px-5 py-4">
+                      <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-red-400">picture_as_pdf</span>
-                          <span className="text-white">{item.name}</span>
+                          <span className="material-symbols-outlined text-red-400 text-base">picture_as_pdf</span>
+                          <span className="text-white truncate max-w-[180px]" title={item.name}>{item.name}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-4">
-                        <span className="bg-[#1b2e46]/60 border border-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded text-[10px] font-bold">
+                      <td className="px-3 py-3">
+                        <span className="bg-[#1b2e46]/60 border border-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">
                           {item.targetGroup}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-slate-500 font-medium">{item.sharedDate}</td>
-                      <td className="px-5 py-4">
+                      <td className="px-3 py-3 text-slate-500 font-medium whitespace-nowrap">{item.sharedDate}</td>
+                      <td className="px-3 py-3">
                         <span className="inline-flex items-center gap-1 text-emerald-400 text-xs font-bold">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                           {item.status}
                         </span>
                       </td>
-                      <td className="px-5 py-4 font-bold text-slate-400">{item.views}</td>
-                      <td className="px-5 py-4 font-bold text-slate-400">{item.downloads}</td>
-                      <td className="px-5 py-4 text-right">
+                      <td className="px-3 py-3 font-bold text-slate-400">{item.views}</td>
+                      <td className="px-3 py-3 font-bold text-slate-400">{item.downloads}</td>
+                      <td className="px-3 py-3 text-right">
                         <button
                           type="button"
                           onClick={() => handleDeleteMaterial(item.id, item.name)}
-                          className="p-1.5 bg-red-950/30 border border-red-900/40 text-red-400 hover:bg-red-900 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center justify-center"
+                          className="px-2.5 py-1.5 bg-red-600/20 border border-red-500/40 text-red-500 hover:bg-red-600 hover:text-white rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 text-[11px] font-bold"
                           title={`Delete ${item.name}`}
                         >
                           <span className="material-symbols-outlined text-sm">delete</span>
+                          <span>Delete</span>
                         </button>
                       </td>
                     </tr>

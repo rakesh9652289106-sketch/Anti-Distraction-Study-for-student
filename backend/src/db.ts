@@ -520,6 +520,8 @@ export function writeGroupsDb(data: ClassroomGroup[]) {
   });
 }
 
+const FIRESTORE_CHUNK_SIZE = 700_000;
+
 export async function saveUploadedFileContent(
   resourceId: string,
   filename: string,
@@ -527,14 +529,30 @@ export async function saveUploadedFileContent(
   base64Content: string
 ) {
   try {
-    // Firestore single-doc limit is 1MB; store files up to ~700KB base64 directly in Firestore
-    if (base64Content.length <= 900_000) {
+    if (base64Content.length <= FIRESTORE_CHUNK_SIZE) {
       await setDoc(doc(firestoreDb, 'focusflow_files', resourceId), {
         filename,
         mimeType,
         base64Content,
+        totalChunks: 0,
         updatedAt: new Date().toISOString()
       });
+    } else {
+      const totalChunks = Math.ceil(base64Content.length / FIRESTORE_CHUNK_SIZE);
+      await setDoc(doc(firestoreDb, 'focusflow_files', resourceId), {
+        filename,
+        mimeType,
+        totalChunks,
+        updatedAt: new Date().toISOString()
+      });
+      const chunkWrites: Promise<void>[] = [];
+      for (let i = 0; i < totalChunks; i++) {
+        const chunk = base64Content.slice(i * FIRESTORE_CHUNK_SIZE, (i + 1) * FIRESTORE_CHUNK_SIZE);
+        chunkWrites.push(
+          setDoc(doc(firestoreDb, 'focusflow_files', `${resourceId}_chunk_${i}`), { data: chunk })
+        );
+      }
+      await Promise.all(chunkWrites);
     }
   } catch (err) {
     console.error('[Firestore Save] Error saving file binary:', err);
@@ -550,11 +568,27 @@ export async function getUploadedFileContent(resourceId: string): Promise<{
     const snap = await getDoc(doc(firestoreDb, 'focusflow_files', resourceId));
     if (!snap.exists()) return null;
     const data = snap.data();
-    if (!data?.base64Content) return null;
+
+    let base64Content = data?.base64Content || '';
+    if (!base64Content && data?.totalChunks > 0) {
+      const chunkPromises = [];
+      for (let i = 0; i < data.totalChunks; i++) {
+        chunkPromises.push(getDoc(doc(firestoreDb, 'focusflow_files', `${resourceId}_chunk_${i}`)));
+      }
+      const chunkSnaps = await Promise.all(chunkPromises);
+      const parts: string[] = [];
+      for (const cs of chunkSnaps) {
+        if (!cs.exists() || !cs.data()?.data) return null;
+        parts.push(cs.data()!.data);
+      }
+      base64Content = parts.join('');
+    }
+
+    if (!base64Content) return null;
     return {
       filename: data.filename || 'file',
       mimeType: data.mimeType || 'application/octet-stream',
-      base64Content: data.base64Content
+      base64Content
     };
   } catch (err) {
     console.error('[Firestore Read] Error reading file binary:', err);
