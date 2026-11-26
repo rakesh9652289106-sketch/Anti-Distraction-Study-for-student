@@ -577,11 +577,13 @@ export default function LoginPage() {
             </form>
             )}
 
-            {/* Micro Demo Credential Switcher Card */}
+            {/* Role Switcher Footer */}
             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
               <span className="flex items-center gap-1 font-medium">
-                <span className="material-symbols-outlined text-sm text-emerald-600">key</span>
-                Demo credentials active
+                <span className="material-symbols-outlined text-sm text-emerald-600">
+                  {role === 'admin' ? 'key' : 'verified_user'}
+                </span>
+                {role === 'admin' ? 'Demo credentials active' : 'Google verification required'}
               </span>
               <button
                 type="button"
