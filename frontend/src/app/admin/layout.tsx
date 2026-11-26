@@ -290,7 +290,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'AI Engine Settings', path: '/admin/config/ai', icon: 'psychology_alt' },
     { name: 'Study Environments', path: '/admin/config/environments', icon: 'domain' },
     { name: 'Create & Configure Rooms', path: '/admin/create-room', icon: 'add_home_work' },
-    { name: 'User & Group Management', path: '/admin/config/users', icon: 'manage_accounts' },
+    { name: 'Manage Users', path: '/admin/config/users', icon: 'manage_accounts' },
+    { name: 'Manage Staff', path: '/admin/staff', icon: 'badge' },
     { name: 'Share Study Materials', path: '/admin/resources', icon: 'auto_stories' },
     { name: 'Rewards & Engagement', path: '/admin/config/rewards', icon: 'military_tech' }
   ];

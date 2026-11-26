@@ -546,7 +546,7 @@ app.get('/api/admin/staff', (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/admin/staff', (req: Request, res: Response) => {
+app.post('/api/admin/staff', async (req: Request, res: Response) => {
   if (!isAuthenticated(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -571,7 +571,7 @@ app.post('/api/admin/staff', (req: Request, res: Response) => {
       createdAt: new Date().toISOString()
     };
     db.staff.push(newStaff);
-    writeDb(db);
+    await saveCollectionToFirestore('staff', db.staff);
     const { password: _pw, ...safeStaff } = newStaff;
     res.status(201).json(safeStaff);
   } catch (err: any) {
@@ -579,7 +579,42 @@ app.post('/api/admin/staff', (req: Request, res: Response) => {
   }
 });
 
-app.delete('/api/admin/staff', (req: Request, res: Response) => {
+app.patch('/api/admin/staff', async (req: Request, res: Response) => {
+  if (!isAuthenticated(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const { id, name, email, phone, department } = req.body;
+    if (!id) return res.status(400).json({ error: 'Staff ID is required' });
+    const db = readDb();
+    if (!Array.isArray(db.staff)) db.staff = [];
+    const staffMember = db.staff.find(s => s.id === id);
+    if (!staffMember) return res.status(404).json({ error: 'Staff member not found' });
+
+    if (name !== undefined && String(name).trim()) staffMember.name = String(name).trim();
+    if (email !== undefined && String(email).trim()) staffMember.email = String(email).trim().toLowerCase();
+    if (phone !== undefined) staffMember.phone = String(phone).replace(/\D/g, '').slice(0, 10);
+    if (department !== undefined) staffMember.department = String(department).trim() || 'General';
+
+    (db.rooms || []).forEach(r => {
+      if (r.roomHead && r.roomHead.userId === staffMember.id) {
+        r.roomHead.name = staffMember.name;
+        r.roomHead.email = staffMember.email;
+      }
+    });
+
+    await Promise.all([
+      saveCollectionToFirestore('staff', db.staff),
+      saveCollectionToFirestore('rooms', db.rooms)
+    ]);
+    const { password: _pw, ...safeStaff } = staffMember;
+    res.json(safeStaff);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/staff', async (req: Request, res: Response) => {
   if (!isAuthenticated(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -588,7 +623,15 @@ app.delete('/api/admin/staff', (req: Request, res: Response) => {
     if (!id) return res.status(400).json({ error: 'Staff ID is required' });
     const db = readDb();
     db.staff = (db.staff || []).filter(s => s.id !== id);
-    writeDb(db);
+    (db.rooms || []).forEach(r => {
+      if (r.roomHead && r.roomHead.userId === id) {
+        r.roomHead = null;
+      }
+    });
+    await Promise.all([
+      saveCollectionToFirestore('staff', db.staff),
+      saveCollectionToFirestore('rooms', db.rooms)
+    ]);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

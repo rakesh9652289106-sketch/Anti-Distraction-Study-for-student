@@ -254,48 +254,47 @@ function getInitialData(): DbSchema {
       {
         id: 'room-1',
         name: 'Silent Library',
-        activeUsers: 14,
+        activeUsers: 0,
         tags: ['No Chat', 'Silent', 'Intense'],
         ambientSound: 'Soft Rain',
-        messages: [
-          { id: 'm1', user: 'Alex', text: 'Stretching for 5 mins, then back to math!', timestamp: new Date().toISOString() }
-        ],
+        messages: [],
         hostName: 'Admin Library',
         isVerified: true,
         maxCapacity: 50,
-        allowedApps: ['notion', 'gdocs'],
+        allowedApps: ['faceprep'],
         focusMode: 'Standard Lock',
-        sessionDurationFormat: '50m Focus / 10m Break'
+        sessionDurationFormat: '50m Focus / 10m Break',
+        joinedStudents: []
       },
       {
         id: 'room-2',
         name: 'AI Study Guild',
-        activeUsers: 8,
+        activeUsers: 0,
         tags: ['Coding', 'Discussion', 'Lofi'],
         ambientSound: 'Lofi Beats',
-        messages: [
-          { id: 'm2', user: 'Sara', text: 'Working on a new Next.js dashboard', timestamp: new Date().toISOString() }
-        ],
+        messages: [],
         hostName: 'Tutor Bot',
         isVerified: true,
         maxCapacity: 30,
-        allowedApps: ['notion', 'terminal'],
+        allowedApps: ['hackerrank'],
         focusMode: 'AI Active Nudge',
-        sessionDurationFormat: '25m Focus / 5m Discussion'
+        sessionDurationFormat: '25m Focus / 5m Discussion',
+        joinedStudents: []
       },
       {
         id: 'room-3',
         name: 'STEM Prep Hall',
-        activeUsers: 5,
+        activeUsers: 0,
         tags: ['Science', 'Calculus', 'Exam prep'],
         ambientSound: 'Library Ambient',
         messages: [],
         hostName: 'Prof. Alex Rivera',
         isVerified: true,
         maxCapacity: 20,
-        allowedApps: ['gdocs', 'youtube'],
+        allowedApps: ['faceprep'],
         focusMode: 'Hard Lock',
-        sessionDurationFormat: '90m Focus / 15m Insight Exchange'
+        sessionDurationFormat: '90m Focus / 15m Insight Exchange',
+        joinedStudents: []
       }
     ],
     settings: {
@@ -459,21 +458,7 @@ export function readDb(): DbSchema {
       if (r.allowMaterialDownloads === undefined) r.allowMaterialDownloads = true;
       if (r.roomHead === undefined) r.roomHead = null;
       if (!Array.isArray(r.joinedStudents)) r.joinedStudents = [];
-      // Backfill joinedStudents for rooms with activeUsers recorded before telemetry tracking
-      if (r.activeUsers > 0 && r.joinedStudents.length === 0 && Array.isArray(dbCache.users)) {
-        const count = Math.min(r.activeUsers, dbCache.users.length);
-        r.joinedStudents = dbCache.users.slice(0, count).map(u => ({
-          userId: u.id,
-          name: u.name,
-          email: u.email,
-          joinedAt: new Date().toISOString(),
-          gazeStatus: 'Focused',
-          gazeAlerts: 0,
-          tabSwitchCount: 0,
-          focusScore: u.focusScore || 92,
-          lastUpdated: new Date().toISOString()
-        }));
-      }
+      r.activeUsers = r.joinedStudents.length;
     });
   }
   return dbCache;
