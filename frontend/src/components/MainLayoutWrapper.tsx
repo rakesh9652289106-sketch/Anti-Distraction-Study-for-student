@@ -13,6 +13,7 @@ export default function MainLayoutWrapper({ children }: { children: React.ReactN
     settings,
     isAssistantOpen,
     setIsAssistantOpen,
+    isSidebarCollapsed,
     isTabSwitchModalOpen,
     tabSwitchCount,
     resumeAfterTabSwitch,
@@ -98,7 +99,9 @@ export default function MainLayoutWrapper({ children }: { children: React.ReactN
         <Sidebar />
 
         {/* Main Content Area */}
-        <div className={`flex-1 flex flex-col min-h-screen pl-64 transition-all duration-300 ${
+        <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${
+          isSidebarCollapsed ? 'pl-16' : 'pl-64'
+        } ${
           isAssistantOpen ? 'pr-80' : 'pr-0'
         }`}>
           <Header />

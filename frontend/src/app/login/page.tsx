@@ -19,19 +19,16 @@ declare global {
   }
 }
 
+const ADMIN_EMAIL = 'rakesh9652289106@gmail.com';
+
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState<'student' | 'staff' | 'admin'>('student');
+  const [role, setRole] = useState<'student' | 'staff'>('student');
   const [studentName, setStudentName] = useState('');
   const [studentPhone, setStudentPhone] = useState('');
   const [hasGoogleVerifiedBefore, setHasGoogleVerifiedBefore] = useState(false);
-  const [emailOrPhone, setEmailOrPhone] = useState('admin@focusflow.ai');
-  const [password, setPassword] = useState('admin123');
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showForgotModal, setShowForgotModal] = useState(false);
 
   useEffect(() => {
     const storageKey = role === 'staff' ? 'staff_google_verified_email' : 'student_google_verified_email';
@@ -50,14 +47,10 @@ export default function LoginPage() {
     }
   }, []);
 
-  // Switch role tabs and update default demo credentials
-  const handleRoleChange = (newRole: 'student' | 'staff' | 'admin') => {
+  // Switch role tabs
+  const handleRoleChange = (newRole: 'student' | 'staff') => {
     setRole(newRole);
     setError('');
-    if (newRole === 'admin') {
-      setEmailOrPhone('admin@focusflow.ai');
-      setPassword('admin123');
-    }
   };
 
   // Compulsory Google Verification for Students
@@ -134,9 +127,20 @@ export default function LoginPage() {
             if (authData.alreadyExists) {
               setHasGoogleVerifiedBefore(true);
             }
-            setError(authData.error || 'Google login failed.');
+            const fallbackMsg =
+              authRes.status === 404
+                ? `Auth endpoint (${endpoint}) not found (404). Please run "npm run build-all" and restart the server.`
+                : `Google login failed (HTTP ${authRes.status}).`;
+            setError(authData.error || fallbackMsg);
             setIsSubmitting(false);
             return;
+          }
+
+          const verifiedEmail = String(profile.email).trim().toLowerCase();
+          if (verifiedEmail === ADMIN_EMAIL) {
+            sessionStorage.setItem('admin_authenticated', 'true');
+          } else {
+            sessionStorage.removeItem('admin_authenticated');
           }
 
           if (role === 'staff') {
@@ -172,83 +176,6 @@ export default function LoginPage() {
     });
 
     tokenClient.requestAccessToken();
-  };
-
-  // Form submission handler
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailOrPhone.trim() || !password.trim()) {
-      setError('Please provide both your email and password.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError('');
-
-    try {
-      if (role === 'admin' || (role !== 'staff' && (emailOrPhone.toLowerCase().includes('admin') || password === 'admin123'))) {
-        const res = await fetch('/api/admin/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ password })
-        });
-
-        if (res.ok) {
-          sessionStorage.setItem('student_authenticated', 'true');
-          localStorage.setItem('student_authenticated', 'true');
-          sessionStorage.setItem('admin_authenticated', 'true');
-          router.push('/admin/pulse');
-        } else {
-          const data = await res.json().catch(() => ({}));
-          setError(data.error || 'Incorrect admin password (demo: admin123).');
-        }
-      } else if (role === 'staff') {
-        const res = await fetch('/api/staff/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ email: emailOrPhone.trim(), password })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          sessionStorage.setItem('staff_authenticated', 'true');
-          localStorage.setItem('staff_authenticated', 'true');
-          localStorage.setItem('staff_user_id', data.staff.id);
-          localStorage.setItem('staff_user_name', data.staff.name);
-          localStorage.setItem('staff_user_email', data.staff.email);
-          sessionStorage.setItem('student_authenticated', 'true');
-          localStorage.setItem('student_authenticated', 'true');
-          router.push('/staff');
-        } else if (res.status === 404) {
-          setError('Staff login API not found (404). Please rebuild and restart the backend: npm run build-all && npm run dev');
-        } else {
-          const data = await res.json().catch(() => ({}));
-          setError(data.error || 'Incorrect staff email or password (demo: staff@focusflow.ai / staff123).');
-        }
-      } else {
-        // Standard student login
-        const cleanEmail = emailOrPhone.trim().toLowerCase();
-        const derivedName = cleanEmail.includes('@')
-          ? cleanEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-          : cleanEmail;
-        localStorage.removeItem('staff_authenticated');
-        sessionStorage.removeItem('staff_authenticated');
-        sessionStorage.setItem('student_authenticated', 'true');
-        localStorage.setItem('student_authenticated', 'true');
-        localStorage.setItem('student_user_email', cleanEmail);
-        localStorage.setItem('student_user_name', cleanEmail === 'alex@student.edu' ? 'Alex Rivera' : derivedName);
-        localStorage.setItem('student_user_id', cleanEmail === 'alex@student.edu' ? 'u1' : cleanEmail);
-        setTimeout(() => {
-          router.push('/');
-        }, 400);
-      }
-    } catch {
-      setError('Connection failure. Please verify your network.');
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   return (
@@ -308,18 +235,12 @@ export default function LoginPage() {
             {/* Header / Titles */}
             <div className="text-center mb-6">
               <h1 className="text-2xl sm:text-[26px] font-black text-slate-900 tracking-tight">
-                {role === 'student'
-                  ? 'Welcome to FocusFlow'
-                  : role === 'staff'
-                  ? 'Staff & Room Head Portal'
-                  : 'Admin Control Portal'}
+                {role === 'student' ? 'Welcome to FocusFlow' : 'Staff & Room Head Portal'}
               </h1>
               <p className="text-xs sm:text-sm text-slate-700 mt-1 font-semibold">
                 {role === 'student'
                   ? 'Your AI-powered digital sanctuary for deep study'
-                  : role === 'staff'
-                  ? 'Monitor assigned rooms, student gazes & tab-switch stats'
-                  : 'Manage system settings, staff, rooms & security guard'}
+                  : 'Monitor assigned rooms, student gazes & tab-switch stats'}
               </p>
             </div>
 
@@ -349,23 +270,10 @@ export default function LoginPage() {
                 <span className="material-symbols-outlined text-base text-sky-600">badge</span>
                 <span>Staff</span>
               </button>
-              <button
-                type="button"
-                onClick={() => handleRoleChange('admin')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                  role === 'admin'
-                    ? 'bg-white text-slate-900 shadow-sm shadow-slate-200 border border-slate-200/60'
-                    : 'text-slate-700 hover:text-slate-900'
-                }`}
-              >
-                <span className="material-symbols-outlined text-base text-indigo-600">admin_panel_settings</span>
-                <span>Admin</span>
-              </button>
             </div>
 
             {/* Student & Staff Login (Name & 10-digit Phone + Compulsory Google Verification) */}
-            {(role === 'student' || role === 'staff') ? (
-              <div className="space-y-4">
+            <div className="space-y-4">
                 {!hasGoogleVerifiedBefore ? (
                   <>
                     <div className="space-y-1.5">
@@ -468,129 +376,21 @@ export default function LoginPage() {
                   </p>
                 )}
               </div>
-            ) : (
-            /* Staff & Admin Form */
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email Input */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700" htmlFor="emailOrPhone">
-                  {role === 'staff' ? 'Staff Email' : 'Administrator Email'}
-                </label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 transition-colors text-lg">
-                    shield_person
-                  </span>
-                  <input
-                    id="emailOrPhone"
-                    type="text"
-                    required
-                    value={emailOrPhone}
-                    onChange={e => setEmailOrPhone(e.target.value)}
-                    placeholder="admin@focusflow.ai"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl text-xs text-slate-900 placeholder:text-slate-400 font-medium outline-none transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
-                  />
-                </div>
-              </div>
-
-              {/* Password Input */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-700" htmlFor="password">
-                    Password
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotModal(true)}
-                    className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer"
-                  >
-                    Need demo keys?
-                  </button>
-                </div>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 transition-colors text-lg">
-                    lock
-                  </span>
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-11 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl text-xs text-slate-900 placeholder:text-slate-400 font-medium outline-none transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg"
-                    title={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    <span className="material-symbols-outlined text-base">
-                      {showPassword ? 'visibility_off' : 'visibility'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember Me */}
-              <div className="flex items-center justify-between text-xs pt-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={e => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 accent-emerald-600 cursor-pointer"
-                  />
-                  <span className="text-slate-800 font-bold">Keep me signed in</span>
-                </label>
-                <span className="text-[11px] text-slate-600 font-semibold">Auto-synced</span>
-              </div>
-
-              {/* Error banner */}
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs flex items-center gap-2 animate-shake">
-                  <span className="material-symbols-outlined text-base shrink-0">error</span>
-                  <span className="font-medium">{error}</span>
-                </div>
-              )}
-
-              {/* Primary Action Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 disabled:opacity-70"
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                    <span>Signing in...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>
-                      {role === 'staff' ? 'Access Staff Portal' : 'Access Admin Dashboard'}
-                    </span>
-                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                  </>
-                )}
-              </button>
-            </form>
-            )}
 
             {/* Role Switcher Footer */}
             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
               <span className="flex items-center gap-1 font-medium">
                 <span className="material-symbols-outlined text-sm text-emerald-600">
-                  {role === 'admin' ? 'key' : 'verified_user'}
+                  verified_user
                 </span>
-                {role === 'admin' ? 'Demo credentials active' : 'Google verification required'}
+                Google verification required
               </span>
               <button
                 type="button"
-                onClick={() => handleRoleChange(role === 'student' ? 'admin' : 'student')}
+                onClick={() => handleRoleChange(role === 'student' ? 'staff' : 'student')}
                 className="font-bold text-slate-800 hover:text-emerald-600 underline cursor-pointer"
               >
-                Switch to {role === 'student' ? 'Admin' : 'Student'}
+                Switch to {role === 'student' ? 'Staff' : 'Student'}
               </button>
             </div>
           </div>
@@ -620,71 +420,6 @@ export default function LoginPage() {
           © {new Date().getFullYear()} FocusFlow Sentinel. All rights reserved.
         </div>
       </footer>
-
-      {/* Forgot Password / Demo Keys Modal */}
-      {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full border border-slate-200 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-lg">vpn_key</span>
-                </div>
-                <h3 className="font-bold text-slate-900 text-sm">Demo Access Credentials</h3>
-              </div>
-              <button
-                onClick={() => setShowForgotModal(false)}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-lg">close</span>
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
-              FocusFlow includes pre-configured testing accounts so you can inspect both Student and Administrator experiences immediately.
-            </p>
-
-            <div className="space-y-2">
-              <div
-                onClick={() => {
-                  handleRoleChange('student');
-                  setShowForgotModal(false);
-                }}
-                className="p-3 rounded-xl border border-emerald-200/80 bg-emerald-50/50 hover:bg-emerald-50 cursor-pointer transition-colors"
-              >
-                <div className="flex justify-between items-center text-xs font-bold text-emerald-700">
-                  <span>Student Account</span>
-                  <span className="text-[10px] uppercase bg-emerald-100 px-2 py-0.5 rounded-full">Apply</span>
-                </div>
-                <div className="text-[11px] font-mono text-slate-600 mt-1">alex@student.edu</div>
-                <div className="text-[11px] font-mono text-slate-500">password: student123</div>
-              </div>
-
-              <div
-                onClick={() => {
-                  handleRoleChange('admin');
-                  setShowForgotModal(false);
-                }}
-                className="p-3 rounded-xl border border-indigo-200/80 bg-indigo-50/50 hover:bg-indigo-50 cursor-pointer transition-colors"
-              >
-                <div className="flex justify-between items-center text-xs font-bold text-indigo-700">
-                  <span>Administrator Account</span>
-                  <span className="text-[10px] uppercase bg-indigo-100 px-2 py-0.5 rounded-full">Apply</span>
-                </div>
-                <div className="text-[11px] font-mono text-slate-600 mt-1">admin@focusflow.ai</div>
-                <div className="text-[11px] font-mono text-slate-500">password: admin123</div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowForgotModal(false)}
-              className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

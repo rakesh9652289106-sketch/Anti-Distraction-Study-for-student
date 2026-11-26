@@ -173,6 +173,32 @@ export default function AdminCreateRoomPage() {
     }
   };
 
+  // One-click toggle for FACE Prep in an existing room
+  const handleToggleRoomFacePrep = async (room: StudyRoom) => {
+    const currentApps = room.allowedApps || [];
+    const hasFacePrep = currentApps.includes('faceprep');
+    const nextApps = hasFacePrep
+      ? currentApps.filter(a => a !== 'faceprep')
+      : [...currentApps, 'faceprep'];
+    try {
+      const res = await fetch('/api/rooms', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: room.id, allowedApps: nextApps })
+      });
+      if (res.ok) {
+        triggerToast(
+          hasFacePrep
+            ? `FACE Prep disabled in "${room.name}"`
+            : `FACE Prep allowed in "${room.name}"`
+        );
+        await fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Add censor word chip
   const handleAddCensorWord = (e: React.FormEvent) => {
     e.preventDefault();
@@ -657,12 +683,13 @@ export default function AdminCreateRoomPage() {
                   3. Allowed App Integrations
                 </span>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-xs">
                   {[
                     { id: 'notion', name: 'Notion', icon: 'description' },
                     { id: 'gdocs', name: 'Google Docs', icon: 'drafts' },
                     { id: 'terminal', name: 'Terminal', icon: 'terminal' },
-                    { id: 'youtube', name: 'YouTube', icon: 'video_library' }
+                    { id: 'youtube', name: 'YouTube', icon: 'video_library' },
+                    { id: 'faceprep', name: 'FACE Prep', icon: 'school' }
                   ].map(app => {
                     const isSelected = allowedApps.includes(app.id);
                     return (
@@ -860,13 +887,26 @@ export default function AdminCreateRoomPage() {
                       <div className="flex flex-wrap gap-xs max-w-[120px]">
                         {(room.allowedApps || []).map(app => (
                           <span key={app} className="px-1.5 py-0.5 bg-[#1b2e46] text-slate-300 rounded text-[9px] font-bold uppercase">
-                            {app}
+                            {app === 'faceprep' ? 'FACE Prep' : app}
                           </span>
                         ))}
                       </div>
                     </td>
                     <td className="py-sm pr-xs text-right">
                       <div className="inline-flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleRoomFacePrep(room)}
+                          className={`px-2 py-1 rounded-lg text-[9px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 border ${
+                            (room.allowedApps || []).includes('faceprep')
+                              ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 hover:bg-emerald-600 hover:text-white'
+                              : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:bg-emerald-600 hover:text-white'
+                          }`}
+                          title={(room.allowedApps || []).includes('faceprep') ? 'FACE Prep Allowed (Click to disable)' : 'Allow FACE Prep in this room'}
+                        >
+                          <span className="material-symbols-outlined text-[12px]">school</span>
+                          <span>FACE Prep</span>
+                        </button>
                         <button
                           type="button"
                           onClick={async () => {

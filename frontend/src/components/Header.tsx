@@ -13,7 +13,8 @@ export default function Header() {
     activeTaskTitle,
     settings,
     updateSettings,
-    isTimerRunning
+    isTimerRunning,
+    isSidebarCollapsed
   } = useApp();
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -48,7 +49,9 @@ export default function Header() {
   const formattedTime = `${timerMinutes.toString().padStart(2, '0')}:${timerSeconds.toString().padStart(2, '0')}`;
 
   return (
-    <header className="fixed top-0 right-0 left-64 flex items-center justify-between px-6 bg-surface/85 backdrop-blur-xl h-16 border-b border-outline-variant/30 text-on-surface z-40 transition-colors">
+    <header className={`fixed top-0 right-0 flex items-center justify-between px-6 bg-surface/85 backdrop-blur-xl h-16 border-b border-outline-variant/30 text-on-surface z-40 transition-all duration-300 ${
+      isSidebarCollapsed ? 'left-16' : 'left-64'
+    }`}>
       {/* Left: Session Clock & Command Palette search shortcut */}
       <div className="flex items-center gap-4">
         {/* Active Session Indicator */}

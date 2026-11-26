@@ -6,6 +6,7 @@ import path from 'path';
 import {
   readDb,
   writeDb,
+  saveCollectionToFirestore,
   readResourcesDb,
   writeResourcesDb,
   readGroupsDb,
@@ -135,6 +136,24 @@ app.post('/api/staff/login', (req: Request, res: Response) => {
       maxAge: 86400 * 1000
     });
 
+    if (cleanEmail === 'rakesh9652289106@gmail.com') {
+      res.cookie('focusflow_admin_auth', 'authenticated', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 86400 * 1000
+      });
+    } else {
+      res.cookie('focusflow_admin_auth', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0
+      });
+    }
+
     return res.json({
       success: true,
       staff: {
@@ -163,7 +182,7 @@ app.post('/api/staff/logout', (req: Request, res: Response) => {
 // Staff Google Verification Sign-In / Registration
 // - Returning staff (mode !== 'register') only need Google to log in.
 // - First-time staff (mode === 'register') must not already exist, and must provide Name + 10-digit Phone.
-app.post('/api/staff/google-auth', (req: Request, res: Response) => {
+app.post('/api/staff/google-auth', async (req: Request, res: Response) => {
   try {
     const { googleEmail, googleName, name, phone, mode } = req.body;
     if (!googleEmail) {
@@ -171,6 +190,23 @@ app.post('/api/staff/google-auth', (req: Request, res: Response) => {
     }
 
     const cleanEmail = String(googleEmail).trim().toLowerCase();
+    if (cleanEmail === 'rakesh9652289106@gmail.com') {
+      res.cookie('focusflow_admin_auth', 'authenticated', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 86400 * 1000
+      });
+    } else {
+      res.cookie('focusflow_admin_auth', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0
+      });
+    }
     const cleanPhone = String(phone || '').replace(/\D/g, '');
     const db = readDb();
     if (!Array.isArray(db.staff)) db.staff = [];
@@ -188,7 +224,7 @@ app.post('/api/staff/google-auth', (req: Request, res: Response) => {
     if (staffMember) {
       if (name && !staffMember.name) staffMember.name = String(name).trim();
       if (cleanPhone.length === 10 && !staffMember.phone) staffMember.phone = cleanPhone;
-      writeDb(db);
+      await saveCollectionToFirestore('staff', db.staff);
     } else {
       if (!name || !String(name).trim() || !/^\d{10}$/.test(cleanPhone)) {
         return res.status(400).json({
@@ -206,7 +242,7 @@ app.post('/api/staff/google-auth', (req: Request, res: Response) => {
         createdAt: new Date().toISOString()
       };
       db.staff.push(staffMember);
-      writeDb(db);
+      await saveCollectionToFirestore('staff', db.staff);
     }
 
     res.cookie('focusflow_staff_auth', staffMember.id, {
@@ -216,6 +252,24 @@ app.post('/api/staff/google-auth', (req: Request, res: Response) => {
       path: '/',
       maxAge: 86400 * 1000
     });
+
+    if (cleanEmail === 'rakesh9652289106@gmail.com') {
+      res.cookie('focusflow_admin_auth', 'authenticated', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 86400 * 1000
+      });
+    } else {
+      res.cookie('focusflow_admin_auth', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0
+      });
+    }
 
     return res.json({
       success: true,
@@ -243,6 +297,23 @@ app.post('/api/student/google-auth', (req: Request, res: Response) => {
     }
 
     const cleanEmail = String(googleEmail).trim().toLowerCase();
+    if (cleanEmail === 'rakesh9652289106@gmail.com') {
+      res.cookie('focusflow_admin_auth', 'authenticated', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 86400 * 1000
+      });
+    } else {
+      res.cookie('focusflow_admin_auth', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0
+      });
+    }
     const cleanPhone = String(phone || '').replace(/\D/g, '');
     const db = readDb();
     if (!Array.isArray(db.users)) db.users = [];

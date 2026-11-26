@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 
+const ADMIN_EMAIL = 'rakesh9652289106@gmail.com';
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -18,20 +20,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const checkAuth = async () => {
     try {
-      // Fast path: check sessionStorage flag set during login redirect
-      if (sessionStorage.getItem('admin_authenticated') === 'true') {
-        setIsAuthenticated(true);
+      const signedInEmails = [
+        localStorage.getItem('student_user_email'),
+        localStorage.getItem('staff_user_email'),
+        localStorage.getItem('student_google_verified_email'),
+        localStorage.getItem('staff_google_verified_email')
+      ].map(e => (e || '').trim().toLowerCase());
+
+      if (!signedInEmails.includes(ADMIN_EMAIL)) {
+        sessionStorage.removeItem('admin_authenticated');
+        setIsAuthenticated(false);
         setIsLoading(false);
+        const isLoggedIn =
+          sessionStorage.getItem('student_authenticated') === 'true' ||
+          localStorage.getItem('student_authenticated') === 'true';
+        router.replace(isLoggedIn ? '/' : '/login');
         return;
       }
-      const res = await fetch('/api/admin/check-auth', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setIsAuthenticated(data.authenticated);
-        if (data.authenticated) {
-          sessionStorage.setItem('admin_authenticated', 'true');
-        }
-      }
+
+      sessionStorage.setItem('admin_authenticated', 'true');
+      setIsAuthenticated(true);
     } catch (err) {
       console.error('Failed to check auth:', err);
     } finally {

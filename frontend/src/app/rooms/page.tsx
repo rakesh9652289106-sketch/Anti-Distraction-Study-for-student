@@ -241,7 +241,7 @@ export default function VirtualRoomsPage() {
                               key={idx} 
                               className="bg-surface-container border border-outline-variant/30 text-[10px] px-2 py-0.5 rounded text-on-surface-variant font-bold capitalize"
                             >
-                              {app}
+                              {app === 'faceprep' ? 'FACE Prep' : app}
                             </span>
                           ))}
                         </div>

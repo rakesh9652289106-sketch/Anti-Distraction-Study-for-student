@@ -27,6 +27,10 @@ interface AppContextType {
   isAssistantOpen: boolean;
   setIsAssistantOpen: (open: boolean) => void;
 
+  // Left Navigation Sidebar State (collapsed = small icon bar)
+  isSidebarCollapsed: boolean;
+  toggleSidebar: () => void;
+
   // Tab Switch & Site Focus Protection
   isTabSwitchModalOpen: boolean;
   tabSwitchCount: number;
@@ -141,6 +145,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [distractionsBlockedThisSession, setDistractionsBlockedThisSession] = useState(0);
   const [isAssistantOpen, setIsAssistantOpen] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
 
   // Tab Switch & Site Focus Protection States
   const [isTabSwitchModalOpen, setIsTabSwitchModalOpen] = useState(false);
@@ -649,6 +655,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         distractionsBlockedThisSession,
         isAssistantOpen,
         setIsAssistantOpen,
+        isSidebarCollapsed,
+        toggleSidebar,
         isTabSwitchModalOpen,
         tabSwitchCount,
         resumeAfterTabSwitch,

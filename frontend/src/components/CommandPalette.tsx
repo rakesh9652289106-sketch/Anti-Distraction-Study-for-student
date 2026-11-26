@@ -226,17 +226,29 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         onClose();
       }
     },
-    {
-      id: 'nav-pulse',
-      category: 'Navigation',
-      title: 'Admin: Open Pulse Hub',
-      subtitle: 'Live infrastructure & zone status',
-      icon: 'monitoring',
-      action: () => {
-        router.push('/admin/pulse');
-        onClose();
-      }
-    },
+    ...(typeof window !== 'undefined' &&
+    [
+      localStorage.getItem('student_user_email'),
+      localStorage.getItem('staff_user_email'),
+      localStorage.getItem('student_google_verified_email'),
+      localStorage.getItem('staff_google_verified_email')
+    ]
+      .map(e => (e || '').trim().toLowerCase())
+      .includes('rakesh9652289106@gmail.com')
+      ? [
+          {
+            id: 'nav-pulse',
+            category: 'Navigation' as const,
+            title: 'Admin: Open Pulse Hub',
+            subtitle: 'Live infrastructure & zone status',
+            icon: 'monitoring',
+            action: () => {
+              router.push('/admin/pulse');
+              onClose();
+            }
+          }
+        ]
+      : []),
   ];
 
   // Filter commands

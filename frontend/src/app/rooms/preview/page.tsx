@@ -78,13 +78,24 @@ function RoomPreviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id') || '';
-  const { joinStudyRoom, joinedRooms, leaveStudyRoom, showNotification } = useApp();
+  const { joinStudyRoom, joinedRooms, leaveStudyRoom, showNotification, isSidebarCollapsed, isAssistantOpen } = useApp();
   const [data, setData] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmails, setInviteEmails] = useState('');
   const [isInviting, setIsInviting] = useState(false);
+  const [showFacePrepEmbed, setShowFacePrepEmbed] = useState(true);
+  const [isFacePrepFullscreen, setIsFacePrepFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (!isFacePrepFullscreen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFacePrepFullscreen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isFacePrepFullscreen]);
 
   const fetchRoomData = async () => {
     if (!id) return;
@@ -316,12 +327,26 @@ function RoomPreviewContent() {
                 <p className="text-xs font-bold text-on-surface">Allowed Ecosystem</p>
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {environment.allowedApps.map((app, idx) => (
-                    <span 
-                      key={idx} 
-                      className="bg-surface-container border border-outline-variant/30 text-[10px] px-2 py-0.5 rounded text-on-surface-variant font-bold capitalize"
-                    >
-                      {app}
-                    </span>
+                    app === 'faceprep' ? (
+                      <a
+                        key={idx}
+                        href="https://student.faceprep.in/auth"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-primary/10 border border-primary/30 text-[10px] px-2 py-0.5 rounded text-primary font-bold inline-flex items-center gap-1 hover:bg-primary hover:text-white transition-colors"
+                        title="Open FACE Prep Student Portal"
+                      >
+                        FACE Prep
+                        <span className="material-symbols-outlined text-[11px]">open_in_new</span>
+                      </a>
+                    ) : (
+                      <span 
+                        key={idx} 
+                        className="bg-surface-container border border-outline-variant/30 text-[10px] px-2 py-0.5 rounded text-on-surface-variant font-bold capitalize"
+                      >
+                        {app}
+                      </span>
+                    )
                   ))}
                 </div>
               </div>
@@ -463,6 +488,93 @@ function RoomPreviewContent() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* FACE Prep Integrated Learning Portal (Shown when Admin enabled FACE Prep for this room) */}
+        {!isInspectRulesMode && environment.allowedApps.includes('faceprep') && (
+          <div
+            className={
+              isFacePrepFullscreen
+                ? `fixed top-16 bottom-0 z-30 bg-surface flex flex-col p-4 transition-all duration-300 ${
+                    isSidebarCollapsed ? 'left-16' : 'left-64'
+                  } ${isAssistantOpen ? 'right-80' : 'right-0'}`
+                : 'md:col-span-12 bg-surface border border-outline-variant/40 shadow-sm rounded-2xl p-6'
+            }
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[22px]">school</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-on-surface">FACE Prep Student Portal</h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                      Integrated App
+                    </span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant font-medium mt-0.5">
+                    Access your FACE Prep courses, assessments, and practice modules directly inside this room.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!showFacePrepEmbed) setShowFacePrepEmbed(true);
+                    setIsFacePrepFullscreen(prev => !prev);
+                  }}
+                  className="px-3.5 py-2 border border-outline-variant/40 hover:bg-surface-container rounded-xl text-xs font-bold text-on-surface flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {isFacePrepFullscreen ? 'fullscreen_exit' : 'fullscreen'}
+                  </span>
+                  {isFacePrepFullscreen ? 'Exit Full Screen' : 'Full Screen'}
+                </button>
+                {!isFacePrepFullscreen && (
+                  <button
+                    type="button"
+                    onClick={() => setShowFacePrepEmbed(prev => !prev)}
+                    className="px-3.5 py-2 border border-outline-variant/40 hover:bg-surface-container rounded-xl text-xs font-bold text-on-surface flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">
+                      {showFacePrepEmbed ? 'visibility_off' : 'visibility'}
+                    </span>
+                    {showFacePrepEmbed ? 'Hide Embed' : 'Show Embed'}
+                  </button>
+                )}
+                <a
+                  href="https://student.faceprep.in/auth"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                  Open FACE Prep
+                </a>
+              </div>
+            </div>
+
+            {showFacePrepEmbed && (
+              <div
+                className={
+                  isFacePrepFullscreen
+                    ? 'w-full flex-1 min-h-0 rounded-xl overflow-hidden border border-outline-variant/40 bg-white'
+                    : 'w-full h-[650px] rounded-xl overflow-hidden border border-outline-variant/40 bg-white'
+                }
+              >
+                <iframe
+                  src="https://student.faceprep.in/auth"
+                  title="FACE Prep Student Portal"
+                  className="w-full h-full border-0"
+                  allow="fullscreen; clipboard-read; clipboard-write"
+                  allowFullScreen
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+            )}
           </div>
         )}
 

@@ -482,6 +482,21 @@ export function writeDb(data: DbSchema) {
   saveDbToFirestore(data);
 }
 
+// Persist a single collection immediately (awaitable for auth/registration routes)
+export async function saveCollectionToFirestore<K extends keyof DbSchema>(key: K, value: DbSchema[K]) {
+  try {
+    dbCache[key] = value;
+    const docRef = doc(firestoreDb, 'focusflow', key);
+    if (key === 'settings') {
+      await setDoc(docRef, value as GlobalSettings);
+    } else {
+      await setDoc(docRef, { list: value });
+    }
+  } catch (err) {
+    console.error(`[Firestore Save] Error saving "${String(key)}" to Firestore:`, err);
+  }
+}
+
 async function saveDbToFirestore(data: DbSchema) {
   try {
     const docKeys: Array<keyof DbSchema> = ['tasks', 'sessions', 'analytics', 'rewards', 'rooms', 'settings', 'tickets', 'alerts', 'users', 'staff', 'timetable'];
